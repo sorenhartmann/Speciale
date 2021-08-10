@@ -11,3 +11,4 @@ seaborn
 ipykernel
 snakeviz
 tqdm
+sklearn

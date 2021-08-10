@@ -24,6 +24,6 @@ class BaysianModule(nn.Module):
             a = 0
             for parameter in self.parameters():
                 b = a + math.prod(parameter.shape)
-                parameter.copy_(theta[a:b])
+                parameter.copy_(theta[a:b].view(parameter.shape))
                 a = b
 
