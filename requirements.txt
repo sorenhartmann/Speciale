@@ -3,5 +3,11 @@
 
 # external requirements
 torch
+torchvision
 pytorch-lightning
 wandb
+matplotlib
+seaborn
+ipykernel
+snakeviz
+tqdm

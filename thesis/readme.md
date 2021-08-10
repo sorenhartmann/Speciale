@@ -1,4 +1,4 @@
-# How do I change the information in the template?
+How do I change the information in the template?
 Setup/Statics.tex
 
 # Where can I suggest changes?
