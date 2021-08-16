@@ -1,50 +1,101 @@
 import math
-import torch
-from torch import nn
+from typing import List, Optional
+import pandas as pd
 
-from src.models.common import BaysianModule
+import torch
+from torch import Tensor
+from torch.utils.data import Dataset
+
+from src.callbacks import Callback, CallbackHookMixin, ProgressBarWithAcceptanceRatio
+from src.modules import BayesianModel
 from src.samplers import Sampler
 
-from tqdm import trange
 
-class MonteCarloInference:
-
-    def __init__(self, sampler: Sampler):
-
-        self.sampler = sampler
-        self.samples_ = None
-
-    def fit(
+class MonteCarloInference(CallbackHookMixin):
+    def __init__(
         self,
-        model: BaysianModule,
-        dataset: torch.utils.data.Dataset,
-        burn_in=2000,
-        n_samples=3000,
+        sampler: Sampler,
+        burn_in: int = 500,
+        n_samples: int = 1000,
+        callbacks: Optional[List[Callback]] = None,
     ):
 
-        sample_generator = self.sampler.sample_posterior(model, dataset)
+        self.sampler = sampler
+        self.burn_in = burn_in
+        self.n_samples = n_samples
 
-        if burn_in > 0:
-            for i in trange(burn_in, desc="Burn in"):
-                next(sample_generator)
+        if callbacks is None:
+            self.callbacks = self._default_callbacks()
+        else:
+            self.callbacks = callbacks
 
-        n_params = sum(math.prod(x.shape) for x in model.parameters())
+        self.samples_ = None
 
+    def burn_in_loop(self, sample_generator):
+
+        self.callback("on_burn_in_start")
+        try:
+            for i in range(self.burn_in):
+                while next(sample_generator) is None:
+                    self.callback("on_sample_rejected")
+                self.callback("on_sample_accepted")
+
+        finally:
+            self.callback("on_burn_in_end")
+
+    def sample_loop(self, sample_generator):
+
+        self.callback("on_sampling_start")
+        samples = []
+
+        try:
+            for i in range(self.n_samples):
+                while (sample := next(sample_generator)) is None:
+                    self.callback("on_sample_rejected")
+
+                self.callback("on_sample_accepted")
+                samples.append(sample)
+        finally:
+            self.callback("on_sampling_end")
+
+        return samples
+
+    def fit(self, model: BayesianModel, dataset: Dataset):
+
+        sample_generator = self.sampler.sample_generator(model, dataset)
+
+        if self.burn_in > 0:
+            self.burn_in_loop(sample_generator)
+
+        if self.n_samples > 0:
+            samples = self.sample_loop(sample_generator)
+
+        self.samples_ = samples
         self.model_ = model
-        self.samples_ = torch.empty((n_samples, n_params))
-
-        for i in trange(n_samples, desc="Sampling"):
-            self.samples_[i, :] = next(sample_generator)
 
         sample_generator.close()
 
-    def predictive(self, x):
-        
+    def predictive(self, x: Tensor):
+
         with torch.no_grad():
             pred_samples = []
             for sample in self.samples_:
-                self.model_.update_theta(sample)
+                self.model_.load_state_dict(sample, strict=False)
                 pred_samples.append(self.model_.forward(x))
 
         return torch.stack(pred_samples)
-            
+
+    @staticmethod
+    def _default_callbacks():
+        return [ProgressBarWithAcceptanceRatio()]
+
+    def sample_df(self):
+        dict_list = []
+        for sample in self.samples_:
+            dict_list.append({})
+            for name, param in sample.items():
+                dict_list[-1].update(
+                    {f"{name}:{i}": c.item() for i, c in enumerate(param.flatten())}
+                )
+
+        return pd.DataFrame(dict_list)

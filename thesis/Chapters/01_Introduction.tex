@@ -1,17 +1,68 @@
 \chapter{Introduction}
 
-\section{Generative process}
+\section{BNN Model}
 
+A Bayesian Neural Net (BNN) model is a probablistic neural network model rougly corresponding to the following generative process:
 \begin{enumerate}
-    \item Draw $\bm \theta \sim \mathcal N (0, \alpha^2 I)$
-    \item Draw $\bm y \sim Dist_y(NN(x;\theta))$ (For whatever observation model)
+    \item For each layer $k$
+    \begin{itemize}
+        \item Draw common precision $\lambda^{(k)}\sim \Gamma(\alpha, \beta)$
+        \item Draw parameters $\bm\eta^{(k)} \sim \mathcal N(0, 1/\lambda^{(k)})$
+    \end{itemize}
+    \item Draw $y_i \sim \text{Dist}(\text{NN}_\eta(x_i))$ (For some observation model $\text{Dist}$)
 \end{enumerate}
+A corresponding PGM representation can be seen in \cref{bnn-pgm} 
 
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+    
+        % Define nodes
+        \node[const] (alpha-beta) {$\alpha,\beta$};
+        \node[latent, right=of alpha-beta] (lambda) {$\lambda^{(k)}$};
+        \node[latent, right=of lambda] (eta) {$\eta^{(k)}_{\ast,\ast}$};
+        
+        \node[obs, right=of eta] (targets) {$\bm{y}_i$};
+        \node[obs, above=of targets] (covariates) {$\bm{x}_i$};
+        
+        % Connect the nodes
+        \edge {alpha-beta} {lambda}
+        \edge {lambda} {eta}
+    
+        \edge {eta, covariates} {targets};
+        
+        % Plates
+        \plate {parameters} {(eta)} {$I\times J$};
+        \plate {layers} {(lambda)(parameters)} {$K$};
+        \plate {observations} {(targets)(covariates)} {$N$};
+    
+    \end{tikzpicture}
+    \caption{Rough PGM of the BNN model.}
+    \label{bnn-pgm}
+\end{figure}
+Factorization
 \begin{align*}
-    \theta &\sim \mathcal{N}(0, \alpha^2) \\
-    y | \theta, x &\sim \text{Categorical}(\text{NN}_\theta(x))
+    \left(\prod_{k=1}^K  p(\lambda^{(k)}) \prod_{\forall (i,j)} p(\eta_{i,j}^{(k)}|\lambda^{(k)})  \right) 
+    \prod_{i=1}^N p(\bm y_i | \bm x_i, \bm \eta) p(\bm x_i)
 \end{align*}
 
+
+The prior distribution of the latent variables $\theta = \lambda, \eta$: 
+
+
+\begin{align*}
+    p(\eta) =  \prod_{k=1}^K \left( p(\lambda^{(k)}) \prod_{i,j} p(\eta_{i,j}^{(k)}|\lambda^{(k)})\right)
+\end{align*}
+
+
+
+\begin{align*}
+    \lambda &\sim \Gamma (\alpha, \beta)\\
+    y | \eta, x &\sim \text{Categorical}(\text{NN}_\eta(x))
+\end{align*}
+
+Posterior of the model parameters:
+    
 \begin{align*}
     p(\theta | x, y) &= \frac{p(y |\theta, x) \cdot p(\theta|x)}{p(y) } \\
                      &= \frac{p(y |\theta, x) \cdot p(\theta)}{p(y) } \\
@@ -19,6 +70,17 @@
                      &=\prod_{i=1}^{10}\text{NN}_\theta(x)^{[ y_i = i]} \cdot \mathcal{N}(\theta | 0, \alpha^2)
 \end{align*}
 
+
+
+\section{Inference Strategies}
+
+$$
+p(y^\ast | x^\ast, \theta ) = \text{Categorical}(\text{NN}_\theta(x\ast)) \quad \text{(observation model)}
+$$
+
+\subsection{Sampling from the posterior}
+
+Given new data $x^\ast$, find 
 
 \section{Hamiltonian Monte Carlo}
 

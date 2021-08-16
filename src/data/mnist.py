@@ -1,8 +1,27 @@
 import pytorch_lightning as pl
+import torch
 from torchvision.transforms import ToTensor
 from torchvision.datasets import MNIST
-
+from PIL import Image
+from typing import Tuple, Any
 from torch.utils.data import DataLoader, random_split
+
+class MNIST(MNIST):
+
+    def __getitem__(self, index: int) -> Tuple[Any, Any]:
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (image, target) where target is index of the target class.
+        """
+        img, target = self.data[index], self.targets[index]
+
+        img = img.to(torch.float)
+        
+        return img, target
+
 
 class MNISTDataModule(pl.LightningDataModule):
 
