@@ -17,8 +17,8 @@ class MNIST(MNIST):
             tuple: (image, target) where target is index of the target class.
         """
         img, target = self.data[index], self.targets[index]
-
         img = img.to(torch.float)
+        img /= 255
         
         return img, target
 
@@ -45,12 +45,11 @@ class MNISTDataModule(pl.LightningDataModule):
         # Assign train/val datasets for use in dataloaders
         if stage == 'fit' or stage is None:
             mnist_full = MNIST(self.data_dir, train=True, transform=ToTensor())
-            self.mnist_train, self.mnist_val = random_split(mnist_full, [55000, 5000])
+            self.mnist_train, self.mnist_val = random_split(mnist_full, [50000, 10000])
 
         # Assign test dataset for use in dataloader(s)
         if stage == 'test' or stage is None:
             self.mnist_test = MNIST(self.data_dir, train=False, transform=ToTensor())
-
 
     def train_dataloader(self):
         return DataLoader(self.mnist_train, batch_size=self.batch_size, num_workers=4)

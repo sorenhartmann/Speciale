@@ -9,6 +9,7 @@ A Bayesian Neural Net (BNN) model is a probablistic neural network model rougly 
         \item Draw common precision $\lambda^{(k)}\sim \Gamma(\alpha, \beta)$
         \item Draw parameters $\bm\eta^{(k)} \sim \mathcal N(0, 1/\lambda^{(k)})$
     \end{itemize}
+    \item For each data $x_i, x_y \in \mathcal D$
     \item Draw $y_i \sim \text{Dist}(\text{NN}_\eta(x_i))$ (For some observation model $\text{Dist}$)
 \end{enumerate}
 A corresponding PGM representation can be seen in \cref{bnn-pgm} 
@@ -34,26 +35,36 @@ A corresponding PGM representation can be seen in \cref{bnn-pgm}
         % Plates
         \plate {parameters} {(eta)} {$I\times J$};
         \plate {layers} {(lambda)(parameters)} {$K$};
-        \plate {observations} {(targets)(covariates)} {$N$};
+        \plate {observations} {(targets)(covariates)} {$\mathcal{D}$};
     
     \end{tikzpicture}
     \caption{Rough PGM of the BNN model.}
     \label{bnn-pgm}
+    
 \end{figure}
 Factorization
 \begin{align*}
-    \left(\prod_{k=1}^K  p(\lambda^{(k)}) \prod_{\forall (i,j)} p(\eta_{i,j}^{(k)}|\lambda^{(k)})  \right) 
-    \prod_{i=1}^N p(\bm y_i | \bm x_i, \bm \eta) p(\bm x_i)
+    p(\bm \eta, \bm \lambda, \mathcal D) = \left(\prod_{k=1}^K  p(\lambda^{(k)}) \prod_{\forall (i,j)} p(\eta_{i,j}^{(k)}|\lambda^{(k)})  \right) 
+    \prod_{x, y\in \mathcal D} p(\bm y_i | \bm x_i, \bm \eta) p(\bm x_i)
 \end{align*}
 
 
 The prior distribution of the latent variables $\theta = \lambda, \eta$: 
 
-
 \begin{align*}
-    p(\eta) =  \prod_{k=1}^K \left( p(\lambda^{(k)}) \prod_{i,j} p(\eta_{i,j}^{(k)}|\lambda^{(k)})\right)
+    p(\eta, \bm \lambda) =  \prod_{k=1}^K \left( p(\lambda^{(k)}) \prod_{i,j} p(\eta_{i,j}^{(k)}|\lambda^{(k)})\right)
 \end{align*}
 
+
+Posterior of $\bm \eta \mid \mathcal D, \bm \lambda$
+
+\begin{align*}
+    p(\bm \eta \mid \mathcal D,\bm \lambda) &=
+    \frac
+    {p(\mathcal D|\bm \eta,\bm \lambda)P(\bm \eta | \bm \lambda)}
+    {P(\mathcal D|\bm \lambda)} \\
+    &\propto p(\mathcal D|\bm \eta,\bm \lambda)P(\bm \eta | \bm \lambda)
+\end{align*}
 
 
 \begin{align*}

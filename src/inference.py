@@ -1,101 +1,114 @@
-import math
-from typing import List, Optional
-import pandas as pd
-
+import pytorch_lightning as pl
 import torch
-from torch import Tensor
-from torch.utils.data import Dataset
 
-from src.callbacks import Callback, CallbackHookMixin, ProgressBarWithAcceptanceRatio
 from src.modules import BayesianModel
 from src.samplers import Sampler
+from src.utils import HPARAM, HyperparameterMixin
+import pandas as pd
 
 
-class MonteCarloInference(CallbackHookMixin):
+class BayesianInference(pl.LightningModule, HyperparameterMixin):
+
+    burn_in: HPARAM[int]
+    keep_samples: HPARAM[int]
+    use_every: HPARAM[int]
+
     def __init__(
         self,
+        model: BayesianModel,
         sampler: Sampler,
-        burn_in: int = 500,
-        n_samples: int = 1000,
-        callbacks: Optional[List[Callback]] = None,
+        burn_in=50,
+        keep_samples=50,
+        use_every=10,
+        log_samples=False
     ):
 
-        self.sampler = sampler
+        super().__init__()
+
         self.burn_in = burn_in
-        self.n_samples = n_samples
+        self.keep_samples = keep_samples
+        self.use_every = use_every
 
-        if callbacks is None:
-            self.callbacks = self._default_callbacks()
-        else:
-            self.callbacks = callbacks
+        self.model = model
+        self.sampler = sampler
 
-        self.samples_ = None
+        self.automatic_optimization = False
+        self.log_samples = log_samples
 
-    def burn_in_loop(self, sample_generator):
+        self.save_hyperparameters(self.get_hparams())
+        self.save_hyperparameters(self.model.get_hparams())
+        self.save_hyperparameters(self.sampler.get_hparams())
 
-        self.callback("on_burn_in_start")
-        try:
-            for i in range(self.burn_in):
-                while next(sample_generator) is None:
-                    self.callback("on_sample_rejected")
-                self.callback("on_sample_accepted")
+        self.samples_ = []
 
-        finally:
-            self.callback("on_burn_in_end")
+    def configure_optimizers(self):
+        return None
 
-    def sample_loop(self, sample_generator):
+    def setup(self, stage) -> None:
 
-        self.callback("on_sampling_start")
-        samples = []
+        self.sampler.setup(self.model)
+        if not self.sampler.is_batched:
+            self.trainer.datamodule.batch_size = None
 
-        try:
-            for i in range(self.n_samples):
-                while (sample := next(sample_generator)) is None:
-                    self.callback("on_sample_rejected")
+    def training_step(self, batch, batch_idx):
 
-                self.callback("on_sample_accepted")
-                samples.append(sample)
-        finally:
-            self.callback("on_sampling_end")
+        while (sample := self.sampler.next_sample(batch)) is None:
+            pass
 
-        return samples
+        if self.global_step < self.burn_in:
+            # Burn in sample
+            return
 
-    def fit(self, model: BayesianModel, dataset: Dataset):
+        if (self.burn_in + self.global_step) % self.use_every != 0:
+            # Thin sample
+            return
 
-        sample_generator = self.sampler.sample_generator(model, dataset)
+        if len(self.samples_) == self.keep_samples:
+            # Discard oldest sample
+            del self.samples_[0]
 
-        if self.burn_in > 0:
-            self.burn_in_loop(sample_generator)
+        if self.log_samples:
+            self.log_sample(sample)
 
-        if self.n_samples > 0:
-            samples = self.sample_loop(sample_generator)
+        self.samples_.append(sample)
 
-        self.samples_ = samples
-        self.model_ = model
+    def validation_step(self, batch, batch_idx):
 
-        sample_generator.close()
-
-    def predictive(self, x: Tensor):
+        if (
+            len(self.samples_) == 0
+            or (self.burn_in + self.global_step) % self.use_every != 0
+        ):
+            return
 
         with torch.no_grad():
+
+            x, y = batch
             pred_samples = []
             for sample in self.samples_:
-                self.model_.load_state_dict(sample, strict=False)
-                pred_samples.append(self.model_.forward(x))
+                self.model.load_state_dict(sample, strict=False)
+                pred_samples.append(self.model.forward(x))
 
-        return torch.stack(pred_samples)
+            y_hat = torch.stack(pred_samples).mean(0)
 
-    @staticmethod
-    def _default_callbacks():
-        return [ProgressBarWithAcceptanceRatio()]
+            self.log("val_mse", torch.nn.functional.mse_loss(y_hat, y))
 
-    def sample_df(self):
-        dict_list = []
-        for sample in self.samples_:
-            dict_list.append({})
-            for name, param in sample.items():
-                dict_list[-1].update(
-                    {f"{name}:{i}": c.item() for i, c in enumerate(param.flatten())}
-                )
+    # def sample_df(self):
 
-        return pd.DataFrame(dict_list)
+    #     tmp = []
+    #     for sample in self.samples_:
+    #         tmp.append({})
+    #         for name, param in sample.items():
+    #             tmp[-1].update(
+    #                 {
+    #                     f"{name}.{i}": value.item()
+    #                     for i, value in enumerate(param.flatten())
+    #                 }
+    #             )
+
+    #     return pd.DataFrame(tmp)
+
+    def log_sample(self, sample):
+        for name, param in sample.items():
+            for i, value in enumerate(param.flatten()):
+                self.log(f"{name}.{i}", value.item())
+
