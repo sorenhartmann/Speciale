@@ -1,25 +1,21 @@
 import inspect
-from typing import Generic, TypeVar
-import typing
-from IPython.display import Markdown
+import math
 import re
+import typing
+from argparse import ArgumentParser
+from functools import cached_property
+from itertools import accumulate, tee
+from typing import Generic, Type, TypeVar
 
+import torch
+from IPython.display import Markdown
+from torch.functional import Tensor
 
-def object_to_markdown(object):
-
-    # Strip global indentation level
-    leading_white_spaces = re.compile("$(\s+)")
-    lines, _ = inspect.getsourcelines(object)
-    n_spaces = min(
-        re.search("[^ ]", line).start() for line in lines if not line.isspace()
-    )
-    stripped_lines = []
-    for line in lines:
-        if not line.isspace():
-            stripped_lines.append(line[n_spaces:])
-        else:
-            stripped_lines.append(line)
-    return Markdown(f"```python\n{''.join(stripped_lines)}```")
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 
 T = TypeVar("T")
@@ -30,6 +26,7 @@ class HPARAM(Generic[T]):
 
 
 class HyperparameterMixin:
+
     @classmethod
     def add_argparse_args(
         cls,
@@ -67,3 +64,5 @@ class HyperparameterMixin:
             for name, type_ in self.__class__.__annotations__.items()
             if getattr(type_, "__origin__", None) is HPARAM
         }
+
+

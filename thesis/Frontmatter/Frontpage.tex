@@ -10,7 +10,8 @@
 
 { % Thesis title (to change see Setup/Settings.tex) 
 \Huge
-\begin{tabular}{p{\linewidth}}
+% \begin{tabular}{p{\linewidth}}
+\begin{tabular}{l}
 \TitleFont{\thesistitle}   \\ 
 \TitleFont{\thesissubtitle} \bigskip \\ 
 \titlefont{\documenttype}
@@ -24,6 +25,7 @@
       yshift=-12mm] 
       at (current page.north east) 
       {
+        \sffamily
         \color{\frontpagetextcolour}
         \begin{tabular}{r} 
         \textbf{\department} \\ 

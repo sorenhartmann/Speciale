@@ -1,9 +1,10 @@
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 import argparse
+
+from torch.functional import Tensor
 from src.utils import HPARAM, HyperparameterMixin
 import typing
 from torch.utils.data.dataset import Dataset
-from src.modules import BayesianModel
 from typing import Dict, Generator, Generic, Type, TypeVar, Union, Any, Container
 import torch
 from torch.distributions import Normal
@@ -16,53 +17,61 @@ def clone_parameters(model):
     return {k: x.clone() for k, x in model.named_parameters()}
 
 
-class Sampler(ABC, HyperparameterMixin):
-
-    is_batched: bool
-
-    def sample_generator(
-        self, model: BayesianModel, dataset: Dataset
-    ) -> Generator[torch.Tensor, None, None]:
-
-        self.setup(model, dataset)
-        while True:
-            yield self.next_sample()
-
-    @abstractmethod
-    def setup(self, model: BayesianModel):
+class Samplable(ABC):
+    
+    @abstractproperty
+    def state(self) -> torch.Tensor:
         pass
 
     @abstractmethod
-    def next_sample(self, batch):
+    def prop_log_p(self) -> torch.Tensor:
+        pass
+
+    @abstractmethod
+    def grad_prop_log_p(self) -> torch.Tensor:
+        pass
+
+class Sampler(ABC, HyperparameterMixin):
+
+    is_batched: bool
+    tag: str
+
+    @abstractmethod
+    def setup(self, samplable: Samplable):
+        pass
+
+    @abstractmethod
+    def next_sample(self):
         pass
 
 
 class MetropolisHastings(Sampler):
 
+    step_size: HPARAM[float]
+
     is_batched = False
+    tag = "mh"
 
     def __init__(self, step_size=0.01):
 
         self.step_size = step_size
 
-    def setup(self, model: BayesianModel):
+    def setup(self, model):
 
         self.model = model
         self.state = clone_parameters(model)
         self.log_p = None
-        
-    @torch.no_grad()
-    def next_sample(self, batch):
 
-        x, y = batch
+    @torch.no_grad()
+    def next_sample(self, *args):
 
         if self.log_p is None:
-            self.log_p = self.model.log_joint(x, y)
+            self.log_p = self.model.prop_log_p(*args)
 
         for param in self.model.parameters():
             param.copy_(Normal(param, self.step_size).sample())
 
-        new_log_p = self.model.log_joint(x, y)
+        new_log_p = self.model.prop_log_p(*args)
         log_ratio = new_log_p - self.log_p
 
         if log_ratio > 0 or torch.bernoulli(log_ratio.exp()):
@@ -72,7 +81,7 @@ class MetropolisHastings(Sampler):
 
         else:
             self.model.load_state_dict(self.state, strict=False)
-            return None
+            return self.state
 
 
 class Hamiltonian(Sampler):
@@ -84,73 +93,64 @@ class Hamiltonian(Sampler):
     n_steps: HPARAM[int]
 
     is_batched = False
+    tag = "hmc"
 
     def __init__(self, step_size=0.01, n_steps=1) -> None:
 
         self.step_size = step_size
         self.n_steps = n_steps
 
-    def setup(self, model: BayesianModel):
+    def setup(self, samplable: Samplable):
 
-        self.model = model
-        self.state = clone_parameters(model)
-        self.momentum = {k: torch.empty_like(x) for k, x in self.state.items()}
+        self.samplable = samplable
+        self.momentum = torch.empty_like(self.samplable.state)
+        return self
 
-    def U(self, x, y):
-        return -self.model.log_joint(x, y)
+    def U(self, *args):
+        return -self.samplable.prop_log_p(*args)
 
-    @torch.no_grad()
-    def H(self, x, y):
-        result = 0
-        for r in self.momentum.values():
-            result += torch.dot(r.flatten(), r.flatten()) / 2
-        result += self.U(x, y)
-        return result
+    def grad_U(self, *args):
+        return -self.samplable.grad_prop_log_p(*args)
+
+    def H(self, *args):
+        return self.U(*args) + self.momentum.square().sum() / 2
 
     def resample_momentum(self):
-        for r in self.momentum.values():
-            r.normal_()
+        self.momentum.normal_()
 
-    def step_momentum(self, x, y, half_step=False):
-        self.model.zero_grad()
-        self.U(x, y).backward()
-        parameters = dict(self.model.named_parameters())
-        for name, r in self.momentum.items():
-            r.copy_(
-                r
-                - self.step_size * (1 if not half_step else 0.5) * parameters[name].grad
-            )
+    def step_momentum(self, *args, half_step=False):
 
-    @torch.no_grad()
+        self.momentum.copy_(
+            self.momentum
+            - self.step_size * (1.0 if not half_step else 0.5) * self.grad_U(*args)
+        )
+
     def step_parameters(self):
-        for name, param in self.model.named_parameters():
-            param.copy_(param + self.step_size * self.momentum[name])
+        self.samplable.state = self.samplable.state + self.step_size * self.momentum
 
-    def next_sample(self, batch):
-
-        x, y = batch
+    def next_sample(self, *args):
 
         self.resample_momentum()
-        H_current = self.H(x, y)
 
-        self.step_momentum(x, y, half_step=True)
+        initial_state = self.samplable.state.clone()
+        initial_H = self.H(*args)
 
-        for _ in range(self.n_steps):
-
+        self.step_momentum(*args, half_step=True)
+        for i in range(self.n_steps):
             self.step_parameters()
-            self.step_momentum(x, y)
+            self.step_momentum(*args, half_step=(i == self.n_steps - 1))
 
-        self.step_momentum(x, y, half_step=True)
+        proposed_H = self.H(*args)
+        log_acceptance = initial_H - proposed_H
 
-        H_proposed = self.H(x, y)
-        log_rho = H_proposed - H_current
+        if log_acceptance >= 0 or log_acceptance.exp() > torch.rand(1):
+            # Accepted
+            return self.samplable.state.clone()
 
-        if log_rho > 0 or torch.rand(1) < log_rho.exp():
-            self.state = clone_parameters(self.model)
-            return self.state
         else:
-            self.model.load_state_dict(self.state, strict=False)
-            return None
+            # Rejected
+            self.samplable.state = initial_state
+            return initial_state
 
 
 class StochasticGradientHamiltonian(Sampler):
@@ -164,6 +164,7 @@ class StochasticGradientHamiltonian(Sampler):
     n_steps: HPARAM[int]
 
     is_batched = True
+    tag = "sghmc"
 
     def __init__(self, alpha=0.01, beta=0.0, eta=4e-6, n_steps=3):
 
@@ -172,7 +173,7 @@ class StochasticGradientHamiltonian(Sampler):
         self.eta = eta
         self.n_steps = n_steps
 
-    def setup(self, model: BayesianModel):
+    def setup(self, model):
 
         self.model = model
         self.state = clone_parameters(model)
@@ -214,17 +215,3 @@ class StochasticGradientHamiltonian(Sampler):
             self.step_v(x, y)
 
         return clone_parameters(self.model)
-
-
-class GetSampler(argparse.Action):
-
-    samplers = {
-        "mh": MetropolisHastings,
-        "hmc": Hamiltonian,
-        "sghmc": StochasticGradientHamiltonian,
-    }
-
-    default = Hamiltonian
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, self.samplers[values])

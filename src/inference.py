@@ -7,7 +7,7 @@ from src.utils import HPARAM, HyperparameterMixin
 import pandas as pd
 
 
-class BayesianInference(pl.LightningModule, HyperparameterMixin):
+class BayesianRegressor(pl.LightningModule, HyperparameterMixin):
 
     burn_in: HPARAM[int]
     keep_samples: HPARAM[int]
@@ -20,7 +20,7 @@ class BayesianInference(pl.LightningModule, HyperparameterMixin):
         burn_in=50,
         keep_samples=50,
         use_every=10,
-        log_samples=False
+        log_samples=False,
     ):
 
         super().__init__()
@@ -37,6 +37,7 @@ class BayesianInference(pl.LightningModule, HyperparameterMixin):
 
         self.save_hyperparameters(self.get_hparams())
         self.save_hyperparameters(self.model.get_hparams())
+        self.save_hyperparameters({"sampler": self.sampler.tag})
         self.save_hyperparameters(self.sampler.get_hparams())
 
         self.samples_ = []
@@ -52,8 +53,7 @@ class BayesianInference(pl.LightningModule, HyperparameterMixin):
 
     def training_step(self, batch, batch_idx):
 
-        while (sample := self.sampler.next_sample(batch)) is None:
-            pass
+        sample = self.sampler.next_sample(batch)
 
         if self.global_step < self.burn_in:
             # Burn in sample
@@ -85,12 +85,12 @@ class BayesianInference(pl.LightningModule, HyperparameterMixin):
             x, y = batch
             pred_samples = []
             for sample in self.samples_:
-                self.model.load_state_dict(sample, strict=False)
+                self.model.flat_params = sample
                 pred_samples.append(self.model.forward(x))
 
             y_hat = torch.stack(pred_samples).mean(0)
 
-            self.log("val_mse", torch.nn.functional.mse_loss(y_hat, y))
+            self.log("loss/val_mse", torch.nn.functional.mse_loss(y_hat, y))
 
     # def sample_df(self):
 
@@ -108,7 +108,9 @@ class BayesianInference(pl.LightningModule, HyperparameterMixin):
     #     return pd.DataFrame(tmp)
 
     def log_sample(self, sample):
-        for name, param in sample.items():
-            for i, value in enumerate(param.flatten()):
-                self.log(f"{name}.{i}", value.item())
 
+        for (k, _), (a, b) in zip(
+            self.model.param_shapes.items(), self.model.flat_index_pairs
+        ):
+            for i in range(b - a):
+                self.log(f"weights/{k}.{i}", sample[a + i])

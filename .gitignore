@@ -91,3 +91,4 @@ target/
 
 .venv/
 lightning_logs/
+wandb/

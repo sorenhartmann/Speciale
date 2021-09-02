@@ -19,7 +19,7 @@
 \usepackage{caption}        % better captions
 \usepackage{subcaption}     % for subfigures
 \usepackage{csquotes}       % For biblatex with babel
-\usepackage[backend=biber,style=authoryear,sorting=none]{biblatex} % Package for bibliography (citing)
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex} % Package for bibliography (citing)
 \bibliography{bibliography.bib}
 \usepackage{tabularx}       % for ability to adjust column spacing in tabular better
 \usepackage{booktabs}       % for better tables
@@ -28,6 +28,15 @@
 \usepackage[printwatermark=false]{xwatermark} % Package for wartermark. Toggle printwatermark true or false to include or remove the watermark
 \usepackage{blindtext}
 
-\usepackage{bm}
+\usepackage{silence}
+\usepackage{lmodern}
+\usepackage{charter}
+% \WarningFilter{mathdesign}{Font shape}
+\usepackage[charter,cal=cmcal]{mathdesign}
+% \usepackage[charter]{mathdesign}
 
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{bm}
+\usepackage{physics}
 \usetikzlibrary{bayesnet}

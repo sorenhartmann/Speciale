@@ -1,6 +1,6 @@
 \chapter{Introduction}
 
-\section{BNN Model}
+\blindtext[2]
 
 A Bayesian Neural Net (BNN) model is a probablistic neural network model rougly corresponding to the following generative process:
 \begin{enumerate}
@@ -9,11 +9,10 @@ A Bayesian Neural Net (BNN) model is a probablistic neural network model rougly 
         \item Draw common precision $\lambda^{(k)}\sim \Gamma(\alpha, \beta)$
         \item Draw parameters $\bm\eta^{(k)} \sim \mathcal N(0, 1/\lambda^{(k)})$
     \end{itemize}
-    \item For each data $x_i, x_y \in \mathcal D$
+    \item For each data $x_i, y_i \in \mathcal D$
     \item Draw $y_i \sim \text{Dist}(\text{NN}_\eta(x_i))$ (For some observation model $\text{Dist}$)
 \end{enumerate}
-A corresponding PGM representation can be seen in \cref{bnn-pgm} 
-
+A corresponding PGM representation can be seen in \cref{fig:bnn-pgm} 
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}
@@ -39,15 +38,14 @@ A corresponding PGM representation can be seen in \cref{bnn-pgm}
     
     \end{tikzpicture}
     \caption{Rough PGM of the BNN model.}
-    \label{bnn-pgm}
-    
+    \label{fig:bnn-pgm}
 \end{figure}
+
 Factorization
 \begin{align*}
     p(\bm \eta, \bm \lambda, \mathcal D) = \left(\prod_{k=1}^K  p(\lambda^{(k)}) \prod_{\forall (i,j)} p(\eta_{i,j}^{(k)}|\lambda^{(k)})  \right) 
     \prod_{x, y\in \mathcal D} p(\bm y_i | \bm x_i, \bm \eta) p(\bm x_i)
 \end{align*}
-
 
 The prior distribution of the latent variables $\theta = \lambda, \eta$: 
 
@@ -81,17 +79,6 @@ Posterior of the model parameters:
                      &=\prod_{i=1}^{10}\text{NN}_\theta(x)^{[ y_i = i]} \cdot \mathcal{N}(\theta | 0, \alpha^2)
 \end{align*}
 
-
-
-\section{Inference Strategies}
-
 $$
 p(y^\ast | x^\ast, \theta ) = \text{Categorical}(\text{NN}_\theta(x\ast)) \quad \text{(observation model)}
 $$
-
-\subsection{Sampling from the posterior}
-
-Given new data $x^\ast$, find 
-
-\section{Hamiltonian Monte Carlo}
-

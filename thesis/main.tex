@@ -1,4 +1,5 @@
 \documentclass[a4paper,twoside,11pt]{report} %openright
+
 \input{Setup/Statics.tex}
 \input{Setup/Preamble.tex}
 \input{Setup/Settings.tex}
@@ -26,9 +27,11 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagenumbering{arabic}
-\input{Chapters/01_Introduction.tex}
+\include{Chapters/01_Introduction}
+\include{Chapters/02_Inference}
 %%%%%%%%%%%%%
 
+\nocite{*}
 \printbibliography[heading=bibintoc,title={Bibliography}]
 \cleardoublepage 
 \appendix

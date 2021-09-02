@@ -1,10 +1,17 @@
 from abc import ABC, abstractmethod
-from src.utils import HyperparameterMixin
+from functools import cached_property
+from itertools import accumulate
+import math
+from src.samplers import Samplable
+
+from src.utils import HyperparameterMixin, pairwise
 from torch import nn
 import torch
 from torch.distributions import Gamma, Normal
 
+
 class BayesianMixin(ABC):
+
     def setup_prior(self):
         pass
 
@@ -12,20 +19,62 @@ class BayesianMixin(ABC):
     def log_prior(self):
         pass
 
-class BayesianModel(nn.Module, HyperparameterMixin):
+class BayesianModel(nn.Module, HyperparameterMixin, Samplable):
+    
+    @abstractmethod
+    def observation_model(self, x):
+        """Returns p(y | x, theta)"""
+        mu = self.forward(x)
+        return torch.distributions.Normal(mu, 1.0)
 
     def log_prior(self):
+        """Returns p(theta)"""
         return sum(
             m.log_prior() for m in self.modules() if isinstance(m, BayesianMixin)
         )
 
-    @abstractmethod
-    def log_likelihood(self, x, y):
-        pass
+    def log_likelihood(self, x: torch.FloatTensor, y: torch.FloatTensor):
+        """Returns log p(y | x, theta)"""
+        return self.observation_model(x).log_prob(y)
 
-    def log_joint(self, x, y):
+    def prop_log_p(self, x, y) -> torch.Tensor:
         return self.log_prior() + self.log_likelihood(x, y).sum()
 
+    def grad_prop_log_p(self, x, y):
+        self.zero_grad()
+        self.prop_log_p(x, y).backward()
+        return self.state_grad
+
+    @cached_property
+    def param_shapes(self):
+        return {k: x.shape for k, x in self.named_parameters()}
+
+    @cached_property
+    def flat_index_pairs(self):
+        indices = accumulate(
+            self.param_shapes.values(), lambda x, y: x + math.prod(y), initial=0
+        )
+        return list(pairwise(indices))
+
+    @property
+    def state(self) -> torch.Tensor: 
+        return torch.cat([x.detach().flatten() for x in self.parameters()])
+
+    @state.setter
+    def state(self, value):
+        self.load_state_dict(
+            {
+                k: value[a:b].view(shape)
+                for (k, shape), (a, b) in zip(
+                    self.param_shapes.items(), self.flat_index_pairs
+                )
+            },
+            strict=False
+        )
+
+    @property
+    def state_grad(self) -> torch.Tensor:
+        return torch.cat([x.grad.flatten() for x in self.parameters()])
 
 class BayesianLinearKnownPrecision(BayesianMixin, nn.Linear):
 
@@ -43,7 +92,7 @@ class BayesianLinearKnownPrecision(BayesianMixin, nn.Linear):
         weight_param_d = Normal(0, 1 / self.weight_precision)
         bias_param_d = Normal(0, 1 / self.bias_precision)
         return (
-            weight_param_d.log_prob(self.weight).sum() 
+            weight_param_d.log_prob(self.weight).sum()
             + bias_param_d.log_prob(self.bias).sum()
         )
 

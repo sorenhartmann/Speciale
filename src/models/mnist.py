@@ -9,8 +9,6 @@ from torch.distributions import Gamma
 import math
 import pytorch_lightning as pl
 
-
-
 class MNISTModel(BayesianModel):
 
     def __init__(
