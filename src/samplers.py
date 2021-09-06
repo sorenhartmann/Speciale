@@ -18,7 +18,6 @@ def clone_parameters(model):
 
 
 class Samplable(ABC):
-    
     @abstractproperty
     def state(self) -> torch.Tensor:
         pass
@@ -30,6 +29,7 @@ class Samplable(ABC):
     @abstractmethod
     def grad_prop_log_p(self) -> torch.Tensor:
         pass
+
 
 class Sampler(ABC, HyperparameterMixin):
 
@@ -153,65 +153,62 @@ class Hamiltonian(Sampler):
             return initial_state
 
 
-class StochasticGradientHamiltonian(Sampler):
-    """
-    M = I for now... Using diagonal variance estimate
-    """
+class HamiltonianNoMH(Hamiltonian):
+    
+    def next_sample(self, *args):
 
-    alpha: HPARAM[float]
-    beta: HPARAM[float]
-    eta: HPARAM[float]
-    n_steps: HPARAM[int]
+        self.resample_momentum()
+        self.step_momentum(*args, half_step=True)
+        for i in range(self.n_steps):
+            self.step_parameters()
+            self.step_momentum(*args, half_step=(i == self.n_steps - 1))
+
+        return self.samplable.state.clone()
+
+class StochasticGradientHamiltonian(Hamiltonian):
+
+    M: HPARAM[float]
+    C: HPARAM[float]
+    V: HPARAM[float]
 
     is_batched = True
     tag = "sghmc"
 
-    def __init__(self, alpha=0.01, beta=0.0, eta=4e-6, n_steps=3):
+    def __init__(self, M=1.0, C=4.0, V=4.0, step_size=0.1, n_steps=50):
 
-        self.alpha = alpha
-        self.beta = beta
-        self.eta = eta
-        self.n_steps = n_steps
+        self.M = torch.tensor(M)
+        self.C = torch.tensor(C)
+        self.V = torch.tensor(V)
+        self.step_size = torch.tensor(step_size)
+        self.n_steps = torch.tensor(n_steps)
 
-    def setup(self, model):
+        self.M_inv = 1 / self.M
+        self.M_sqrt = torch.sqrt(self.M)
 
-        self.model = model
-        self.state = clone_parameters(model)
-        self.v = {k: torch.empty_like(x) for k, x in self.state.items()}
-        self.resample_v()
-        self.noise = Normal(0.0, 2 * (self.alpha - self.beta) * self.eta)
+        self.B = 1 / 2 * self.step_size * self.V
+        self.D = torch.sqrt(2 * (self.C - self.B) * self.step_size)
 
-    @torch.no_grad()
-    def resample_v(self):
-        # TODO: Fix resampling?
-        for v in self.v.values():
-            v.normal_()
+    def resample_momentum(self):
+        self.momentum = torch.randn_like(self.momentum) * self.M_sqrt
 
-    @torch.no_grad()
+    def step_momentum(self, *args):
+        self.momentum.copy_(
+            self.momentum
+            - self.step_size * self.grad_U(*args)
+            - self.step_size * self.C * self.M_inv * self.momentum
+            + torch.randn_like(self.momentum) * self.D
+        )
+
     def step_parameters(self):
-        for name, param in self.model.named_parameters():
-            param.copy_(param + self.v[name])
+        self.samplable.state = (
+            self.samplable.state + self.M_inv * self.step_size * self.momentum
+        )
 
-    def step_v(self, x, y):
+    def next_sample(self, *args):
 
-        self.model.zero_grad()
-        (-self.model.log_joint(x, y)).backward()
-        parameters = dict(self.model.named_parameters())
-
-        for name, v in self.v.items():
-            v.copy_(
-                v
-                - self.eta * parameters[name].grad
-                - self.alpha * v
-                + self.noise.sample(v.shape)
-            )
-
-    def next_sample(self, batch):
-
-        x, y = batch
-
-        for i in range(self.n_steps):
+        self.resample_momentum()
+        for _ in range(self.n_steps):
             self.step_parameters()
-            self.step_v(x, y)
+            self.step_momentum(*args)
 
-        return clone_parameters(self.model)
+        return self.samplable.state.clone()

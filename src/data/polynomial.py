@@ -4,7 +4,6 @@ from src.models.polynomial import PolynomialModel
 
 import torch
 
-
 class PolynomialDataModule(LightningDataModule, NoBatchMixin):
 
     coeffs = [1.0, 2.0, 0.0, -1.0]

@@ -163,9 +163,39 @@ Men ikke ergodic... fixes med gibbs step på p(z|x) som er normalfordelt(0, M).
     
 \subsection{Stochastic Gradient HMC}
 
-In cases where $p(x) = p(x | \mathcal{D})$ for some dataset $\mathcal{D}$, it may be infeasable to calculate the gradient $\nabla E(x) = \nabla -\log{p(x | \mathcal{D})}$. This is often the case for deep learning applications.
-Typically, in the maximum likelihood setting, this problem is handled by use of stochastic gradient descent algorithm such as ADAM.
-As is discussed in \cite{chen_stochastic_2014}, naively 
+In cases where we want to learn the posterior of some parameters $\theta$,  $p(\theta | \mathcal{D})$ for some dataset $\mathcal{D}$, it may be infeasable to calculate the gradient $\nabla E(\theta) = \nabla p(\theta) - \log{p(\theta | \mathcal{D})}$. 
+This is often the case for deep learning applications.
+Typically, in the maximum likelihood setting, this problem is handled by use of stochastic gradient descent algorithm such as ADAM. These methods approximate the gradient based only on a subset of the data as:
+\begin{align*}
+    \nabla\tilde{E}(\theta) = -\frac{|\mathcal{D}|}{|\tilde{\mathcal{D}}|}  \nabla \log{p(\theta | \tilde{\mathcal{D}})}.
+\end{align*}
+As discussed in \cite{chen_stochastic_2014}, naively applying this approach of obtaining approximate gradients does not end up working out.
+
+\begin{align*}
+    \nabla\tilde{E}(\theta) \approx \nabla{E}(\theta)  + \mathcal{N}(0, V(\theta))
+\end{align*}
+
+Time step update becomes
+\begin{align*}
+    \Delta x &= \epsilon M^{-1} r \\
+    \Delta r &= -\epsilon\nabla\tilde{E}(\theta) 
+    = -\epsilon\nabla{E}(\theta)  -\epsilon \mathcal{N}(0, V(\theta))
+    = -\epsilon\nabla{E}(\theta)  +\mathcal{N}(0, \epsilon^2 V(\theta)) \\
+\end{align*}
+
+\begin{align*}
+    \Delta \theta &= \epsilon M^{-1} r \\
+    \Delta r &=  -\epsilon\nabla{E}(\theta) + \mathcal{N}(0, \epsilon^2 V(\theta)) \\
+\end{align*}
+
+
+Alternatively, we write the $r$ update as, $V(\theta) = S$:
+
+
+\begin{align*}
+    \Delta \theta &= \epsilon M^{-1} r \\
+    \Delta r &=  -\epsilon\nabla{E}(\theta) + V(\theta) \mathcal{N}(0, \epsilon) \\
+\end{align*}
 
 \section{Variational Methods}
 

@@ -4,8 +4,6 @@ import torch
 from src.modules import BayesianModel
 from src.samplers import Sampler
 from src.utils import HPARAM, HyperparameterMixin
-import pandas as pd
-
 
 class BayesianRegressor(pl.LightningModule, HyperparameterMixin):
 
@@ -17,10 +15,9 @@ class BayesianRegressor(pl.LightningModule, HyperparameterMixin):
         self,
         model: BayesianModel,
         sampler: Sampler,
-        burn_in=50,
+        burn_in=100,
         keep_samples=50,
-        use_every=10,
-        log_samples=False,
+        use_every=50,
     ):
 
         super().__init__()
@@ -33,7 +30,6 @@ class BayesianRegressor(pl.LightningModule, HyperparameterMixin):
         self.sampler = sampler
 
         self.automatic_optimization = False
-        self.log_samples = log_samples
 
         self.save_hyperparameters(self.get_hparams())
         self.save_hyperparameters(self.model.get_hparams())
@@ -53,22 +49,20 @@ class BayesianRegressor(pl.LightningModule, HyperparameterMixin):
 
     def training_step(self, batch, batch_idx):
 
-        sample = self.sampler.next_sample(batch)
+        x, y = batch
+        sample = self.sampler.next_sample(x, y)
 
         if self.global_step < self.burn_in:
             # Burn in sample
-            return
+            return 
 
         if (self.burn_in + self.global_step) % self.use_every != 0:
             # Thin sample
-            return
+            return None
 
         if len(self.samples_) == self.keep_samples:
             # Discard oldest sample
             del self.samples_[0]
-
-        if self.log_samples:
-            self.log_sample(sample)
 
         self.samples_.append(sample)
 
@@ -107,10 +101,4 @@ class BayesianRegressor(pl.LightningModule, HyperparameterMixin):
 
     #     return pd.DataFrame(tmp)
 
-    def log_sample(self, sample):
 
-        for (k, _), (a, b) in zip(
-            self.model.param_shapes.items(), self.model.flat_index_pairs
-        ):
-            for i in range(b - a):
-                self.log(f"weights/{k}.{i}", sample[a + i])

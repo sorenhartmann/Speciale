@@ -33,7 +33,3 @@ class PolynomialModel(BayesianModel):
     def observation_model(self, x):
         mu = self.forward(x)
         return torch.distributions.Normal(mu, 1.0)
-
-    def log_likelihood(self, x: torch.FloatTensor, y: torch.FloatTensor):
-        """Returns log p(y | x, theta)"""
-        return self.observation_model(x).log_prob(y)

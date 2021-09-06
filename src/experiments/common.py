@@ -1,4 +1,4 @@
-
+from src.experiments.synthetic import HamiltonianNoMH
 from src.samplers import Hamiltonian, MetropolisHastings, StochasticGradientHamiltonian
 import argparse
 from typing import Type
@@ -6,21 +6,23 @@ from src.modules import BayesianModel
 from src.inference import BayesianRegressor
 from pytorch_lightning import Trainer
 
-class GetSampler(argparse.Action):
+samplers = {
+    sampler_cls.tag: sampler_cls
+    for sampler_cls in [
+        MetropolisHastings,
+        Hamiltonian,
+        StochasticGradientHamiltonian,
+        HamiltonianNoMH,
+    ]
+}
 
-    samplers = {
-        sampler_cls.tag: sampler_cls
-        for sampler_cls in [
-            MetropolisHastings,
-            Hamiltonian,
-            StochasticGradientHamiltonian,
-        ]
-    }
+class GetSampler(argparse.Action):
 
     default = Hamiltonian
 
     def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, self.samplers[values])
+        setattr(namespace, self.dest, samplers[values])
+
 
 def get_args(model_cls: Type[BayesianModel], inference_cls: Type[BayesianRegressor]):
 
@@ -41,7 +43,7 @@ def get_args(model_cls: Type[BayesianModel], inference_cls: Type[BayesianRegress
 
     # Model specific args
     parser = model_cls.add_argparse_args(parser)
-    
+
     # Inference specific args
     parser = inference_cls.add_argparse_args(parser)
 
