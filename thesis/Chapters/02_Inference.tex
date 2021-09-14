@@ -1,6 +1,6 @@
-
 \chapter{Inference}
 
+Data is $\mathcal{D} = (\bm{X}, \bm{Y})$, where $\bm{X} = (x_1,\dots,x_N)$ are covariates and $\bm{Y} = (y_1, \dots, y_N)$ are attributes we want to model.
 Given new data $x^\ast$, find the predictive distribution $p(y^\ast | x^\ast)$ 
 
 %TODO: Why not $p(y^\ast | x^\ast, \mathcal{D})$?
@@ -13,38 +13,51 @@ Marginalize out the parameters of the m $\theta$.
 In practice, at least in the case of deep learning models, the integral of the expectation is not feasably evalutated exactly. 
 We therefore resort to approximate methods, such as the Monte Carlo estimate:
 \begin{align*}
-    p(y^\ast | x^\ast)  \approx \frac{1}{N} \sum_{j=1}^N p(y^\ast | x^\ast, \theta_{(i)}) 
+    p(y^\ast | x^\ast)  \approx \frac{1}{N} \sum_{j=1}^N p(y^\ast | x^\ast, \theta^{(i)}) 
 \end{align*}
-Where $\theta_{(i)}$ are samples from the posterior distribution:
+Where $\theta^{(i)}$ are samples from the posterior distribution:
 \begin{align*}
-    p(\theta | \mathcal{D}) &= \frac{p(y |\theta, x) \cdot p(\theta|x)}{p(y) } \\
-                     &= \frac{p(y |\theta, x) \cdot p(\theta)}{p(y) } 
+    p(\theta | \mathcal{D}) 
+    &= p(\theta | \bm{X}, \bm{Y}) \\
+    &= \frac{p(\bm{Y} |\theta, \bm{X}) p(\theta|\bm{X})}{p(\bm{Y}) } \\
+    &= \frac
+    {\left(\prod_{i=1}^N p(y_i |\theta, x_i)\right) p(\theta)}
+    {p(\bm{Y}) }  
 \end{align*}
 The unconditional  observation model, $p(y)$, is also not easily evalutated. 
 In the following, we will discuss two different strategies to get around this. 
 The first is to use sampling methods that only requires the sampling distribution $f(\theta)$ up to a constant factor $\hat{f}(\theta)\propto f(\theta)$. 
 This is useful since 
 \begin{align*}
-    p(\theta | \mathcal{D}) &= \frac{p(y |\theta, x) \cdot p(\theta)}{p(y) } \\
-                        &\propto p(y |\theta, x) \cdot p(\theta) 
+    p(\theta | \mathcal{D}) 
+    &= \frac
+    {\left(\prod_{i=1}^N p(y_i |\theta, x_i)\right) p(\theta)}
+    {p(\bm{Y}) }  \\
+    &\propto \left(\prod_{i=1}^N p(y_i |\theta, x_i)\right) p(\theta)
 \end{align*}
-and both the likelihood, $p(y |\theta, x)$ and the prior $p(\theta) $ are specifies as part of the graphical model, at least up to a constant factor. 
-The other approach is to use an approximate posterior $q(\theta)$ in place of the exact posterior.
+and both the likelihood, $p(y_i |\theta, x_i)$ and the prior $p(\theta)$ are specified as part of the graphical model, at least up to a constant factor. 
+The other approach is to use an approximate posterior $q(\theta)$ in place of the exact posterior. 
+
+The different methods are applicable not only for sampling from a posterior $p(\theta | \mathcal{D})$, but from sampling from any random variable with a specificed density function $p(x)$.
 
 \section{Markov Chain Monte Carlo}
+
+The following few methods are 
 Suppose we want to sample from a target distribution $p(x)$, yet we only know $\tilde{p}(x) = 1/K\cdot p(x)$, where $K$ is a constant in $x$.
 The Markov Chain Monte Carlo (MCMC) methods use a Markov chain $q(x^\prime|x)$, to generate samples sequentially from $p(x)$. If the target distribution $p(x)$  stationary with respect to the Markov chain, and we ensure that the chain eventually converges to the stationary distribution $p(x)$. That is
 \begin{align*}
-    p(x) = \sum_{x^\prime} T(x^\prime, x) p(x^\prime)
+    p(x) = \sum_{x^\prime} T(x^\prime, x) p(x^\prime),
 \end{align*}
-Where $T(x^\prime, x)$ is the probability of transitiong from state $x^\prime$ to $x$.
+where $T(x^\prime, x)$ is the probability of transitioning from state $x^\prime$ to $x$.
 
 %TODO: Distributions at time t, p(x^{(t)})...
 
 A sufficent criteria for $p(x)$ to be stationary with respect to the Markov chain is that the transition probablities $q(x^\prime|x)$ satisfy the property of detailed balance:
+
 \begin{align*}
     p(x)q(x^\prime|x) = p(x^\prime)q(x|x^\prime).
 \end{align*}
+
 The following chapters discusses
 
 %TODO: Explain why this is sufficient?
@@ -109,7 +122,7 @@ Where $M$ is the mass matrix of the system. The rate of change of the momentum, 
 \begin{align*}
     \dv{r_i}{t} = -\pdv{E(\bm{x})}{x_i}
 \end{align*}
-Introducing the Hamiltonian function $H(\bm{x}, \bm{y}) = K(\bm{r}) + E(\bm{e})$, we can write the dynamics governing the system as
+Introducing the Hamiltonian function $H(\bm{x}, \bm{r}) = K(\bm{r}) + E(\bm{x})$, we can write the dynamics governing the system as
 \begin{align*}
     \dv{x_i}{t} &= \phantom{-}\pdv{H}{r_i}\\
     \dv{r_i}{t} &= -\pdv{H}{x_i}
@@ -163,17 +176,61 @@ Men ikke ergodic... fixes med gibbs step på p(z|x) som er normalfordelt(0, M).
     
 \subsection{Stochastic Gradient HMC}
 
-In cases where we want to learn the posterior of some parameters $\theta$,  $p(\theta | \mathcal{D})$ for some dataset $\mathcal{D}$, it may be infeasable to calculate the gradient $\nabla E(\theta) = \nabla p(\theta) - \log{p(\theta | \mathcal{D})}$. 
+In cases where we want to sample from the the posterior of some parameters $\theta$,  $p(\theta | \mathcal{D})$ for some dataset $\mathcal{D}$, it may be infeasable to calculate the gradient $\nabla E(\theta) = \nabla p(\theta) - \log{p(\bm{Y} | \theta, \bm{X})}$. 
 This is often the case for deep learning applications.
-Typically, in the maximum likelihood setting, this problem is handled by use of stochastic gradient descent algorithm such as ADAM. These methods approximate the gradient based only on a subset of the data as:
+Typically, in the maximum likelihood setting, this problem is handled by use of stochastic gradient descent algorithm such as ADAM. 
+These methods approximate the gradient based only on a subset of the data. 
+We may consider a similar scheme, approximating the $E$ gradient as:
 \begin{align*}
-    \nabla\tilde{E}(\theta) = -\frac{|\mathcal{D}|}{|\tilde{\mathcal{D}}|}  \nabla \log{p(\theta | \tilde{\mathcal{D}})}.
+    \nabla\tilde{E}(\theta) = -\left(\frac{|\mathcal{D}|}{|\tilde{\mathcal{D}}|}  \nabla \sum_{x_i, y_i\in \tilde{\mathcal{D}}} \log{p(y_i |\theta, x_i)}\right)  -\nabla \log{p(\theta)}
 \end{align*}
-As discussed in \cite{chen_stochastic_2014}, naively applying this approach of obtaining approximate gradients does not end up working out.
+
+% TODO: Rigor? Central estimate?
+In \cite{chen_stochastic_2014}, they model the behavior of this approach with:
+\begin{align*}
+    \nabla\tilde{E}(\theta) = \nabla{E}(\theta) + e
+\end{align*}
+where $e \sim \mathcal{N}(0, V(\theta))$ is the noise introduced through the approximation. This has some ramification for the Hamiltonian system described in the previous section. 
+Importantly, the discrete time step updates performed by the algorithm no longer corresponds to the determinsistic Hamiltonian system because of the introduced noise. 
+This is not in it of itself a problem, as we are already correcting for discretization errors through the Metropolis-Hastings step, and we could in principle correct for the gradient noise in the same fashion.
+The problem lies in the fact that we would have to evaluate the Hamiltonian for the entire dataset, in order to perform the MH step.
+
+In order to figure out how to get around this, we take a further look at the, now stochastic, dynamics of the system. If we for some step size $\epsilon$ consider the discretizated system as
+\begin{align*}
+\Delta r =  -\epsilon\nabla{\tilde{E}}(\theta) = -\epsilon\nabla{E}(\theta)  + \epsilon e,
+\end{align*}
+what are the dynamics of the corresponding continuous system as $\epsilon \to 0$? Consider $w \sim \mathcal{N}(0, \epsilon)$, the increment can then be reparameterized as:
+\begin{align*}
+    \Delta r  = -\epsilon\nabla{E}(\theta)  + \sqrt{\epsilon} A(\theta) w.
+\end{align*}
+From the parameterization above, we can consider the continuous system
+\begin{align*}
+    \dd r  = -\nabla{E}(\theta) \dd t  + \sqrt{\epsilon} A(\theta) \dd w.
+\end{align*}
+Letting (some of?) $\epsilon $....
+
+With $B(\theta) = \frac{1}{2}\epsilon V(\theta)$
+
+We get 
 
 \begin{align*}
-    \nabla\tilde{E}(\theta) \approx \nabla{E}(\theta)  + \mathcal{N}(0, V(\theta))
+    d\begin{bmatrix}
+        \theta \\
+        r
+    \end{bmatrix} = - \begin{bmatrix}
+        0 & -1 \\ 
+        1 &  B 
+    \end{bmatrix}
 \end{align*}
+
+
+
+
+% \begin{align*}
+% \end{align*}
+
+
+
 
 Time step update becomes
 \begin{align*}
@@ -190,6 +247,7 @@ Time step update becomes
 
 
 Alternatively, we write the $r$ update as, $V(\theta) = S$:
+
 
 
 \begin{align*}

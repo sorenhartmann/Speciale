@@ -1,13 +1,16 @@
+from src.utils import HPARAM, HyperparameterMixin
 import torch
 from torch import nn
+from torch._C import Module
 
 from src.data.mnist import MNISTDataModule
-from src.samplers import Hamiltonian, StochasticGradientHamiltonian
+from src.samplers import Hamiltonian, Sampler, StochasticGradientHamiltonian
 from src.modules import BayesianLinear, BayesianLinearKnownPrecision, BayesianMixin, BayesianModel
 from tqdm import trange
 from torch.distributions import Gamma
 import math
 import pytorch_lightning as pl
+import torchmetrics
 
 class MNISTModel(BayesianModel):
 
@@ -36,11 +39,92 @@ class MNISTModel(BayesianModel):
         x = x.flatten(-2, -1)
         return self.ffnn(x)
 
-    def log_likelihood(self, x: torch.FloatTensor, y: torch.LongTensor):
+    def observation_model(self, x: torch.FloatTensor):
         """Returns log p(y | x, theta)"""
         logits = self.forward(x)
-        observation_model = torch.distributions.Categorical(logits=logits)
-        return observation_model.log_prob(y).sum()
+        return torch.distributions.Categorical(logits=logits)
+
+class BayesianClassifier(pl.LightningModule, HyperparameterMixin):
+
+    burn_in: HPARAM[int]
+    keep_samples: HPARAM[int]
+    use_every: HPARAM[int]
+
+    def __init__(
+        self,
+        model: BayesianModel,
+        sampler: Sampler,
+        burn_in=100,
+        keep_samples=50,
+        use_every=50,
+    ):
+
+        super().__init__()
+
+        self.burn_in = burn_in
+        self.keep_samples = keep_samples
+        self.use_every = use_every
+
+        self.model = model
+        self.sampler = sampler
+
+        self.automatic_optimization = False
+
+        self.save_hyperparameters(self.get_hparams())
+        self.save_hyperparameters(self.model.get_hparams())
+        self.save_hyperparameters({"sampler": self.sampler.tag})
+        self.save_hyperparameters(self.sampler.get_hparams())
+
+        self.samples_ = []
+
+    def configure_optimizers(self):
+        return None
+
+    def setup(self, stage) -> None:
+
+        self.sampler.setup(self.model)
+        if not self.sampler.is_batched:
+            self.trainer.datamodule.batch_size = None
+
+    def training_step(self, batch, batch_idx):
+
+        x, y = batch
+        sample = self.sampler.next_sample(x, y)
+
+        if self.global_step < self.burn_in:
+            # Burn in sample
+            return 
+
+        if (self.burn_in + self.global_step) % self.use_every != 0:
+            # Thin sample
+            return None
+
+        if len(self.samples_) == self.keep_samples:
+            # Discard oldest sample
+            del self.samples_[0]
+
+        self.samples_.append(sample)
+
+
+    def validation_step(self, batch, batch_idx):
+
+        if (
+            len(self.samples_) == 0
+            or (self.burn_in + self.global_step) % self.use_every != 0
+        ):
+            return
+
+        with torch.no_grad():
+
+            x, y = batch
+            pred_samples = []
+            for sample in self.samples_:
+                self.model.flat_params = sample
+                pred_samples.append(self.model.forward(x))
+
+            y_hat = torch.stack(pred_samples).mean(0)
+
+            self.log("loss/accuracy_mse", torchmetrics.functional.accuracy(y_hat, y))
 
 def main():
 
@@ -48,14 +132,9 @@ def main():
     torch.manual_seed(123)
 
     dm = MNISTDataModule(500)
-    dm.setup()
-
-    alpha, beta = 1., 1.
-
-    train_data, test_data = dm.mnist_train, dm.mnist_test
-
     model = MNISTModel()
-    sampler = StochasticGradientHamiltonian(alpha=0.01, beta=0, eta=2e-6, n_steps=3)
+
+    sampler = StochasticGradientHamiltonian(alpha=0.01, beta=0, eta=2e-6, n_steps=1)
     sampler.setup_sampler(model, train_data)
 
     for i in trange(800):

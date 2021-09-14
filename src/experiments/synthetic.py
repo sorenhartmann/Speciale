@@ -5,7 +5,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from scipy.special import iv
-from src.samplers import Hamiltonian, Samplable, StochasticGradientHamiltonian
+from src.experiments.common import ROOT_DIR, ExperimentHandler, Run
+from src.samplers import (
+    Hamiltonian,
+    HamiltonianNoMH,
+    Samplable,
+    StochasticGradientHamiltonian,
+)
+import pandas as pd
+import seaborn as sns
 
 
 @functools.cache
@@ -36,25 +44,12 @@ class Example(Samplable):
         return value
 
 
-def plot_dist(samples, bins, *args, **kwargs):
-
-    xx = bins[:-1] + (bins[1] - bins[0]) / 2
-    yy, _ = np.histogram(samples, bins, density=True)
-    plt.plot(xx, yy, *args, **kwargs)
-
-
-def main():
-
-    n_samples = 80_000
-    n_bins = 60
-    step_size = 0.1
-    grad_noise = 2.0
-    n_steps = 50
-
-    bins = torch.linspace(-3, 3, n_bins + 1)
-    xx = torch.linspace(-3, 3, 200)
-
-    plt.plot(xx, p_exact(xx), label="True distribution")
+def experiment(
+    n_samples=80_000,
+    step_size=0.1,
+    grad_noise=2.0,
+    n_steps=50,
+):
 
     wo_noise = Example()
     w_noise = Example(grad_noise=grad_noise)
@@ -68,27 +63,79 @@ def main():
         C=3.0,
         V=grad_noise ** 2,
     )
-    
-    def experiment(sampler, samplable, *args, **kwargs):
+
+    def get_samples(sampler, samplable):
         samples = torch.empty((n_samples,))
         sampler.setup(samplable)
         for i in range(n_samples):
             samples[i] = sampler.next_sample()
-        plot_dist(samples, bins, *args, **kwargs)
 
-    experiment(hmc, wo_noise, "-v", fillstyle="none", label="HMC")
-    print("Experiment done")
-    experiment(hmc_wo_acc_step, wo_noise, "-.", label="HMC (No MH)")
-    print("Experiment done")
-    experiment(hmc, w_noise, "-x", label="HMC /w noise")
-    print("Experiment done")
-    experiment(hmc_wo_acc_step, w_noise, "-.", label="HMC /w noise (No MH)")
-    print("Experiment done")
-    experiment(sghmc, w_noise, "-", label="SGHMC")
-    print("Experiment done")
+        return samples
 
-    plt.legend()
-    plt.show()
+    results = {}
+
+    results["hmc"] = get_samples(hmc, wo_noise)
+    print("Experiment done!")
+    results["hmc_no_acc_step"] = get_samples(hmc_wo_acc_step, wo_noise)
+    print("Experiment done!")
+    results["hmc_w_noise"] = get_samples(hmc, w_noise)
+    print("Experiment done!")
+    results["hmc_wo_acc_step_w_noise"] = get_samples(hmc_wo_acc_step, w_noise)
+    print("Experiment done!")
+    results["sghmc"] = get_samples(sghmc, w_noise)
+    print("Experiment done!")
+
+    return pd.DataFrame(results)
+
+def _plot_dist(samples, bins, *args, **kwargs):
+
+    ax = kwargs.pop("ax")
+    if ax is None:
+        ax = plt.gca()
+
+    xx = bins[:-1] + (bins[1] - bins[0]) / 2
+    yy, _ = np.histogram(samples, bins, density=True)
+    ax.plot(xx, yy, *args, **kwargs)
+
+
+def plot_distribution(run: Run, ax=None):
+
+    n_bins = 60
+
+    if ax is None:
+        ax = plt.gca()
+
+    result = run.result
+
+    xx = torch.linspace(-3, 3, 200)
+    ax.plot(xx, p_exact(xx), label="True distribution")
+
+    bins = np.linspace(-3, 3, n_bins + 1)
+    xx = bins[:-1] + (bins[1] - bins[0]) / 2
+
+    _plot_dist(result["hmc"], bins, "-v", fillstyle="none", label="HMC", ax=ax)
+    _plot_dist(result["hmc_no_acc_step"], bins, "-.", label="HMC (No MH)", ax=ax)
+    _plot_dist(result["hmc_w_noise"], bins, "-x", label="HMC /w noise", ax=ax)
+    _plot_dist(
+        result["hmc_wo_acc_step_w_noise"],
+        bins,
+        "-.",
+        label="HMC /w noise (No MH)",
+        ax=ax,
+    )
+    _plot_dist(result["sghmc"], bins, "-", label="SGHMC", ax=ax)
+
+    ax.set_xlim(-2, 2)
+    ax.legend()
+
+
+def main():
+
+    handler = ExperimentHandler(experiment)
+    # handler.run()
+    run = handler.latest_run()
+
+    plot_distribution(run)
 
 
 if __name__ == "__main__":
