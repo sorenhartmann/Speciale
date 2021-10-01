@@ -11,13 +11,13 @@ from torch.distributions import Normal
 from torch.utils.data import DataLoader
 import inspect
 
-
 @torch.no_grad()
 def clone_parameters(model):
     return {k: x.clone() for k, x in model.named_parameters()}
 
 
 class Samplable(ABC):
+
     @abstractproperty
     def state(self) -> torch.Tensor:
         pass
@@ -63,15 +63,15 @@ class MetropolisHastings(Sampler):
         self.log_p = None
 
     @torch.no_grad()
-    def next_sample(self, *args):
+    def next_sample(self):
 
         if self.log_p is None:
-            self.log_p = self.model.prop_log_p(*args)
+            self.log_p = self.model.prop_log_p()
 
         for param in self.model.parameters():
             param.copy_(Normal(param, self.step_size).sample())
 
-        new_log_p = self.model.prop_log_p(*args)
+        new_log_p = self.model.prop_log_p()
         log_ratio = new_log_p - self.log_p
 
         if log_ratio > 0 or torch.bernoulli(log_ratio.exp()):
@@ -104,43 +104,45 @@ class Hamiltonian(Sampler):
 
         self.samplable = samplable
         self.momentum = torch.empty_like(self.samplable.state)
+
         return self
 
-    def U(self, *args):
-        return -self.samplable.prop_log_p(*args)
+    def U(self):
+        return -self.samplable.prop_log_p()
 
-    def grad_U(self, *args):
-        return -self.samplable.grad_prop_log_p(*args)
+    def grad_U(self):
+        grad = self.samplable.grad_prop_log_p()
+        return -grad
 
-    def H(self, *args):
-        return self.U(*args) + self.momentum.square().sum() / 2
+    def H(self,):
+        return self.U() + self.momentum.square().sum() / 2
 
     def resample_momentum(self):
         self.momentum.normal_()
 
-    def step_momentum(self, *args, half_step=False):
+    def step_momentum(self, half_step=False):
 
         self.momentum.copy_(
             self.momentum
-            - self.step_size * (1.0 if not half_step else 0.5) * self.grad_U(*args)
+            - self.step_size * (1.0 if not half_step else 0.5) * self.grad_U()
         )
 
     def step_parameters(self):
         self.samplable.state = self.samplable.state + self.step_size * self.momentum
 
-    def next_sample(self, *args):
+    def next_sample(self):
 
         self.resample_momentum()
 
         initial_state = self.samplable.state.clone()
-        initial_H = self.H(*args)
+        initial_H = self.H()
 
-        self.step_momentum(*args, half_step=True)
+        self.step_momentum(half_step=True)
         for i in range(self.n_steps):
             self.step_parameters()
-            self.step_momentum(*args, half_step=(i == self.n_steps - 1))
+            self.step_momentum(half_step=(i == self.n_steps - 1))
 
-        proposed_H = self.H(*args)
+        proposed_H = self.H()
         log_acceptance = initial_H - proposed_H
 
         if log_acceptance >= 0 or log_acceptance.exp() > torch.rand(1):
@@ -152,63 +154,62 @@ class Hamiltonian(Sampler):
             self.samplable.state = initial_state
             return initial_state
 
-
 class HamiltonianNoMH(Hamiltonian):
-    
-    def next_sample(self, *args):
+
+    def next_sample(self):
 
         self.resample_momentum()
-        self.step_momentum(*args, half_step=True)
+        self.step_momentum(half_step=True)
         for i in range(self.n_steps):
             self.step_parameters()
-            self.step_momentum(*args, half_step=(i == self.n_steps - 1))
+            self.step_momentum(half_step=(i == self.n_steps - 1))
 
         return self.samplable.state.clone()
 
+
 class StochasticGradientHamiltonian(Hamiltonian):
 
-    M: HPARAM[float]
-    C: HPARAM[float]
-    V: HPARAM[float]
+    alpha: HPARAM[float]
+    beta: HPARAM[float]
+    eta: HPARAM[float]
 
     is_batched = True
     tag = "sghmc"
 
-    def __init__(self, M=1.0, C=4.0, V=4.0, step_size=0.1, n_steps=50):
+    def __init__(self, alpha=1e-2, beta=0.0, eta=0.2e-5):
 
-        self.M = torch.tensor(M)
-        self.C = torch.tensor(C)
-        self.V = torch.tensor(V)
-        self.step_size = torch.tensor(step_size)
-        self.n_steps = torch.tensor(n_steps)
+        self.alpha = torch.tensor(alpha)
+        self.beta = torch.tensor(beta)
+        self.eta = torch.tensor(eta)
 
-        self.M_inv = 1 / self.M
-        self.M_sqrt = torch.sqrt(self.M)
+        self.err_std = torch.sqrt(2 * (self.alpha - self.beta) * self.eta)
 
-        self.B = 1 / 2 * self.step_size * self.V
-        self.D = torch.sqrt(2 * (self.C - self.B) * self.step_size)
+    def setup(self, samplable: Samplable):
 
-    def resample_momentum(self):
-        self.momentum = torch.randn_like(self.momentum) * self.M_sqrt
-
-    def step_momentum(self, *args):
-        self.momentum.copy_(
-            self.momentum
-            - self.step_size * self.grad_U(*args)
-            - self.step_size * self.C * self.M_inv * self.momentum
-            + torch.randn_like(self.momentum) * self.D
-        )
+        self.samplable = samplable
+        self.nu = torch.empty_like(self.samplable.state)
+        return self
 
     def step_parameters(self):
+
         self.samplable.state = (
-            self.samplable.state + self.M_inv * self.step_size * self.momentum
+            self.samplable.state + self.nu
         )
 
-    def next_sample(self, *args):
+    def step_nu(self):
 
-        self.resample_momentum()
-        for _ in range(self.n_steps):
-            self.step_parameters()
-            self.step_momentum(*args)
+        self.nu.copy_(
+            self.nu
+            - self.eta * self.grad_U()
+            - self.alpha * self.nu
+            + torch.randn_like(self.nu) * self.err_std
+        )
+        pass
 
-        return self.samplable.state.clone()
+    def next_sample(self, return_sample=True):
+
+        self.step_nu()
+        self.step_parameters()
+
+        if return_sample:
+            return self.samplable.state.clone()

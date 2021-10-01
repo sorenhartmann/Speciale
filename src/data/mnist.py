@@ -52,10 +52,10 @@ class MNISTDataModule(pl.LightningDataModule):
             self.mnist_test = MNIST(self.data_dir, train=False, transform=ToTensor())
 
     def train_dataloader(self):
-        return DataLoader(self.mnist_train, batch_size=self.batch_size, num_workers=4)
+        return DataLoader(self.mnist_train, batch_size=self.batch_size, num_workers=0, shuffle=True)
 
     def val_dataloader(self):
-        return DataLoader(self.mnist_val, batch_size=self.batch_size, num_workers=4)
+        return DataLoader(self.mnist_val, batch_size=self.batch_size, num_workers=0)
 
     def test_dataloader(self):
-        return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=4)
+        return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=0)

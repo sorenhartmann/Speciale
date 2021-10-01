@@ -5,12 +5,12 @@ Given new data $x^\ast$, find the predictive distribution $p(y^\ast | x^\ast)$
 
 %TODO: Why not $p(y^\ast | x^\ast, \mathcal{D})$?
 
-Marginalize out the parameters of the m $\theta$.
+Marginalize out the parameters of the model, $\theta$.
 \begin{align*}
     p(y^\ast | x^\ast) &= E_{p(\theta|\mathcal{D})} p(y^\ast | x^\ast, \theta) \\
                        &= \int_{\theta} p(y^\ast | x^\ast, \theta)  p(\theta|\mathcal{D}) d\theta
 \end{align*}
-In practice, at least in the case of deep learning models, the integral of the expectation is not feasably evalutated exactly. 
+In practice, at least in the case of deep learning models, the integral of the expectation feasable to evalutate exactly. 
 We therefore resort to approximate methods, such as the Monte Carlo estimate:
 \begin{align*}
     p(y^\ast | x^\ast)  \approx \frac{1}{N} \sum_{j=1}^N p(y^\ast | x^\ast, \theta^{(i)}) 
@@ -38,42 +38,48 @@ This is useful since
 and both the likelihood, $p(y_i |\theta, x_i)$ and the prior $p(\theta)$ are specified as part of the graphical model, at least up to a constant factor. 
 The other approach is to use an approximate posterior $q(\theta)$ in place of the exact posterior. 
 
-The different methods are applicable not only for sampling from a posterior $p(\theta | \mathcal{D})$, but from sampling from any random variable with a specificed density function $p(x)$.
+The different methods are applicable not only for sampling from a posterior $p(\theta | \mathcal{D})$, but from sampling from any random variable with a density function $p(x)$ speficied up to a constant factor.
 
 \section{Markov Chain Monte Carlo}
-
-The following few methods are 
-Suppose we want to sample from a target distribution $p(x)$, yet we only know $\tilde{p}(x) = 1/K\cdot p(x)$, where $K$ is a constant in $x$.
-The Markov Chain Monte Carlo (MCMC) methods use a Markov chain $q(x^\prime|x)$, to generate samples sequentially from $p(x)$. If the target distribution $p(x)$  stationary with respect to the Markov chain, and we ensure that the chain eventually converges to the stationary distribution $p(x)$. That is
-\begin{align*}
-    p(x) = \sum_{x^\prime} T(x^\prime, x) p(x^\prime),
-\end{align*}
-where $T(x^\prime, x)$ is the probability of transitioning from state $x^\prime$ to $x$.
-
-%TODO: Distributions at time t, p(x^{(t)})...
-
+Suppose we want to sample from a target distribution $p(x)$, yet we only know $\tilde{p}(x) = 1/K\cdot p(x)$, where $K$ is constant in $x$.
+The Markov Chain Monte Carlo (MCMC) methods use a Markov chain with transition to generate samples sequentially from $p(x)$. 
+We achieve this by ensuring that the Markov chain with transition density $q(x^\prime | x)$ satisfies two requirements
+% TODO: maybe a bit informal?
+\begin{itemize}
+    \item The target distribution $p(x)$ stationary with respect to the Markov chain, that is:
+    \begin{align} \label{eq:stationarity}
+        p(x^\prime) = \int_{\Omega} q(x^\prime| x) p(x) \dd{x} 
+    \end{align}
+    \item The Markov chain eventually reaches the stationary distribution $p(x)$. This is satisfied by ensuring the markov chain is irreducible and aperiodic.
+    %TODO: Explain terms?
+\end{itemize}
 A sufficent criteria for $p(x)$ to be stationary with respect to the Markov chain is that the transition probablities $q(x^\prime|x)$ satisfy the property of detailed balance:
-
 \begin{align*}
-    p(x)q(x^\prime|x) = p(x^\prime)q(x|x^\prime).
+    p(x)q(x^\prime | x) = p(x^\prime)q(x| x^\prime).
+\end{align*}
+This implies stationary since
+\begin{align*}
+    \int_{\Omega} q(x^\prime | x) p(x) \dd{x} 
+    &= \int_{\Omega}  p(x^\prime)q(x| x^\prime) \dd{x} \\ 
+    &=  p(x^\prime) \int_{\Omega} q(x| x^\prime) \dd{x} \\
+    &=  p(x^\prime) \cdot 1 \\
+    &= p(x^\prime).
 \end{align*}
 
-The following chapters discusses
-
-%TODO: Explain why this is sufficient?
-
-%TODO: Ergodicity
+The following chapters discusses a straigh forward method applying the property of detailed balance.
 
 \subsection{Metropolis-Hastings}
+
+\question{Er lidt i tvivl om hvorledes transition probablities skal fortolkes i forbindelse med kontinuære state spaces. Det meste litteratur jeg kan finde kigger kun på endelige eller tællelige state space, men vil det ikke stort set altid være kontinuære state spaces vi kigger på i forhold til MH/HMC?}
+
 Suppose at some step $t$, the Markov chain has state $x^{(t)}$. The Metropolis-Hastings algorithm uses a symmetric proposal distribution $g(x|x^{(t)})$ to generate a new sample, $x^\prime$. The sample is then \emph{accepted} with probability:
 \begin{align*}
     A(x^{\prime}, x^{(t)}) = \min\left\{1, \frac{\tilde{p}(x^\prime)}{\tilde{p}(x^{(t)})}\right\}
 \end{align*}
 If the sample is accepted, $x^{(t+1)} \gets x^\prime$. Otherwise, the new state is rejected and $x^{(t+1)} \gets x^{(t)}$. This process is then repeated until we have obtained the required amount of samples $x^{(1)},\dots,x^{(N)}$. 
 
-%TODO: Symmetric distributions?
 %TODO: Transition probability vs density...
-Suppose at some point, the state of the chain is $x$. The transition probability to some other state $x^\prime$ is then:
+Suppose at some point, the state of the chain is $x$. The transition density to some other state $x^\prime$ is then:
 \begin{align*}
     q(x^\prime|x) = g(x^\prime | x) A(x^\prime, x)
 \end{align*}
@@ -86,66 +92,80 @@ That is, the probability that state $x^\prime$ is suggested given state $x$, and
                       &= g(x | x^\prime) p(x^\prime) \min\left\{p(x)/p(x^\prime), 1\right\} \\
                       &= p(x^\prime) g(x | x^\prime)  A(x ,x^\prime) = p(x^\prime) q(x|x^\prime).
 \end{align*}
-Thus, $p(x)$ is stationary with respect to the Markov chain. If the chain is ergodic, the sample distribution should therefore eventually converge towards $p(x)$. 
-%TODO: Ergodicity?
+Thus, the Markov chain satisfies the property of detailed balance, and is stationary with respect to the Markov chain. If we choose our proposal distribution such that the chain is also irreducible and aperiodic, eg. by having $q(x^\prime|x) \neq 0$ for all $x^\prime,x$, the sample distribution should therefore eventually converge towards $p(x)$. 
 
-While the Metropolis-Hastings algorithm will eventually sample from the correct distribution, it is not given that this necessarily occurs within a reasonable timeframe. 
+While the Metropolis-Hastings algorithm will eventually sample from the correct distribution, it is not given that this necessarily occurs within a reasonable time. 
 We are essentially hoping that our proposal distribution $g(x^\prime | x)$ reliably doesn't propose new states $x^\prime$ with much lower probability, $p(x^\prime) \ll p(x) $, in order to keep the acceptance probability $A(x^\prime, x)$ at reasonable levels. 
 For simple problems, this can often be done by tuning a Gaussian distribution around the current state, however for problems with high dimensionality and complex target distributions, this strategy may fall short.
-
 
 \subsection{Gibbs sampling}
 
 Suppose we had some way of easily sampling each of our variables conditioned on our other variables, that is $p(x_i|\bm{x}_{\setminus i})$. 
 The Gibbs sampling strategy generates a new sample $\bm{x}$ by sampling each variable $x_i$ in turn from $p(x_i|\bm{x}_{\setminus i})$.  
+First we need to show that the joint distribution $p(\bm{x})$ is invariant to each of these steps. 
+In order to argue for the stationarity of this procedure, we argue that each of the steps is invariant to the target distribution.
+\question{For meget abuse of notation? Helt galt afmarcheret?}
 
-First we need to show that the joint distribution $p(\bm{x})$ is invariant to each of these steps. First of, the marginal distribution $p(\bm{x}_{\setminus i})$ is invariant since the value of $\bm{x}_{\setminus i}$ is unchanged. Further, since the $\bm{x}_i$ is sampled direct from the ..., 
+The transition density $q(x^\prime| x)$ can be specified using the Dirac Delta function as:
+\begin{align*}
+    q(x^\prime| x) = \delta_{x_{\setminus i}}(x^\prime_{\setminus i}) p(x_i^\prime|x_{\setminus i})
+\end{align*}
+\begin{align*}
+    \int_{\Omega} q(x^\prime| x) p(x) \dd{x}  
+    &= \int_{\Omega}  \delta_{x_{\setminus i}}(x^\prime_{\setminus i}) p(x_i^\prime|x_{\setminus i}) p(x_i,x_{\setminus i}) \dd{x_{\setminus i}} \dd{x_i} \\
+    &= \int_{\Omega} p(x^\prime_i|x^\prime_{\setminus i}) p(x_i,x^\prime_{\setminus i}) \dd{x_i} \\ 
+    &= p(x^\prime_i|x^\prime_{\setminus i}) \int_{\Omega}  p(x_i,x^\prime_{\setminus i}) \dd{x_i} \\ 
+    &= p(x^\prime_i|x^\prime_{\setminus i}) \int_{\Omega}  p(x_i | x^\prime_{\setminus i}) p(x^\prime_{\setminus i}) \dd{x_i} \\ 
+    &= p(x^\prime_i|x^\prime_{\setminus i}) p(x^\prime_{\setminus i}) \int_{\Omega}  p(x_i | x^\prime_{\setminus i})  \dd{x_i} \\ 
+    &= p(x^\prime_i|x^\prime_{\setminus i}) p(x^\prime_{\setminus i}) \cdot 1 \\
+    &=  p(x^\prime_i,x^\prime_{\setminus i})  \\
+    &= p(x^\prime)
+\end{align*}
 
-
-Each such step leaves p(x) invariant...
-% Ayy see \cref{alg:1}
-%TODO: formaliser...
+If the condtional distributions $p(x_i|x_{\setminus i})$ are non-zero for all values of all variables $x_i$, the chain is also ergodic. If not, as discussed in \cite{bishop_pattern_2006}, we would have to prove the ergodicity of the sampling strategy explicitly.
 
 \subsection{Hamiltonian Monte Carlo}
 
 A popular method to improve the proposal strategy is the Hamiltonian Monte Carlo (HMC) algorithm. 
 From the Metropolis-Hastings algorithm we see that we need a proposal strategy, that both leaves the target distribution invariants and while being able to take as large steps as possible in order to explore the parameter space.
-Borrowing from the field of dynamical systems, HMC uses the notion of conservation of kinetic and potential energy to generate samples from the target distribution. Specifically, the variables are modelled as an Hamiltonian system. To this end, we define the \emph{momentum}, $r_i$ of each variable $x_i$.
+Borrowing from the field of dynamical systems, HMC uses the notion of conservation of kinetic and potential energy to generate samples from the target distribution. 
+Specifically, the variables are modelled as an Hamiltonian system. To this end, we define the \emph{momentum}, $r_i$ of each variable $x_i$.
 \begin{align*}
-    \dv{x_i}{t} = r_i
+    \dv{x_i}{t} = M^{-1} r_i
 \end{align*}
-Then, the kinetic energy, $K$ of the particle can be described as a function of the momentum:
+Where $M$ is the mass matrix of the system. Then, the kinetic energy, $K$ of the particle can be described as a function of the momentum:
 \begin{align*}
-    K(\bm{r}) = \frac{1}{2}\bm{r}^T M \bm{r}.
+    K(r) = \frac{1}{2}r^T M^{-1} r.
 \end{align*}
-Where $M$ is the mass matrix of the system. The rate of change of the momentum, ie. the acceleration is given by the negative gradient of the potential energy, $E$:
+The rate of change of the momentum, ie. the acceleration is given by the negative gradient of the potential energy, $E$:
 \begin{align*}
-    \dv{r_i}{t} = -\pdv{E(\bm{x})}{x_i}
+    \dv{r_i}{t} = -\pdv{E(x)}{x_i}
 \end{align*}
-Introducing the Hamiltonian function $H(\bm{x}, \bm{r}) = K(\bm{r}) + E(\bm{x})$, we can write the dynamics governing the system as
+Introducing the Hamiltonian function $H(x, r) = K(r) + E(x)$, we can write the dynamics governing the system as
 \begin{align*}
     \dv{x_i}{t} &= \phantom{-}\pdv{H}{r_i}\\
     \dv{r_i}{t} &= -\pdv{H}{x_i}
 \end{align*}
-Since $-\pdv{H}{x} = -\pdv{E}{x_i}$, and $\pdv{H}{r_i} = \pdv{K}{r_i} = r_i$. During evolution of such a system, the value of the Hamiltonian, $H$, stays constant. We then consider sampling from the joint density:
+Since $\pdv{H}{r_i} = \pdv{K}{r_i} = M^{-1}r_i$ and $-\pdv{H}{x} = -\pdv{E}{x_i}$. During evolution of such a system, the value of $H$ stays constant for any particle. 
+Another property of this system is that volume is also preserved under evolution. 
+Next we consider sampling from the joint density:
+\begin{align} \label{eq:hmc-joint}
+    p(x, r) = \frac{1}{C_H} \exp\left[ -H(x, r)\right] = \frac{1}{C_H} \exp\left[-K(r) - E(x)  \right].
+\end{align}
+If we throw away the samples from $r$, we are then left with samples from the marginal distribution of $x$. We then introduce the negative log density as potential energy of the particle:
 \begin{align*}
-    p(\bm{x}, \bm{r}) = \frac{1}{C_H} \exp\left[ -H(\bm{x}, \bm{r})\right] = \frac{1}{C_H} \exp\left[-K(\bm{r}) - E(\bm{x})  \right].
+    E(x) = -\log{p(x)}.
 \end{align*}
-If we throw away the samples from $\bm{r}$, we are then left with samples from the marginal distribution of $\bm{x}$. If we then introduce the negative log density as potential energy of the particle
-\begin{align*}
-    E(\bm{x}) = -\log{p(x)}.
-\end{align*}
-Combining the two expressions, the marginal distribution of $\bm{x}$ indeed ends up being the target distribution $p(\bm{x})$.
+Looking at \cref{eq:hmc-joint}, we see that under the distribution $p(x, r)$, the variables $x$ and $r$ are independent, and the marginal distribution of $x$ indeed factors out to be the target distribution $p(x)$. 
 
-% TODO: invariant og deterministiske transformationer
-\begin{align*}
-    p(x, r) = \sum_{x^\prime, r^\prime} T(x^\prime, r^\prime, x, r) p(x^\prime, r^\prime) = p(x_\tau, r_\tau) =  p(x, r)
-\end{align*}
+\todo[inline]{1. Resampling af momentum \\
+2. Vis invariants/stationaritet og ergodicitet af diskretiseret system
+}
 
 
-Hver gang vi tager et skridt i tid er p(x, z) det samme, samt det område det dækkker   p(x, z) er alstå invariant overfor 
+% Hver gang vi tager et skridt i tid er p(x, z) det samme, samt det område det dækkker   p(x, z) er alstå invariant overfor 
 
-Men ikke ergodic... fixes med gibbs step på p(z|x) som er normalfordelt(0, M).
+% Men ikke ergodic... fixes med gibbs step på p(z|x) som er normalfordelt(0, M).
 
 
 % Ayy see \cref{alg:1}
@@ -188,10 +208,10 @@ We may consider a similar scheme, approximating the $E$ gradient as:
 % TODO: Rigor? Central estimate?
 In \cite{chen_stochastic_2014}, they model the behavior of this approach with:
 \begin{align*}
-    \nabla\tilde{E}(\theta) = \nabla{E}(\theta) + e
+    \nabla\tilde{E}(\theta) \approx \nabla{E}(\theta) + e
 \end{align*}
 where $e \sim \mathcal{N}(0, V(\theta))$ is the noise introduced through the approximation. This has some ramification for the Hamiltonian system described in the previous section. 
-Importantly, the discrete time step updates performed by the algorithm no longer corresponds to the determinsistic Hamiltonian system because of the introduced noise. 
+The discrete time step updates performed by the algorithm no longer corresponds to the deterministic Hamiltonian system because of the introduced noise. 
 This is not in it of itself a problem, as we are already correcting for discretization errors through the Metropolis-Hastings step, and we could in principle correct for the gradient noise in the same fashion.
 The problem lies in the fact that we would have to evaluate the Hamiltonian for the entire dataset, in order to perform the MH step.
 
@@ -199,29 +219,38 @@ In order to figure out how to get around this, we take a further look at the, no
 \begin{align*}
 \Delta r =  -\epsilon\nabla{\tilde{E}}(\theta) = -\epsilon\nabla{E}(\theta)  + \epsilon e,
 \end{align*}
-what are the dynamics of the corresponding continuous system as $\epsilon \to 0$? Consider $w \sim \mathcal{N}(0, \epsilon)$, the increment can then be reparameterized as:
-\begin{align*}
-    \Delta r  = -\epsilon\nabla{E}(\theta)  + \sqrt{\epsilon} A(\theta) w.
-\end{align*}
-From the parameterization above, we can consider the continuous system
-\begin{align*}
-    \dd r  = -\nabla{E}(\theta) \dd t  + \sqrt{\epsilon} A(\theta) \dd w.
-\end{align*}
-Letting (some of?) $\epsilon $....
 
-With $B(\theta) = \frac{1}{2}\epsilon V(\theta)$
-
-We get 
+The corresponding continuous dynamical system is then 
 
 \begin{align*}
-    d\begin{bmatrix}
-        \theta \\
-        r
-    \end{bmatrix} = - \begin{bmatrix}
-        0 & -1 \\ 
-        1 &  B 
-    \end{bmatrix}
+    \dd{r} = -\epsilon\nabla{E}(\theta)\dd{t}  + \dd{e_t},
 \end{align*}
+    
+\question{I paperet bruger de notationen $\nabla\tilde{E}(\theta) = \nabla{E}(\theta) + \mathcal{N}(0, V(\theta))$, som jeg ikke helt kan gennemskue hvordan jeg skal bruge ift. at identificere fokker planck ligningen. Ideen var at bruge at skrive den op tættere på ligningen præsenteret her \url{https://en.wikipedia.org/wiki/Fokker–Planck_equation}, men mangler vist at reparameterisere støj termen, eftersom de dér bruger en standard Weiner process.}
+% what are the dynamics of the corresponding continuous system as $\epsilon \to 0$? Consider $w \sim \mathcal{N}(0, \epsilon)$, the increment can then be reparameterized as:
+% \begin{align*}
+%     \Delta r  = -\epsilon\nabla{E}(\theta)  + \sqrt{\epsilon} A(\theta) w.
+% \end{align*}
+% Where $A(\theta)A(\theta)^T = V(\theta)$.
+% From the parameterization above, we can consider the continuous system
+% \begin{align*}
+%     \dd r  = -\nabla{E}(\theta) \dd t  + \sqrt{\epsilon} A(\theta) \dd w.
+% \end{align*}
+% Letting (some of?) $\epsilon $....
+
+% With $B(\theta) = \frac{1}{2}\epsilon V(\theta)$
+
+% We get 
+
+% \begin{align*}
+%     d\begin{bmatrix}
+%         \theta \\
+%         r
+%     \end{bmatrix} = - \begin{bmatrix}
+%         0 & -1 \\ 
+%         1 &  B 
+%     \end{bmatrix}
+% \end{align*}
 
 
 
@@ -232,35 +261,36 @@ We get
 
 
 
-Time step update becomes
-\begin{align*}
-    \Delta x &= \epsilon M^{-1} r \\
-    \Delta r &= -\epsilon\nabla\tilde{E}(\theta) 
-    = -\epsilon\nabla{E}(\theta)  -\epsilon \mathcal{N}(0, V(\theta))
-    = -\epsilon\nabla{E}(\theta)  +\mathcal{N}(0, \epsilon^2 V(\theta)) \\
-\end{align*}
+% Time step update becomes
+% \begin{align*}
+%     \Delta x &= \epsilon M^{-1} r \\
+%     \Delta r &= -\epsilon\nabla\tilde{E}(\theta) 
+%     = -\epsilon\nabla{E}(\theta)  -\epsilon \mathcal{N}(0, V(\theta))
+%     = -\epsilon\nabla{E}(\theta)  +\mathcal{N}(0, \epsilon^2 V(\theta)) \\
+% \end{align*}
 
-\begin{align*}
-    \Delta \theta &= \epsilon M^{-1} r \\
-    \Delta r &=  -\epsilon\nabla{E}(\theta) + \mathcal{N}(0, \epsilon^2 V(\theta)) \\
-\end{align*}
-
-
-Alternatively, we write the $r$ update as, $V(\theta) = S$:
+% \begin{align*}
+%     \Delta \theta &= \epsilon M^{-1} r \\
+%     \Delta r &=  -\epsilon\nabla{E}(\theta) + \mathcal{N}(0, \epsilon^2 V(\theta)) \\
+% \end{align*}
 
 
+% Alternatively, we write the $r$ update as, $V(\theta) = S$:
 
-\begin{align*}
-    \Delta \theta &= \epsilon M^{-1} r \\
-    \Delta r &=  -\epsilon\nabla{E}(\theta) + V(\theta) \mathcal{N}(0, \epsilon) \\
-\end{align*}
 
-\section{Variational Methods}
 
-\begin{align*}
-    \hat V_{x\in \mathcal D}[\nabla U(\theta)_{i,i} ] = \frac{1}{|\tilde{\mathcal{D}}|-1} \sum_{x\in \tilde{\mathcal{D}}} (\nabla U_x(\theta)_{i,i} - \hat{E}[\nabla U(\theta)_{i,i}])^2
-\end{align*}
+% \begin{align*}
+%     \Delta \theta &= \epsilon M^{-1} r \\
+%     \Delta r &=  -\epsilon\nabla{E}(\theta) + V(\theta) \mathcal{N}(0, \epsilon) \\
+% \end{align*}
 
-\begin{align*}
-    \hat V_{x\in \mathcal D}[\nabla U(\theta)_{i,i} ] = 
-\end{align*}
+
+% \section{Variational Methods}
+
+% \begin{align*}
+%     \hat V_{x\in \mathcal D}[\nabla U(\theta)_{i,i} ] = \frac{1}{|\tilde{\mathcal{D}}|-1} \sum_{x\in \tilde{\mathcal{D}}} (\nabla U_x(\theta)_{i,i} - \hat{E}[\nabla U(\theta)_{i,i}])^2
+% \end{align*}
+
+% \begin{align*}
+%     \hat V_{x\in \mathcal D}[\nabla U(\theta)_{i,i} ] = 
+% \end{align*}

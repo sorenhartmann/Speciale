@@ -93,3 +93,5 @@ target/
 lightning_logs/
 wandb/
 experiment_results/
+
+_old

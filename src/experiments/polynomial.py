@@ -38,6 +38,8 @@ class LogPosteriorSamples(Callback):
                 pl_module.log(f"weights/{k}.{i}", value)
 
 
+
+
 def experiment():
 
     args = get_args(PolynomialModel, BayesianRegressor)
