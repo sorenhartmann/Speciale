@@ -1,3 +1,7 @@
+from .base import InferenceModule
+from src.models.base import Model
+import torch.optim
+
 class SGDInference(InferenceModule):
 
     def __init__(self, model : Model, lr: float=1e-3):
@@ -29,7 +33,7 @@ class SGDInference(InferenceModule):
         x, y = batch
         output = self.model(x)
 
-        for name, metric in self.train_metrics.items():
+        for name, metric in self.val_metrics.items():
             self.log(f"{name}/val", metric(output, y))
 
     def configure_optimizers(self):

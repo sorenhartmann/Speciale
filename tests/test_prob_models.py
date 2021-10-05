@@ -1,40 +1,19 @@
 import pytest
 
-from src.data.mnist import MNISTDataModule
-from src.models.mlp import MLPClassifier
-from src.inference.base import (
+from src.inference.probabilistic import (
     ModuleWithPrior,
     ProbabilisticModel,
     attach_priors_,
     to_probabilistic_model_,
 )
-from torch.nn import Linear, ModuleList
+from torch.nn import Linear
 import torch
 
-
 @pytest.fixture
-def datamodule():
-    dm = MNISTDataModule()
-    dm.setup()
-    return dm
-
-
-@pytest.fixture
-def batch(datamodule):
-    return next(iter(datamodule.train_dataloader()))
-
-
-@pytest.fixture
-def classifier():
-    return MLPClassifier()
-
-
-@pytest.fixture
-def probabilistic_classifier():
-    model = MLPClassifier()
+def probabilistic_classifier(classifier):
+    model = classifier
     to_probabilistic_model_(model)
     return model
-
 
 def test_attach_priors():
 
@@ -139,23 +118,3 @@ def test_model_serialization(classifier, tmp_path):
     ):
         assert name_a == name_b
         assert torch.equal(buffer_a, buffer_b)
-
-
-# def test_to_prob_conversion(classifier):
-
-#     dm = MNISTDataModule()
-#     dm.setup()
-#     x, y = next(iter(dm.train_dataloader()))
-
-#     model = ProbabilisticModel(MLPClassifier())
-
-#     print(model.log_prior() + model.log_likelihood(x, y).sum())
-
-# test()
-
-
-# x, y =
-
-# model = ProbabilisticModel(MLPClassifier())
-
-# print(model.log_prior() + model.log_likelihood(x, y).sum())
