@@ -1,49 +1,42 @@
-from abc import abstractmethod, ABC
-from contextlib import contextmanager
+import argparse
 import contextlib
 import datetime
 import inspect
-import pickle
 import os
-from src.inference import BayesianClassifier
-from src.modules import ProbabilisticModel
+import pickle
+import re
+from abc import ABC, abstractmethod
+from argparse import Namespace
+from collections.abc import Callable
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Any, Dict, Optional, Type, Union
+
+import pandas as pd
 import torch
 import yaml
-from collections.abc import Callable
-from pytorch_lightning.loggers.csv_logs import ExperimentWriter
-from src.samplers import (
-    Hamiltonian,
-    MetropolisHastings,
-    StochasticGradientHamiltonian,
-    HamiltonianNoMH,
-)
-import argparse
-from typing import Any, Dict, Optional, Type, Union
 from pytorch_lightning import Trainer
-from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experiment
-from pytorch_lightning.utilities.distributed import rank_zero_only
-from pytorch_lightning.utilities.cloud_io import get_filesystem
-samplers = {
-    sampler_cls.tag: sampler_cls
-    for sampler_cls in [
-        MetropolisHastings,
-        Hamiltonian,
-        StochasticGradientHamiltonian,
-        HamiltonianNoMH,
-    ]
-}
-import re
 from pytorch_lightning.callbacks import ModelCheckpoint
-from argparse import Namespace
-import pandas as pd
-from pathlib import Path
+from pytorch_lightning.loggers.base import (LightningLoggerBase,
+                                            rank_zero_experiment)
+from pytorch_lightning.loggers.csv_logs import ExperimentWriter
+from pytorch_lightning.utilities import (_OMEGACONF_AVAILABLE, rank_zero_only,
+                                         rank_zero_warn)
+from pytorch_lightning.utilities.cloud_io import get_filesystem
+from pytorch_lightning.utilities.distributed import rank_zero_only
+from src.utils import RegisteredComponents
 from torch.utils.tensorboard import SummaryWriter
-from pytorch_lightning.utilities import _OMEGACONF_AVAILABLE, rank_zero_only, rank_zero_warn
+
 if _OMEGACONF_AVAILABLE:
     from omegaconf import Container, OmegaConf  # type: ignore
-from pytorch_lightning.core.saving import save_hparams_to_yaml
-from torch.utils.tensorboard.summary import hparams
+
 import logging
+
+from pytorch_lightning.core.saving import save_hparams_to_yaml
+from src.inference.probabilistic import ProbabilisticModel
+from src.utils import Component, HPARAM
+from src.models.base import Model
+from torch.utils.tensorboard.summary import hparams
 
 log = logging.getLogger(__name__)
 
@@ -51,44 +44,36 @@ log = logging.getLogger(__name__)
 ROOT_DIR = Path(__file__).parents[2]
 
 
-class GetSampler(argparse.Action):
 
-    default = Hamiltonian
-    samplers = samplers
+# def get_args(model_cls: Type[ProbabilisticModel], inference_cls: Type[BayesianClassifier]):
 
-    def __call__(self, parser, namespace, values, option_string=None):
-        setattr(namespace, self.dest, self.samplers[values])
+#     parser = argparse.ArgumentParser()
 
+#     # Batch size (for batched inference only)
+#     parser.add_argument("--batch_size", type=int, default=8)
 
-def get_args(model_cls: Type[ProbabilisticModel], inference_cls: Type[BayesianClassifier]):
+#     # Sampler and sampler args
+#     parser.add_argument(
+#         "--sampler",
+#         action=GetSampler,
+#         default=GetSampler.default,
+#         choices=GetSampler.samplers.keys(),
+#     )
+#     known_args, _ = parser.parse_known_args()
+#     parser = known_args.sampler.add_argparse_args(parser)
 
-    parser = argparse.ArgumentParser()
+#     # Model specific args
+#     parser = model_cls.add_argparse_args(parser)
 
-    # Batch size (for batched inference only)
-    parser.add_argument("--batch_size", type=int, default=8)
+#     # Inference specific args
+#     parser = inference_cls.add_argparse_args(parser)
 
-    # Sampler and sampler args
-    parser.add_argument(
-        "--sampler",
-        action=GetSampler,
-        default=GetSampler.default,
-        choices=GetSampler.samplers.keys(),
-    )
-    known_args, _ = parser.parse_known_args()
-    parser = known_args.sampler.add_argparse_args(parser)
+#     # Training specific args
+#     parser = Trainer.add_argparse_args(parser)
 
-    # Model specific args
-    parser = model_cls.add_argparse_args(parser)
-
-    # Inference specific args
-    parser = inference_cls.add_argparse_args(parser)
-
-    # Training specific args
-    parser = Trainer.add_argparse_args(parser)
-
-    # Parse and return
-    args = parser.parse_args()
-    return args
+#     # Parse and return
+#     args = parser.parse_args()
+#     return args
 
 _idx_match = re.compile("run_(\\d+)").match
 
@@ -408,3 +393,5 @@ class FlatTensorBoardLogger(LightningLoggerBase):
     @property
     def version(self):
         pass
+
+

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod, abstractproperty
 import argparse
 
 from torch.functional import Tensor
-from src.utils import HPARAM, HyperparameterMixin, register_component
+from src.utils import HPARAM, register_component
 import typing
 from torch.utils.data.dataset import Dataset
 from typing import Dict, Generator, Generic, Type, TypeVar, Union, Any, Container
@@ -29,11 +29,9 @@ class Samplable(ABC):
     def grad_prop_log_p(self) -> torch.Tensor:
         pass
 
-
-class Sampler(ABC, HyperparameterMixin):
+class Sampler(ABC):
 
     is_batched: bool
-    tag: str
 
     @abstractmethod
     def setup(self, samplable: Samplable):
@@ -46,10 +44,8 @@ class Sampler(ABC, HyperparameterMixin):
 
 class MetropolisHastings(Sampler):
 
-    step_size: HPARAM[float]
 
     is_batched = False
-    tag = "mh"
 
     def __init__(self, step_size=0.01):
 
@@ -87,12 +83,7 @@ class Hamiltonian(Sampler):
     """
     M = I for now...
     """
-
-    step_size: HPARAM[float]
-    n_steps: HPARAM[int]
-
     is_batched = False
-    tag = "hmc"
 
     def __init__(self, step_size=0.01, n_steps=1) -> None:
 
@@ -169,20 +160,19 @@ class HamiltonianNoMH(Hamiltonian):
 @register_component("sghmc")
 class StochasticGradientHamiltonian(Hamiltonian):
 
-    alpha: HPARAM[float]
-    beta: HPARAM[float]
-    eta: HPARAM[float]
+    lr : HPARAM[float]
+    alpha : HPARAM[float]
+    beta : HPARAM[float]
 
     is_batched = True
-    tag = "sghmc"
 
     def __init__(self, alpha=1e-2, beta=0.0, lr=0.2e-5):
 
         self.alpha = torch.tensor(alpha)
         self.beta = torch.tensor(beta)
-        self.eta = torch.tensor(lr)
+        self.lr = torch.tensor(lr)
 
-        self.err_std = torch.sqrt(2 * (self.alpha - self.beta) * self.eta)
+        self.err_std = torch.sqrt(2 * (self.alpha - self.beta) * self.lr)
 
     def setup(self, samplable: Samplable):
 
@@ -200,7 +190,7 @@ class StochasticGradientHamiltonian(Hamiltonian):
 
         self.nu.copy_(
             self.nu
-            - self.eta * self.grad_U()
+            - self.lr * self.grad_U()
             - self.alpha * self.nu
             + torch.randn_like(self.nu) * self.err_std
         )

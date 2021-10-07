@@ -2,6 +2,7 @@ import math
 from contextlib import contextmanager
 from functools import cached_property
 from itertools import accumulate
+from typing import List
 
 import pytorch_lightning as pl
 import torch
@@ -19,13 +20,16 @@ from src.inference.base import InferenceModule
 from src.inference.probabilistic import (
     KnownPrecisionNormalPrior,
     ModuleWithPrior,
+    ProbabilisticModel,
     to_probabilistic_model_,
 )
-from src.utils import ParameterView_, register_component
+from src.utils import Component, ParameterView_, RegisteredComponents, register_component
 
 from src.models.mlp import MLPClassifier
+from src.models.base import Model
 from pytorch_lightning import Trainer
 from src.data.mnist import MNISTDataModule
+
 
 from torchviz import make_dot
 class ParameterPosterior(Samplable):
@@ -51,7 +55,6 @@ class ParameterPosterior(Samplable):
         self.model.zero_grad()
         t = self.prop_log_p()
         t.backward()
-        make_dot(t).save("3.gv")
         return self.view.flat_grad
 
     def set_observation(self, x=None, y=None, sampling_fraction: float = 1.0):
@@ -88,10 +91,16 @@ class ParameterPosterior(Samplable):
             },
             strict=False,
         )
-
+from src.utils import HPARAM
 
 @register_component("mcmc")
 class MCMCInference(InferenceModule):
+
+    model : HPARAM[Component]
+    sampler : HPARAM[Component]
+    sample_container : HPARAM[Component]
+    burn_in : HPARAM[int]
+
     def __init__(self, model, sampler=None, sample_container=None, burn_in=0):
 
         super().__init__()
@@ -116,9 +125,6 @@ class MCMCInference(InferenceModule):
         self.burn_in = burn_in
 
         self.val_metrics = self.model.get_metrics()
-
-        # TODO: Refactor later, probably in a factory?
-        self.save_hyperparameters({"inference_type": "MCMC"})
 
         self._skip_val = True
 
@@ -220,12 +226,27 @@ class MCMCInference(InferenceModule):
 
 if __name__ == "__main__":
 
-    model = MLPClassifier()
-    sampler = StochasticGradientHamiltonian()
-    sample_container = FIFOSampleContainer(max_items=750, keep_every=1)
-    inference = MCMCInference(model, sampler, sample_container, burn_in=50)
-    datamodule = MNISTDataModule(500)
+    # model = 
+    # sampler = StochasticGradientHamiltonian()
+    # sample_container = FIFOSampleContainer(max_items=750, keep_every=1)
+    inference = MCMCInference(MLPClassifier(hidden_layers=[100, 100]))
 
-    inference._precision_gibbs_step()
 
-    Trainer(max_epochs=800).fit(inference, datamodule)
+
+
+    # datamodule = MNISTDataModule(500)
+
+
+
+    # Trainer(max_epochs=800).fit(inference, datamodule)
+
+
+
+            # yield 
+
+        
+
+        
+
+
+    

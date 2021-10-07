@@ -1,12 +1,22 @@
 import torch.nn as nn
 from torch.distributions import Normal
 
+import torch
+import torch.nn as nn
+from src.models.base import Model
+from torch.distributions.normal import Normal
+from typing import List
+from src.utils import HPARAM
+
 class Prior(nn.Module):
     ...
 
 class KnownPrecisionNormalPrior(Prior):
 
-    def __init__(self, precision=10., mean=0., mask_parameters=None):
+    precision : HPARAM[float]
+    mean : HPARAM[float]
+
+    def __init__(self, precision=10., mean=0.):
 
         super().__init__()
 
@@ -23,6 +33,7 @@ _DEFAULT_PRIORS = {
         "bias" : {"cls" : KnownPrecisionNormalPrior, "kwargs" : {}}, 
     }
 }
+
 
 # Inspired by Pyro https://github.com/pyro-ppl/pyro/blob/dev/pyro/nn/module.py
 class _ModuleWithPriorMeta(type):
@@ -87,11 +98,7 @@ def attach_priors_(module : nn.Module, prior_specs = None):
     module.priors = priors
     module.__class__ = ModuleWithPrior[module.__class__]
 
-import torch
-import torch.nn as nn
-from src.models.base import Model
-from torch.distributions.normal import Normal
-from typing import List
+
 
 class _ProbabilisticModelMeta(type):
 
@@ -128,6 +135,7 @@ class _ProbabilisticModelMeta(type):
         return result
 
 class ProbabilisticModel(Model, metaclass = _ProbabilisticModelMeta): 
+
     submodules_with_prior : List[ModuleWithPrior]
 
     def log_prior(self):

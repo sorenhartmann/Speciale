@@ -15,8 +15,6 @@ class SGDInference(InferenceModule):
         self.train_metrics = self.model.get_metrics()
         self.val_metrics = self.model.get_metrics()
 
-        # TODO: Refactor later, probably in a factory?
-        self.save_hyperparameters({"inference_type" : "SGD"})
     
     def training_step(self, batch, batch_idx):
 

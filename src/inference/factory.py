@@ -6,9 +6,8 @@ from src.inference.sgd import SGDInference
 from src.inference.vi import VariationalInference
 
 from src.models.mlp import MLPClassifier
-
 from src.utils import RegisteredComponents
-
+from src.inference.base import InferenceModule
 
 @dataclass
 class ComponentConfig:
@@ -40,6 +39,10 @@ def from_flat_config(root_name, flat_config):
 
     def _sub(name):
         config = {}
+        
+        if name not in adj_dict:
+            return ComponentConfig(name, {})
+
         for y, z in adj_dict[name].items():
             if z in adj_dict:
                 config[y] = _sub(z)
@@ -49,40 +52,13 @@ def from_flat_config(root_name, flat_config):
 
     return _sub(root_name)
 
-
-specs = [
-    {
-    "model": "mlp_classifier",
-    "inference": "sgd",
-    "sgd.lr": 0.005,
-    },
-    {
-    "model": "mlp_classifier",
-    "inference": "vi",
-    "vi.lr": 1e-3,
-    "vi.n_samples": 10,
-    "vi.prior": None,  # Not implemented
-    },
-    {
-    "model": "mlp_classifier",
-    "inference": "mcmc",
-    "mcmc.sampler": "sghmc",
-    "mcmc.sample_container": "fifo",
-    "mcmc.burn_in": 50,
-    "sghmc.lr": 0.2e-5,
-    "fifo.max_items": 10,
-    "fifo.keep_every": 1,
-    }
-]
-
-for spec in specs:
-    flat_config = spec.copy()
-    model_name = flat_config.pop("model")
-    inference_name = flat_config.pop("inference")
-    inference_config = from_flat_config(inference_name, flat_config)
+def inference_from_config(inference_spec):
+    model_name = inference_spec.pop("model")
+    inference_name = inference_spec.pop("inference")
+    inference_config = from_flat_config(inference_name, inference_spec)
     inference_config.config.update({"model" : ComponentConfig(name=model_name)})
-    inf = instantiate_from_config(inference_config)
-    print(inf)
+    return  instantiate_from_config(inference_config)
+
 
 
 # ComponentConfig(

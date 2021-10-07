@@ -1,21 +1,23 @@
-from src.utils import SequentialBuilder, register_component
+from typing import List
+from src.utils import SequentialBuilder, register_component, HPARAM
 import torch
 import torch.nn as nn
 from .base import Model, ClassifierMixin
 
 class MLPModel(Model):
 
+    hidden_layers : HPARAM[List[int]]
+
     def __init__(
         self,
         in_features=784,
         out_features=10,
         hidden_layers=[100],
-        alpha=1.0,
-        beta=1.0,
-        precision=1.0,
     ):
 
         super().__init__()
+
+        self.hidden_layers = hidden_layers
 
         seq_builder = SequentialBuilder(in_shape=(in_features,))
         for hidden_size in hidden_layers:

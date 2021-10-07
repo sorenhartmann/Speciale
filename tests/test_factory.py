@@ -1,17 +1,22 @@
-inference_config = ComponentConfig(
-    name="mcmc",
-    config={
-        "model": ComponentConfig(name="mlp_classifer"),
-        "sampler": ComponentConfig(name="sghmc", config={"lr": 50}),
-        "sample_container": ComponentConfig(
-            name="fifo", config={"max_items": 10, "keep_every": 1}
-        ),
-        "burn_in": 50,
-    },
-)
+import pytest
+from src.inference.base import InferenceModule
+from src.inference.factory import inference_from_config
 
-flat_spec = {
-    "model": "mlp_classifer",
+flat_specs = [
+    {
+    "model": "mlp_classifier",
+    "inference": "sgd",
+    "sgd.lr": 0.005,
+    },
+    {
+    "model": "mlp_classifier",
+    "inference": "vi",
+    "vi.lr": 1e-3,
+    "vi.n_samples": 10,
+    "vi.prior": None,  # Not implemented
+    },
+    {
+    "model": "mlp_classifier",
     "inference": "mcmc",
     "mcmc.sampler": "sghmc",
     "mcmc.sample_container": "fifo",
@@ -19,57 +24,14 @@ flat_spec = {
     "sghmc.lr": 0.2e-5,
     "fifo.max_items": 10,
     "fifo.keep_every": 1,
-}
+    },
+    {
+    "model": "mlp_classifier",
+    "inference": "mcmc"
+    }
+]
 
-
-flat_spec = {
-    "model": "mlp_classifer",
-    "inference": "sgd",
-    "sgd.lr": 0.004,
-
-    # ... trainer args
-}
-
-
-a = {
-    "mcmc.sampler": "sghmc",
-    "mcmc.sampler.lr": 0.2e-5,
-    "mcmc.sample_container": "fifo",
-    "mcmc.sample_container.max_items": 10,
-    "mcmc.sample_container.keep_every": 1,
-    "mcmc.burn_in": 50,
-}
-
-
-a = {
-    "mcmc.sampler": "sghmc",
-    "mcmc.lr": 0.2e-5,
-    "mcmc.sample_container": "fifo",
-    "mcmc.sample_container.max_items": 10,
-    "mcmc.sample_container.keep_every": 1,
-    "mcmc.burn_in": 50,
-}
-
-
-
-flat_spec = {
-    "model": "mlp_classifer",
-    "inference": "mcmc",
-    "mcmc.sampler": "sghmc",
-    "mcmc.sampler.lr": 0.2e-5,
-    "mcmc.sample_container": "fifo",
-    "mcmc.sample_container.max_items": 10,
-    "mcmc.sample_container.keep_every": 1,
-    "mcmc.burn_in": 50,
-}
-
-
-a = {
-    "mcmc.sampler": "sghmc",
-    "mcmc.sampler.lr": 0.2e-5,
-    "mcmc.sample_container": "fifo",
-    "mcmc.sample_container.max_items": 10,
-    "mcmc.sample_container.keep_every": 1,
-    "mcmc.burn_in": 50,
-}
-a = {".".join(k.split(".")[1:]): v for k, v in a.items()}
+@pytest.mark.parametrize("flat_spec", flat_specs)
+def test_flat_spec(flat_spec):
+    inf = inference_from_config(flat_spec)
+    assert isinstance(inf, InferenceModule)

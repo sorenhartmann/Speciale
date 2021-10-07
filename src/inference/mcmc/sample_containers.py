@@ -1,8 +1,11 @@
-from src.utils import register_component
+from src.utils import register_component, HPARAM
 
 @register_component("fifo")
 class FIFOSampleContainer:
     """Retain as set of samples given an stream of samples of unkown length"""
+
+    max_items : HPARAM[int]
+    keep_every : HPARAM[int]
 
     def __init__(self, max_items=20, keep_every=20):
 

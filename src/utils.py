@@ -21,6 +21,8 @@ def pairwise(iterable):
 
 T = TypeVar("T")
 
+class Component:
+    pass
 
 class HPARAM(Generic[T]):
     pass
@@ -33,46 +35,46 @@ def _get_item(value):
     else:
         return value
 
-class HyperparameterMixin:
+# class HyperparameterMixin:
 
-    @classmethod
-    def add_argparse_args(
-        cls,
-        parent_parser,
-    ):
-        """
-        Adds w/e HPARAM typed attributes with __init__ defaults to argparser
-        """
+#     @classmethod
+#     def add_argparse_args(
+#         cls,
+#         parent_parser,
+#     ):
+#         """
+#         Adds w/e HPARAM typed attributes with __init__ defaults to argparser
+#         """
         
-        init_params = inspect.signature(cls.__init__).parameters
-        parser = parent_parser.add_argument_group(cls.__name__)
-        for name, hparam_type in cls.__annotations__.items():
-            if not getattr(hparam_type, "__origin__", None) is HPARAM:
-                continue
-            (type_,) = typing.get_args(hparam_type)
-            parser.add_argument(
-                f"--{name}", type=type_, default=init_params[name].default
-            )
+#         init_params = inspect.signature(cls.__init__).parameters
+#         parser = parent_parser.add_argument_group(cls.__name__)
+#         for name, hparam_type in cls.__annotations__.items():
+#             if not getattr(hparam_type, "__origin__", None) is HPARAM:
+#                 continue
+#             (type_,) = typing.get_args(hparam_type)
+#             parser.add_argument(
+#                 f"--{name}", type=type_, default=init_params[name].default
+#             )
 
-        return parent_parser
+#         return parent_parser
 
-    @classmethod
-    def from_argparse_args(cls, args, **kwargs):
+#     @classmethod
+#     def from_argparse_args(cls, args, **kwargs):
 
-        hparams = {
-            name: getattr(args, name)
-            for name, type_ in cls.__annotations__.items()
-            if getattr(type_, "__origin__", None) is HPARAM
-        }
+#         hparams = {
+#             name: getattr(args, name)
+#             for name, type_ in cls.__annotations__.items()
+#             if getattr(type_, "__origin__", None) is HPARAM
+#         }
 
-        return cls(**kwargs, **hparams)
+#         return cls(**kwargs, **hparams)
 
-    def get_hparams(self):
-        return {
-            name : _get_item(getattr(self, name))
-            for name, type_ in self.__class__.__annotations__.items()
-            if getattr(type_, "__origin__", None) is HPARAM
-        }
+#     def get_hparams(self):
+#         return {
+#             name : _get_item(getattr(self, name))
+#             for name, type_ in self.__class__.__annotations__.items()
+#             if getattr(type_, "__origin__", None) is HPARAM
+#         }
 
 
 
@@ -265,7 +267,6 @@ class RegisteredComponents:
     def register_component(cls, module_cls: type, name : str):
         cls.components[name] = module_cls
 
-
 from functools import wraps
 def register_component(name : str):
     def decorator(module_cls):
@@ -273,3 +274,5 @@ def register_component(name : str):
         return module_cls
 
     return decorator
+
+
