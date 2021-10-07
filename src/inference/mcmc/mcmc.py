@@ -1,62 +1,40 @@
+import math
+from contextlib import contextmanager
+from functools import cached_property
+from itertools import accumulate
+
 import pytorch_lightning as pl
 import torch
-from functools import cached_property
-from src.samplers import Sampler, Samplable
-from src.utils import HPARAM, HyperparameterMixin, pairwise
-from contextlib import contextmanager
-from src.modules import ProbabilisticModel
+from torch._C import NoneType
 import torchmetrics.functional
 import torchmetrics.functional as FM
-from itertools import accumulate
-import math
+from torch.distributions import Gamma
+from src.inference.mcmc.samplers import (
+    Samplable,
+    Sampler,
+    StochasticGradientHamiltonian,
+)
+from src.inference.mcmc.sample_containers import FIFOSampleContainer
+from src.inference.base import InferenceModule
+from src.inference.probabilistic import (
+    KnownPrecisionNormalPrior,
+    ModuleWithPrior,
+    to_probabilistic_model_,
+)
+from src.utils import ParameterView_, register_component
 
-from tensorboard.backend.event_processing import event_accumulator
+from src.models.mlp import MLPClassifier
+from pytorch_lightning import Trainer
+from src.data.mnist import MNISTDataModule
 
-class FIFOSampleContainer:
-    """Retain as set of samples given an stream of samples of unkown length"""
-
-    def __init__(self, max_items=20, keep_every=20):
-
-        self.max_items = max_items
-        self.keep_every = keep_every
-
-        self.samples = {}
-        self.stream_position = 0
-
-    def append(self, value):
-
-        if not self.can_use_next():
-            self.stream_position += 1
-            return
-
-        if len(self.samples) == self.max_items:
-            del self.samples[min(self.samples)]
-
-        self.samples[self.stream_position] = value
-        self.stream_position += 1
-
-    def can_use_next(self) -> bool:
-        return self.stream_position % self.keep_every == 0
-
-    def items(self):
-        return self.samples.items()
-
-    def values(self):
-        return self.samples.values()
-
-    def __iter__(self):
-        return iter(self.samples)
-
-    def __len__(self):
-        return len(self.samples)
-
+from torchviz import make_dot
 class ParameterPosterior(Samplable):
-
     """Posterior of model parameters given observations"""
 
     def __init__(self, model):
 
         self.model = model
+        self.view = ParameterView_(model)
 
         self._x = None
         self._y = None
@@ -65,15 +43,16 @@ class ParameterPosterior(Samplable):
     def prop_log_p(self) -> torch.Tensor:
         return (
             self.model.log_prior()
-            + self.model.log_likelihood(
-                x=self._x, y=self._y, sampling_fraction=self._sampling_fraction
-            ).sum() 
+            + self.model.log_likelihood(x=self._x, y=self._y).sum()
+            / self._sampling_fraction
         )
 
     def grad_prop_log_p(self):
         self.model.zero_grad()
-        self.prop_log_p().backward()
-        return self.state_grad
+        t = self.prop_log_p()
+        t.backward()
+        make_dot(t).save("3.gv")
+        return self.view.flat_grad
 
     def set_observation(self, x=None, y=None, sampling_fraction: float = 1.0):
 
@@ -94,86 +73,53 @@ class ParameterPosterior(Samplable):
         finally:
             self.set_observation(x_prev, y_prev, sampling_fraction_prev)
 
-    @cached_property
-    def param_shapes(self):
-        return {k: x.shape for k, x in self.model.named_parameters()}
-
-    @cached_property
-    def flat_index_pairs(self):
-        indices = accumulate(
-            self.param_shapes.values(), lambda x, y: x + math.prod(y), initial=0
-        )
-        return list(pairwise(indices))
-
     @property
-    def state(self) -> torch.Tensor:
-        return torch.cat([x.detach().flatten() for x in self.model.parameters()])
+    def state(self):
+        return self.view[:]
 
     @state.setter
     def state(self, value):
-
         self.model.load_state_dict(
             {
                 k: value[a:b].view(shape)
                 for (k, shape), (a, b) in zip(
-                    self.param_shapes.items(), self.flat_index_pairs
+                    self.view.param_shapes.items(), self.view.flat_index_pairs
                 )
             },
             strict=False,
         )
 
-    @property
-    def state_grad(self) -> torch.Tensor:
-        return torch.cat([x.grad.flatten() for x in self.model.parameters()])
 
-    def flatten(self, tensor_iter):
-        return torch.cat([x.flatten() for x in tensor_iter])
-
-    def unflatten(self, value):
-        return {
-            k: value[a:b].view(shape)
-            for (k, shape), (a, b) in zip(
-                self.param_shapes.items(), self.flat_index_pairs
-            )
-        }
-        
-
-class VariationalInference(pl.LightningModule, HyperparameterMixin):
-    pass
-    
-
-
-class BayesianClassifier(pl.LightningModule, HyperparameterMixin):
-
-
-    burn_in: HPARAM[int]
-    keep_samples: HPARAM[int]
-
-    def __init__(
-        self,
-        model: ProbabilisticModel,
-        sampler: Sampler,
-        burn_in=50,  ## Epochs
-        keep_samples=800,
-    ):
+@register_component("mcmc")
+class MCMCInference(InferenceModule):
+    def __init__(self, model, sampler=None, sample_container=None, burn_in=0):
 
         super().__init__()
 
-        self.burn_in = burn_in
-        self.keep_samples = keep_samples
+        if sampler is None:
+            sampler = StochasticGradientHamiltonian()
 
-        self.model = model
-        self.posterior = ParameterPosterior(self.model)
-        self.sampler = sampler
+        if sample_container is None:
+            sample_container = FIFOSampleContainer(max_items=10, keep_every=1)
 
         self.automatic_optimization = False
 
-        self.save_hyperparameters(self.get_hparams())
-        self.save_hyperparameters(self.model.get_hparams())
-        self.save_hyperparameters({"sampler": self.sampler.tag})
-        self.save_hyperparameters(self.sampler.get_hparams())
+        self.model = model
+        to_probabilistic_model_(self.model)
+        self.view = ParameterView_(self.model)
 
-        self.sample_container = FIFOSampleContainer(keep_samples, keep_every=1)
+        self.posterior = ParameterPosterior(self.model)
+        self.sampler = sampler
+
+        self.sample_container = sample_container
+
+        self.burn_in = burn_in
+
+        self.val_metrics = self.model.get_metrics()
+
+        # TODO: Refactor later, probably in a factory?
+        self.save_hyperparameters({"inference_type": "MCMC"})
+
         self._skip_val = True
 
     def configure_optimizers(self):
@@ -197,8 +143,8 @@ class BayesianClassifier(pl.LightningModule, HyperparameterMixin):
         # Only procced after last batch
         if batch_idx < len(self.trainer.train_dataloader) - 1:
             return
-        
-        self.model.precision_gibbs_step()
+
+        self._precision_gibbs_step()
 
         # Burn in
         if self.current_epoch < self.burn_in:
@@ -213,6 +159,25 @@ class BayesianClassifier(pl.LightningModule, HyperparameterMixin):
         sample = self.posterior.state.clone()
         self.sample_container.append(sample)
         self._skip_val = False
+
+    def _precision_gibbs_step(self):
+
+        for module in self.model.modules():
+
+            if not isinstance(module, ModuleWithPrior):
+                continue
+
+            for name, prior in module.priors.items():
+                # FIXME: Hardcoded af
+
+                if not isinstance(prior, KnownPrecisionNormalPrior):
+                    continue
+
+                parameter = getattr(module, name)
+                alpha = 1.0 + parameter.numel() / 2
+                beta = 1.0 + parameter.square().sum() / 2
+                new_precision = Gamma(alpha, beta).sample()
+                prior.precision.copy_(new_precision)
 
     @torch.no_grad()
     def validation_step(self, batch, batch_idx):
@@ -253,126 +218,14 @@ class BayesianClassifier(pl.LightningModule, HyperparameterMixin):
         self._skip_val = True
 
 
-    
-class MAPClassifier(pl.LightningModule):
+if __name__ == "__main__":
 
-    def __init__(self, model):
-        super().__init__()
-        self.model = model
+    model = MLPClassifier()
+    sampler = StochasticGradientHamiltonian()
+    sample_container = FIFOSampleContainer(max_items=750, keep_every=1)
+    inference = MCMCInference(model, sampler, sample_container, burn_in=50)
+    datamodule = MNISTDataModule(500)
 
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters())
+    inference._precision_gibbs_step()
 
-    def training_step(self, batch, batch_idx):
-        x, y = batch
-        sampling_fraction = len(x) / len(self.trainer.train_dataloader.dataset)
-        loss = -self.model.log_likelihood(x, y).sum() / sampling_fraction - self.model.log_prior()
-        # TODO: scale likelihood?
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self.model(x).argmax(-1)
-        self.log("val_err", 1 - FM.accuracy(y_hat, y), prog_bar=True)
-
-    def configure_optimizers(self):
-        return torch.optim.SGD(self.model.parameters(), lr=0.2e-5, momentum=0.99)
-
-
-# class BayesianRegressor(pl.LightningModule, HyperparameterMixin):
-
-#     burn_in: HPARAM[int]
-#     keep_samples: HPARAM[int]
-#     use_every: HPARAM[int]
-
-#     def __init__(
-#         self,
-#         model: BayesianModel,
-#         sampler: Sampler,
-#         burn_in=100,
-#         keep_samples=50,
-#         use_every=50,
-#     ):
-
-#         super().__init__()
-
-#         self.burn_in = burn_in
-#         self.keep_samples = keep_samples
-#         self.use_every = use_every
-
-#         self.model = model
-#         self.sampler = sampler
-
-#         self.automatic_optimization = False
-
-#         self.save_hyperparameters(self.get_hparams())
-#         self.save_hyperparameters(self.model.get_hparams())
-#         self.save_hyperparameters({"sampler": self.sampler.tag})
-#         self.save_hyperparameters(self.sampler.get_hparams())
-
-#         self.samples_ = []
-
-#     def configure_optimizers(self):
-#         return None
-
-#     def setup(self, stage) -> None:
-
-#         self.sampler.setup(self.model)
-#         if not self.sampler.is_batched:
-#             self.trainer.datamodule.batch_size = None
-
-#     def training_step(self, batch, batch_idx):
-
-#         x, y = batch
-#         sample = self.sampler.next_sample(x, y)
-
-#         if self.global_step < self.burn_in:
-#             # Burn in sample
-#             return 
-
-#         if (self.burn_in + self.global_step) % self.use_every != 0:
-#             # Thin sample
-#             return None
-
-#         if len(self.samples_) == self.keep_samples:
-#             # Discard oldest sample
-#             del self.samples_[0]
-
-#         self.samples_.append(sample)
-
-#     def validation_step(self, batch, batch_idx):
-
-#         if (
-#             len(self.samples_) == 0
-#             or (self.burn_in + self.global_step) % self.use_every != 0
-#         ):
-#             return
-
-#         with torch.no_grad():
-
-#             x, y = batch
-#             pred_samples = []
-#             for sample in self.samples_:
-#                 self.model.flat_params = sample
-#                 pred_samples.append(self.model.forward(x))
-
-#             y_hat = torch.stack(pred_samples).mean(0)
-
-#             self.log("loss/val_mse", torch.nn.functional.mse_loss(y_hat, y))
-
-#     # def sample_df(self):
-
-#     #     tmp = []
-#     #     for sample in self.samples_:
-#     #         tmp.append({})
-#     #         for name, param in sample.items():
-#     #             tmp[-1].update(
-#     #                 {
-#     #                     f"{name}.{i}": value.item()
-#     #                     for i, value in enumerate(param.flatten())
-#     #                 }
-#     #             )
-
-#     #     return pd.DataFrame(tmp)
-
-
+    Trainer(max_epochs=800).fit(inference, datamodule)

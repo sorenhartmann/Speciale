@@ -1,4 +1,4 @@
-from src.utils import SequentialBuilder
+from src.utils import SequentialBuilder, register_component
 import torch
 import torch.nn as nn
 from .base import Model, ClassifierMixin
@@ -30,5 +30,6 @@ class MLPModel(Model):
         x = x.flatten(-2, -1)
         return self.ffnn(x)
 
+@register_component("mlp_classifier")
 class MLPClassifier(ClassifierMixin, MLPModel):
     ...

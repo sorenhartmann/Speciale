@@ -1,6 +1,6 @@
 from src.inference.base import InferenceModule
 from src.inference.probabilistic import to_probabilistic_model_
-from src.utils import ParameterView_
+from src.utils import ParameterView_, register_component
 from src.models.base import Model
 import torch
 from torch.distributions import Normal
@@ -17,10 +17,11 @@ def bufferize_parameters_(module):
         del module._parameters[name]
         module.register_buffer(name, buffer)
 
-
+@register_component("vi")
 class VariationalInference(InferenceModule):
 
-    def __init__(self, model: Model, lr: float = 1e-3, n_samples=10):
+    # TODO: specifiy prior
+    def __init__(self, model: Model, lr: float = 1e-3, n_samples=10, prior=None):
 
         super().__init__()
 
@@ -71,12 +72,6 @@ class VariationalInference(InferenceModule):
         self.log("elbo/train", elbo, prog_bar=True, on_epoch=True, on_step=False)
 
         return elbo
-
-        # opt = self.optimizers()
-        # opt.zero_grad()
-        # self.manual_backward(elbo)
-
-        # opt.step()
 
     def on_after_backward(self) -> None:
 

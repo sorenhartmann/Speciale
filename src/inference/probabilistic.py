@@ -6,14 +6,16 @@ class Prior(nn.Module):
 
 class KnownPrecisionNormalPrior(Prior):
 
-    def __init__(self, precision=0.1, mean=0., mask_parameters=None):
+    def __init__(self, precision=10., mean=0., mask_parameters=None):
 
         super().__init__()
+
         self.register_buffer("precision", torch.tensor(precision))
         self.register_buffer("mean", torch.tensor(mean))
 
     def log_prob(self, parameter):
         return(Normal(self.mean, 1. / self.precision.sqrt()).log_prob(parameter))
+        
 
 _DEFAULT_PRIORS = {
     nn.Linear : {

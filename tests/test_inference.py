@@ -1,10 +1,11 @@
-
 import pytest
+from src.inference.mcmc import MCMCInference
 from src.inference.sgd import SGDInference
 from src.inference.vi import VariationalInference
 from pytorch_lightning import Trainer
 import torch
 import copy
+
 
 def dict_equal(dict_a, dict_b):
 
@@ -20,8 +21,11 @@ def dict_equal(dict_a, dict_b):
 
     return True
 
-@pytest.mark.parametrize("inference_cls", [SGDInference, VariationalInference])
-def test_inference_class(datamodule, classifier, inference_cls):
+
+@pytest.mark.parametrize(
+    "inference_cls", [SGDInference, VariationalInference, MCMCInference]
+)
+def test_fast_dev_run(datamodule, classifier, inference_cls):
 
     inference = inference_cls(classifier)
     a_state = copy.deepcopy(inference.state_dict())

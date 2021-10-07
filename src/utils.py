@@ -1,7 +1,7 @@
 import inspect
 import typing
 from functools import wraps
-from typing import Generic, List, TypeVar
+from typing import Callable, Generic, List, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -236,6 +236,10 @@ class ParameterView_:
         if slice_.start is None and slice_.stop is None and slice_.step is None:
             state_dict = self._unflatten(value)
             for name, parameter in self.named_attributes():
+
+            #     if parameter.requires_grad:
+            #         parameter.copy_(state_dict[name])
+            # else:
                 parameter.detach_()
                 parameter.copy_(state_dict[name])
         else:
@@ -253,3 +257,19 @@ class ParameterView_:
         }
 
 
+class RegisteredComponents:
+
+    components = {}
+
+    @classmethod
+    def register_component(cls, module_cls: type, name : str):
+        cls.components[name] = module_cls
+
+
+from functools import wraps
+def register_component(name : str):
+    def decorator(module_cls):
+        RegisteredComponents.components[name] = module_cls
+        return module_cls
+
+    return decorator
