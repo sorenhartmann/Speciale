@@ -1,9 +1,7 @@
 from pathlib import Path
-from typing import Any, Tuple
 
 import pytorch_lightning as pl
 import torch
-from PIL import Image
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from torchvision.datasets import CIFAR10

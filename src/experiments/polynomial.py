@@ -1,15 +1,9 @@
-import datetime
-import os
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import seaborn as sns
 import torch
 from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.loggers import CSVLogger
 
 from src.data.polynomial import PolynomialDataModule
 from src.experiments.common import (ExperimentHandler, FlatCSVLogger, Run,
@@ -94,7 +88,6 @@ def plot_posterior_samples(run=None, ax=None):
 
     plt.show()
 
-    pass
 
 
 def main():

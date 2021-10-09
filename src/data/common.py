@@ -1,7 +1,7 @@
 from typing import Literal, Union
 
 import torch
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 
 
 class AllSampler(torch.utils.data.Sampler):

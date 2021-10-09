@@ -2,7 +2,6 @@ from typing import Any, Tuple
 
 import pytorch_lightning as pl
 import torch
-from PIL import Image
 from torch.utils.data import DataLoader, random_split
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor

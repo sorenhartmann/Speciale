@@ -1,7 +1,6 @@
 import torch.optim
 
 from src.models.base import Model
-from src.utils import register_component
 
 from .base import InferenceModule
 

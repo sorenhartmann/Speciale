@@ -1,7 +1,6 @@
 import hydra
 import torch
 from hydra.utils import instantiate
-from pytorch_lightning import Trainer
 
 from src.data.mnist import MNISTDataModule
 

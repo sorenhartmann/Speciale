@@ -4,11 +4,10 @@ from math import exp, pi
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import torch
 from scipy.special import iv
 
-from src.experiments.common import ROOT_DIR, ExperimentHandler, Run
+from src.experiments.common import ExperimentHandler, Run
 from src.samplers import (Hamiltonian, HamiltonianNoMH, Samplable,
                           StochasticGradientHamiltonian)
 

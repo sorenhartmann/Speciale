@@ -1,15 +1,7 @@
-import argparse
-import inspect
-import typing
 from abc import ABC, abstractmethod, abstractproperty
-from typing import (Any, Container, Dict, Generator, Generic, Type, TypeVar,
-                    Union)
 
 import torch
 from torch.distributions import Normal
-from torch.functional import Tensor
-from torch.utils.data import DataLoader
-from torch.utils.data.dataset import Dataset
 
 
 @torch.no_grad()
@@ -192,7 +184,6 @@ class StochasticGradientHamiltonian(Hamiltonian):
             - self.alpha * self.nu
             + torch.randn_like(self.nu) * self.err_std
         )
-        pass
 
     def next_sample(self, return_sample=True):
 

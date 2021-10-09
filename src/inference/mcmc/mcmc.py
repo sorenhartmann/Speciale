@@ -1,27 +1,14 @@
-import math
 from contextlib import contextmanager
-from functools import cached_property
-from itertools import accumulate
-from typing import List
 
-import pytorch_lightning as pl
 import torch
 import torchmetrics.functional
-import torchmetrics.functional as FM
-from pytorch_lightning import Trainer
-from torch._C import NoneType
 from torch.distributions import Gamma
-from torchviz import make_dot
 
-from src.data.mnist import MNISTDataModule
 from src.inference.base import InferenceModule
 from src.inference.mcmc.sample_containers import FIFOSampleContainer
-from src.inference.mcmc.samplers import (Samplable, Sampler,
-                                         StochasticGradientHamiltonian)
+from src.inference.mcmc.samplers import (Samplable, StochasticGradientHamiltonian)
 from src.inference.probabilistic import (KnownPrecisionNormalPrior,
-                                         ModuleWithPrior, ProbabilisticModel,
-                                         to_probabilistic_model_)
-from src.models.base import Model
+                                         ModuleWithPrior, to_probabilistic_model_)
 from src.models.mlp import MLPClassifier
 from src.utils import ParameterView_
 

@@ -1,6 +1,4 @@
-import webbrowser
 from pathlib import Path
-from threading import Timer
 
 from tensorboard import program
 
