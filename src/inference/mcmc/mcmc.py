@@ -6,32 +6,26 @@ from typing import List
 
 import pytorch_lightning as pl
 import torch
-from torch._C import NoneType
 import torchmetrics.functional
 import torchmetrics.functional as FM
-from torch.distributions import Gamma
-from src.inference.mcmc.samplers import (
-    Samplable,
-    Sampler,
-    StochasticGradientHamiltonian,
-)
-from src.inference.mcmc.sample_containers import FIFOSampleContainer
-from src.inference.base import InferenceModule
-from src.inference.probabilistic import (
-    KnownPrecisionNormalPrior,
-    ModuleWithPrior,
-    ProbabilisticModel,
-    to_probabilistic_model_,
-)
-from src.utils import Component, ParameterView_, RegisteredComponents, register_component
-
-from src.models.mlp import MLPClassifier
-from src.models.base import Model
 from pytorch_lightning import Trainer
-from src.data.mnist import MNISTDataModule
-
-
+from torch._C import NoneType
+from torch.distributions import Gamma
 from torchviz import make_dot
+
+from src.data.mnist import MNISTDataModule
+from src.inference.base import InferenceModule
+from src.inference.mcmc.sample_containers import FIFOSampleContainer
+from src.inference.mcmc.samplers import (Samplable, Sampler,
+                                         StochasticGradientHamiltonian)
+from src.inference.probabilistic import (KnownPrecisionNormalPrior,
+                                         ModuleWithPrior, ProbabilisticModel,
+                                         to_probabilistic_model_)
+from src.models.base import Model
+from src.models.mlp import MLPClassifier
+from src.utils import ParameterView_
+
+
 class ParameterPosterior(Samplable):
     """Posterior of model parameters given observations"""
 
@@ -91,15 +85,8 @@ class ParameterPosterior(Samplable):
             },
             strict=False,
         )
-from src.utils import HPARAM
 
-@register_component("mcmc")
 class MCMCInference(InferenceModule):
-
-    model : HPARAM[Component]
-    sampler : HPARAM[Component]
-    sample_container : HPARAM[Component]
-    burn_in : HPARAM[int]
 
     def __init__(self, model, sampler=None, sample_container=None, burn_in=0):
 

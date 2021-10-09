@@ -1,8 +1,9 @@
-from torch.utils.data import Dataset
-import requests
 from pathlib import Path
+
 import pandas as pd
+import requests
 import torch
+from torch.utils.data import Dataset
 
 data_dir = Path(__file__).parents[2] / "data"
 

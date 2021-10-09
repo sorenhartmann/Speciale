@@ -1,20 +1,19 @@
-import torch.nn as nn
-from torch.distributions import Normal
+from typing import List
 
 import torch
 import torch.nn as nn
-from src.models.base import Model
+from torch.distributions import Normal
 from torch.distributions.normal import Normal
-from typing import List
-from src.utils import HPARAM
+
+from src.models.base import Model
+
 
 class Prior(nn.Module):
     ...
 
 class KnownPrecisionNormalPrior(Prior):
 
-    precision : HPARAM[float]
-    mean : HPARAM[float]
+
 
     def __init__(self, precision=10., mean=0.):
 

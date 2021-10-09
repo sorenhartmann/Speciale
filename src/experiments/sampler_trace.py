@@ -1,18 +1,17 @@
 from functools import wraps
 from inspect import trace
 from typing import List
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import torch
+
 from src.experiments.common import ExperimentHandler
 from src.experiments.synthetic import Example
-from src.samplers import (
-    Hamiltonian,
-    StochasticGradientHamiltonian,
-    Sampler,
-)
-import seaborn as sns
+from src.samplers import Hamiltonian, Sampler, StochasticGradientHamiltonian
+
 
 class StateSpaceTracer:
 
@@ -226,9 +225,7 @@ def plot_traces(run, ax=None):
 def main():
 
     handler = ExperimentHandler(experiment)
-    # handler.run(step_size=0.1)
-    # handler.run(step_size=0.05)
-    # handler.run(step_size=0.025)
+    
     latest_run = handler.latest_run()
     plot_traces(latest_run)
 

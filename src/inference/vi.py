@@ -1,13 +1,14 @@
-from src.inference.base import InferenceModule
-from src.inference.probabilistic import to_probabilistic_model_
-from src.utils import HPARAM, Component, ParameterView_, register_component
-from src.models.base import Model
 import torch
+from pytorch_lightning import Trainer
 from torch.distributions import Normal
 
-from src.models.mlp import MLPClassifier
-from pytorch_lightning import Trainer
 from src.data.mnist import MNISTDataModule
+from src.inference.base import InferenceModule
+from src.inference.probabilistic import to_probabilistic_model_
+from src.models.base import Model
+from src.models.mlp import MLPClassifier
+from src.utils import ParameterView_
+
 
 def bufferize_parameters_(module):
     parameter_names = [n for n, _ in module.named_parameters(recurse=False)]
@@ -16,12 +17,8 @@ def bufferize_parameters_(module):
         del module._parameters[name]
         module.register_buffer(name, buffer)
 
-@register_component("vi")
 class VariationalInference(InferenceModule):
 
-    model : HPARAM[Component]
-    lr : HPARAM[float]
-    n_samples : HPARAM[int]
 
     # TODO: specifiy prior
     def __init__(self, model: Model, lr: float = 1e-3, n_samples=10, prior=None):

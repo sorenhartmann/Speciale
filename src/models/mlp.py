@@ -1,12 +1,15 @@
 from typing import List
-from src.utils import SequentialBuilder, register_component, HPARAM
+
 import torch
 import torch.nn as nn
-from .base import Model, ClassifierMixin
+
+from src.utils import SequentialBuilder
+
+from .base import ClassifierMixin, Model
+
 
 class MLPModel(Model):
 
-    hidden_layers : HPARAM[List[int]]
 
     def __init__(
         self,
@@ -32,6 +35,5 @@ class MLPModel(Model):
         x = x.flatten(-2, -1)
         return self.ffnn(x)
 
-@register_component("mlp_classifier")
 class MLPClassifier(ClassifierMixin, MLPModel):
     ...

@@ -1,15 +1,14 @@
 import inspect
+import math
 import typing
 from functools import wraps
+from itertools import accumulate, tee
 from typing import Callable, Generic, List, TypeVar
 
 import numpy as np
 import pandas as pd
-from itertools import tee, accumulate
-
-import torch.nn as nn
-import math
 import torch
+import torch.nn as nn
 
 
 def pairwise(iterable):
@@ -19,15 +18,16 @@ def pairwise(iterable):
     return zip(a, b)
 
 
-T = TypeVar("T")
+# T = TypeVar("T")
 
-class Component:
-    pass
+# class Component:
+#     pass
 
-class HPARAM(Generic[T]):
-    pass
+# class HPARAM(Generic[T]):
+#     pass
 
 import torch
+
 
 def _get_item(value):
     if isinstance(value, torch.Tensor):
@@ -268,6 +268,8 @@ class RegisteredComponents:
         cls.components[name] = module_cls
 
 from functools import wraps
+
+
 def register_component(name : str):
     def decorator(module_cls):
         RegisteredComponents.components[name] = module_cls

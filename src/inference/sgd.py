@@ -1,9 +1,11 @@
-from .base import InferenceModule
-from src.models.base import Model
 import torch.optim
+
+from src.models.base import Model
 from src.utils import register_component
 
-@register_component("sgd")
+from .base import InferenceModule
+
+
 class SGDInference(InferenceModule):
 
     def __init__(self, model : Model, lr: float=1e-3):

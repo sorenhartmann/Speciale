@@ -1,10 +1,12 @@
+from typing import Any, Tuple
+
 import pytorch_lightning as pl
 import torch
-from torchvision.transforms import ToTensor
-from torchvision.datasets import MNIST
 from PIL import Image
-from typing import Tuple, Any
 from torch.utils.data import DataLoader, random_split
+from torchvision.datasets import MNIST
+from torchvision.transforms import ToTensor
+
 
 class MNIST(MNIST):
 

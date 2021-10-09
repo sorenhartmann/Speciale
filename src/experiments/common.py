@@ -1,7 +1,3 @@
-import argparse
-import contextlib
-import datetime
-import inspect
 import os
 import pickle
 import re
@@ -15,8 +11,10 @@ from typing import Any, Dict, Optional, Type, Union
 import pandas as pd
 import torch
 import yaml
+from omegaconf import Container, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.core.saving import save_hparams_to_yaml
 from pytorch_lightning.loggers.base import (LightningLoggerBase,
                                             rank_zero_experiment)
 from pytorch_lightning.loggers.csv_logs import ExperimentWriter
@@ -24,156 +22,14 @@ from pytorch_lightning.utilities import (_OMEGACONF_AVAILABLE, rank_zero_only,
                                          rank_zero_warn)
 from pytorch_lightning.utilities.cloud_io import get_filesystem
 from pytorch_lightning.utilities.distributed import rank_zero_only
+from src.inference.probabilistic import ProbabilisticModel
+# from src.utils import Component, HPARAM
+from src.models.base import Model
 from src.utils import RegisteredComponents
 from torch.utils.tensorboard import SummaryWriter
-
-if _OMEGACONF_AVAILABLE:
-    from omegaconf import Container, OmegaConf  # type: ignore
-
-import logging
-
-from pytorch_lightning.core.saving import save_hparams_to_yaml
-from src.inference.probabilistic import ProbabilisticModel
-from src.utils import Component, HPARAM
-from src.models.base import Model
 from torch.utils.tensorboard.summary import hparams
 
-log = logging.getLogger(__name__)
-
-
 ROOT_DIR = Path(__file__).parents[2]
-
-
-
-# def get_args(model_cls: Type[ProbabilisticModel], inference_cls: Type[BayesianClassifier]):
-
-#     parser = argparse.ArgumentParser()
-
-#     # Batch size (for batched inference only)
-#     parser.add_argument("--batch_size", type=int, default=8)
-
-#     # Sampler and sampler args
-#     parser.add_argument(
-#         "--sampler",
-#         action=GetSampler,
-#         default=GetSampler.default,
-#         choices=GetSampler.samplers.keys(),
-#     )
-#     known_args, _ = parser.parse_known_args()
-#     parser = known_args.sampler.add_argparse_args(parser)
-
-#     # Model specific args
-#     parser = model_cls.add_argparse_args(parser)
-
-#     # Inference specific args
-#     parser = inference_cls.add_argparse_args(parser)
-
-#     # Training specific args
-#     parser = Trainer.add_argparse_args(parser)
-
-#     # Parse and return
-#     args = parser.parse_args()
-#     return args
-
-_idx_match = re.compile("run_(\\d+)").match
-
-@contextlib.contextmanager
-def working_directory(path):
-    """Changes working directory and returns to previous on exit."""
-    prev_cwd = Path.cwd()
-    os.chdir(path)
-    try:
-        yield
-    finally:
-        os.chdir(prev_cwd)
-
-EXP_DIR = ROOT_DIR / "experiment_results" 
-
-class Run:
-
-    def __init__(self, run_dir=None, experiment_name=None, run_id=None):
-        
-        if run_dir is not None:
-            self.dir = Path(run_dir)
-        elif experiment_name is not None and run_id is not None:
-            self.dir = EXP_DIR / experiment_name / f"run_{run_id}"
-        else:
-            raise FileNotFoundError
-
-        assert self.dir.exists()
-        
-    @property
-    def metrics(self) -> pd.DataFrame:
-        return (
-            pd.read_csv(self.dir / "metrics.csv")
-            .groupby(["epoch", "step"])
-            .agg(lambda x: x.loc[x.first_valid_index()])
-        )
-
-    @property
-    def hparams(self) -> Dict[str, Any]:
-        with open(self.dir / "hparams.yaml") as f:
-            hparams = yaml.load(f)
-        return hparams
-
-    @property
-    def result(self) -> Any:
-        with open(self.dir / "results.pkl", "rb") as f:
-            result = pickle.load(f)
-        return result
-
-class ExperimentHandler:
-
-    HPARAM_FILE = "hparams.yaml"
-    RESULTS_FILE = "results.pkl"
-
-    def __init__(self, experiment : Callable[..., Optional[pd.DataFrame]]):
-
-        self.experiment = experiment
-
-        self.name = Path(inspect.getfile(experiment)).stem
-        self.dir = EXP_DIR / self.name
-        self.dir.mkdir(exist_ok=True)
-        self.conf = None
-
-    def run_dirs(self):
-        return [dir_ for dir_ in self.dir.iterdir() if _idx_match(dir_.name)]
-
-    def run(self, **experiment_kwargs):
-
-        run_dirs = self.run_dirs()
-
-        if len(run_dirs) == 0:
-            run_id = 1
-        else:
-            run_id = max(int(_idx_match(dir_.name).group(1)) for dir_ in run_dirs) + 1
-
-        run_dir = self.dir / f"run_{run_id}"
-        run_dir.mkdir()
-
-        with working_directory(run_dir):
-            results = self.experiment(**experiment_kwargs)
-
-        if results is not None:
-            with open(run_dir / self.RESULTS_FILE, "wb") as f:
-                pickle.dump(results, f)
-
-        if not Path(run_dir / self.HPARAM_FILE).exists():
-            signature = inspect.signature(self.experiment)
-            hparams = {name : p.default for name, p in signature.parameters.items()}
-            hparams.update(experiment_kwargs)
-            with open(run_dir / self.HPARAM_FILE, "w") as f:
-                yaml.dump(hparams, f)
-
-    def latest_run(self):
-
-        run_dirs = sorted(self.run_dirs())
-        latest_run_dir = run_dirs[-1]
-        return Run(latest_run_dir)
-
-    def runs(self):
-        pass
-
 
 class FlatCSVLogger(LightningLoggerBase):
 
@@ -395,3 +251,7 @@ class FlatTensorBoardLogger(LightningLoggerBase):
         pass
 
 
+
+def default_callbacks():
+    
+    return [ModelCheckpoint("./checkpoints")]

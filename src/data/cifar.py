@@ -1,12 +1,12 @@
+from pathlib import Path
+from typing import Any, Tuple
+
 import pytorch_lightning as pl
 import torch
+from PIL import Image
+from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
-from PIL import Image
-from typing import Tuple, Any
-from torch.utils.data import DataLoader, random_split
-
-from pathlib import Path
 
 ROOT_DIR = Path(__file__).parents[2]
 

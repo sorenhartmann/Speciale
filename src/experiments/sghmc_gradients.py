@@ -1,18 +1,15 @@
-from pytorch_lightning import Callback, Trainer
-from pytorch_lightning import callbacks
+from pathlib import Path
+
+import torch
+from pytorch_lightning import Callback, Trainer, callbacks
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
+
 from src.data.mnist import MNISTDataModule
+from src.experiments.common import (ExperimentHandler, FlatTensorBoardLogger,
+                                    working_directory)
 from src.inference import BayesianClassifier
-from src.models.mnist import MNISTModel
-from src.samplers import StochasticGradientHamiltonian
-from src.experiments.common import (
-    ExperimentHandler,
-    FlatTensorBoardLogger,
-    working_directory,
-)
-import torch
-from pathlib import Path
+
 
 class LogGradientVariance(Callback):
 

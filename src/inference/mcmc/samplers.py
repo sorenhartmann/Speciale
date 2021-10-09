@@ -1,15 +1,16 @@
-from abc import ABC, abstractmethod, abstractproperty
 import argparse
-
-from torch.functional import Tensor
-from src.utils import HPARAM, register_component
+import inspect
 import typing
-from torch.utils.data.dataset import Dataset
-from typing import Dict, Generator, Generic, Type, TypeVar, Union, Any, Container
+from abc import ABC, abstractmethod, abstractproperty
+from typing import (Any, Container, Dict, Generator, Generic, Type, TypeVar,
+                    Union)
+
 import torch
 from torch.distributions import Normal
+from torch.functional import Tensor
 from torch.utils.data import DataLoader
-import inspect
+from torch.utils.data.dataset import Dataset
+
 
 @torch.no_grad()
 def clone_parameters(model):
@@ -157,12 +158,9 @@ class HamiltonianNoMH(Hamiltonian):
         return self.samplable.state.clone()
 
 
-@register_component("sghmc")
 class StochasticGradientHamiltonian(Hamiltonian):
 
-    lr : HPARAM[float]
-    alpha : HPARAM[float]
-    beta : HPARAM[float]
+
 
     is_batched = True
 

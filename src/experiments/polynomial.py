@@ -1,23 +1,21 @@
 import datetime
+import os
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 import torch
-from pytorch_lightning import Trainer, Callback
-from pytorch_lightning.loggers import CSVLogger
+from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import CSVLogger
+
 from src.data.polynomial import PolynomialDataModule
-from src.experiments.common import (
-    ExperimentHandler,
-    FlatCSVLogger,
-    get_args,
-    Run,
-)
+from src.experiments.common import (ExperimentHandler, FlatCSVLogger, Run,
+                                    get_args)
 from src.inference import BayesianRegressor
 from src.models.polynomial import PolynomialModel
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass
-import os
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 
 class LogPosteriorSamples(Callback):

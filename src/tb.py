@@ -1,7 +1,9 @@
-from tensorboard import program
+import webbrowser
 from pathlib import Path
 from threading import Timer
-import webbrowser
+
+from tensorboard import program
+
 # tracking_address = log_path # the path of your log file.
 
 if __name__ == "__main__":
