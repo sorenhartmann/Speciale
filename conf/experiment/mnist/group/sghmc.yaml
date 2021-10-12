@@ -1,0 +1,19 @@
+# @package _global_
+
+defaults:
+  - override /inference : mcmc
+  - override /sample_container : all
+
+sampler:
+  lr : 2.0e-07
+inference:
+  burn_in: 50
+
+hydra:
+  sweeper:
+    search_space:
+      'sampler.lr': 
+        type: float
+        low: 1.e-8
+        high: 1.e-4
+        log: True

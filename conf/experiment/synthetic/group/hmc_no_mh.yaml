@@ -1,0 +1,10 @@
+# @package _global_
+
+defaults:
+  - override /sampler: hmc_no_mh
+  - _self_
+
+distribution:
+  grad_noise : 0.
+
+legend: "Standard HMC (no MH)"

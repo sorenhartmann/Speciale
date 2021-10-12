@@ -5,6 +5,7 @@ logger:
   save_dir: "./metrics"
 
 callbacks:
-  _target_: src.experiments.common.default_callbacks
+  - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    dirpath: "./checkpoints"
 
 

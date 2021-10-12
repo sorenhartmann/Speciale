@@ -1,0 +1,2 @@
+_target_: src.inference.mcmc.samplers.MetropolisHastings
+step_size : 0.01

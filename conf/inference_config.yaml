@@ -1,0 +1,7 @@
+defaults:
+  - model: ???
+  - inference : ???
+  - data : ???
+  - trainer : default
+  - hydra : default
+  - _self_

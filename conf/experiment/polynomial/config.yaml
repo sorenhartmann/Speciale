@@ -1,0 +1,14 @@
+# @package _global_
+
+defaults:
+  - /inference_config@_group_
+  - override /model@_group_ : polynomial
+  - override /data@_group_ : sampled_data
+  - override /sample_container@_group_ : all
+  - _self_
+
+trainer:
+  max_epochs: 1000
+
+inference:
+  burn_in: 0

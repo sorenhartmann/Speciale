@@ -1,0 +1,8 @@
+defaults:
+  - hydra : default
+  - sampler: "???"
+  - distribution: "???"
+  - _self_
+
+n_samples: 10000
+plot_distribution: False

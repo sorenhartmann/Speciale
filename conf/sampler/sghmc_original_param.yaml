@@ -1,0 +1,6 @@
+_target_: src.inference.mcmc.samplers.sghmc_original_parameterization
+step_size : 0.1
+B : 0.2
+M : 1
+C : 3
+n_steps: 50

@@ -1,0 +1,8 @@
+_target_ : src.data.sampled_data.SampledData
+model: ${model}
+covariate_model:
+  _target_: torch.distributions.Uniform
+  low: -2.5
+  high: 2.5
+
+batch_size: 8

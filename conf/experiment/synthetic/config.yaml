@@ -1,0 +1,13 @@
+# @package _global_
+
+defaults:
+  - /sampling_config@_group_
+  - group : sghmc
+  - override /distribution: example
+  - _self_
+
+sampler:
+  step_size: 0.1
+  n_steps: 50
+
+n_samples: 80000
