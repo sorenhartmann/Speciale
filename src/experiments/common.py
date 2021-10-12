@@ -241,6 +241,78 @@ class FlatTensorBoardLogger(LightningLoggerBase):
 
 
 
-def default_callbacks():
-    
-    return [ModelCheckpoint("./checkpoints")]
+
+
+
+
+
+import datetime
+from pathlib import Path
+
+import pandas as pd
+
+
+def flatten_config(config):
+    def iter_flat_config(config, prefixes=None):
+        if prefixes is None:
+            prefixes = []
+        for k, v in config.items():
+            if OmegaConf.is_config(v):
+                yield from iter_flat_config(v, prefixes=prefixes+[k])
+            elif k == "_target_":
+                yield "/".join(prefixes), v
+            else:
+                yield "/".join(prefixes + [k]), v
+
+
+    return dict(sorted(list(iter_flat_config(config))))
+from dataclasses import dataclass
+
+EXPERIMENT_PATH = Path(__file__).parents[2] / "experiment_results"
+
+
+
+    # if len(dir_name_split) == 2:
+
+import datetime
+from dataclasses import dataclass, field
+
+from omegaconf import DictConfig
+
+
+@dataclass(init=False, order=True)
+class Run():
+
+    experiment_name : str
+    time: datetime.datetime
+    index : int = None
+    config : DictConfig= field(repr=False, compare=False)
+    path : Path = field(repr=False, compare=False)
+
+    def __init__(self, path):
+
+        self.path = path 
+
+        relative_path = self.path.relative_to(EXPERIMENT_PATH)
+        self.split_subpath = str(relative_path).split("/")
+        split_subpath = self.split_subpath
+        self.experiment_name = split_subpath[0]
+        self.time = datetime.datetime.strptime(
+            "/".join(split_subpath[1:3]), r"%Y-%m-%d/%H-%M-%S"
+            )
+        self.index = int(split_subpath[3]) if len(split_subpath) == 4 else None
+        self.config = OmegaConf.load(self.path / ".hydra" / "config.yaml")
+
+
+class Experiment(): 
+
+    def __init__(self, name):
+
+        self.name = name
+        self.path = EXPERIMENT_PATH / name
+
+    def runs(self):
+        return sorted([Run(dir_.parent) for dir_ in self.path.glob("**/.hydra/")])
+
+    def as_dataframe(self):
+        return pd.DataFrame.from_dict({(x.time, x.index): flatten_config(x.config) | {"path":  x.path} for x in self.runs()}, orient="index")

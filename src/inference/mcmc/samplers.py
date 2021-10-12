@@ -8,8 +8,8 @@ from torch.distributions import Normal
 def clone_parameters(model):
     return {k: x.clone() for k, x in model.named_parameters()}
 
-class Samplable(ABC):
 
+class Samplable(ABC):
     @abstractproperty
     def state(self) -> torch.Tensor:
         pass
@@ -21,6 +21,7 @@ class Samplable(ABC):
     @abstractmethod
     def grad_prop_log_p(self) -> torch.Tensor:
         pass
+
 
 class Sampler(ABC):
 
@@ -37,25 +38,24 @@ class Sampler(ABC):
 
 class MetropolisHastings(Sampler):
 
-
     is_batched = False
 
     def __init__(self, step_size=0.01):
 
         self.step_size = step_size
 
-    def setup(self, model):
+    def setup(self, samplable):
 
-        self.model = model
-        self.state = clone_parameters(model)
+        self.samplable = samplable
         self.log_p = None
 
     @torch.no_grad()
-    def next_sample(self):
+    def next_sample(self, return_sample=True):
 
         if self.log_p is None:
-            self.log_p = self.model.prop_log_p()
+            self.log_p = self.samplable.prop_log_p()
 
+        self.samplable.state
         for param in self.model.parameters():
             param.copy_(Normal(param, self.step_size).sample())
 
@@ -72,10 +72,25 @@ class MetropolisHastings(Sampler):
             return self.state
 
 
-class Hamiltonian(Sampler):
+class HamiltonianMixin:
+    def U(self):
+        return -self.samplable.prop_log_p()
+
+    def grad_U(self):
+        grad = self.samplable.grad_prop_log_p()
+        return -grad
+
+    def H(
+        self,
+    ):
+        return self.U() + self.momentum.square().sum() / 2
+
+
+class Hamiltonian(Sampler, HamiltonianMixin):
     """
     M = I for now...
     """
+
     is_batched = False
 
     def __init__(self, step_size=0.01, n_steps=1) -> None:
@@ -89,16 +104,6 @@ class Hamiltonian(Sampler):
         self.momentum = torch.empty_like(self.samplable.state)
 
         return self
-
-    def U(self):
-        return -self.samplable.prop_log_p()
-
-    def grad_U(self):
-        grad = self.samplable.grad_prop_log_p()
-        return -grad
-
-    def H(self,):
-        return self.U() + self.momentum.square().sum() / 2
 
     def resample_momentum(self):
         self.momentum.normal_()
@@ -137,8 +142,8 @@ class Hamiltonian(Sampler):
             self.samplable.state = initial_state
             return initial_state
 
-class HamiltonianNoMH(Hamiltonian):
 
+class HamiltonianNoMH(Hamiltonian):
     def next_sample(self):
 
         self.resample_momentum()
@@ -150,13 +155,13 @@ class HamiltonianNoMH(Hamiltonian):
         return self.samplable.state.clone()
 
 
-class StochasticGradientHamiltonian(Hamiltonian):
-
-
+class StochasticGradientHamiltonian(Sampler, HamiltonianMixin):
 
     is_batched = True
 
-    def __init__(self, alpha=1e-2, beta=0.0, lr=0.2e-5):
+    def __init__(
+        self, alpha=1e-2, beta=0.0, lr=0.2e-5, n_steps=1, resample_momentum=False
+    ):
 
         self.alpha = torch.tensor(alpha)
         self.beta = torch.tensor(beta)
@@ -164,31 +169,51 @@ class StochasticGradientHamiltonian(Hamiltonian):
 
         self.err_std = torch.sqrt(2 * (self.alpha - self.beta) * self.lr)
 
+        self.n_steps = n_steps
+
+        self.resample_momentum = resample_momentum
+
     def setup(self, samplable: Samplable):
 
         self.samplable = samplable
-        self.nu = torch.empty_like(self.samplable.state)
+        self.nu = torch.zeros_like(self.samplable.state)
+        self.resample_nu()
         return self
 
     def step_parameters(self):
 
-        self.samplable.state = (
-            self.samplable.state + self.nu
-        )
+        self.samplable.state = self.samplable.state + self.nu
+
+    def resample_nu(self):
+        self.nu.normal_(0, self.lr.sqrt())
 
     def step_nu(self):
 
-        self.nu.copy_(
-            self.nu
-            - self.lr * self.grad_U()
+        self.nu.add_(
+            -self.lr * self.grad_U()
             - self.alpha * self.nu
             + torch.randn_like(self.nu) * self.err_std
         )
 
     def next_sample(self, return_sample=True):
 
-        self.step_nu()
-        self.step_parameters()
+        if self.resample_momentum:
+            self.resample_nu()
+
+        for i in range(self.n_steps):
+            self.step_nu()
+            self.step_parameters()
 
         if return_sample:
             return self.samplable.state.clone()
+
+
+def sghmc_original_parameterization(step_size, B, M, C, n_steps=1):
+
+    lr = step_size ** 2 / M
+    alpha = step_size / M * C
+    beta = step_size / M * B
+
+    return StochasticGradientHamiltonian(
+        alpha, beta, lr, n_steps, resample_momentum=True
+    )

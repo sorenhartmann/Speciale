@@ -25,6 +25,9 @@ class Model(nn.Module):
         """Metrics relevant for model"""
         return {}
 
+    def predict(self, x):
+        return self.forward(x)
+
 class ErrorRate(torchmetrics.Accuracy):
 
     def compute(self) -> Tensor:

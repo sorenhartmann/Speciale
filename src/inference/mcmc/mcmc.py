@@ -6,9 +6,11 @@ from torch.distributions import Gamma
 
 from src.inference.base import InferenceModule
 from src.inference.mcmc.sample_containers import FIFOSampleContainer
-from src.inference.mcmc.samplers import (Samplable, StochasticGradientHamiltonian)
+from src.inference.mcmc.samplers import (Samplable,
+                                         StochasticGradientHamiltonian)
 from src.inference.probabilistic import (KnownPrecisionNormalPrior,
-                                         ModuleWithPrior, to_probabilistic_model_)
+                                         ModuleWithPrior,
+                                         to_probabilistic_model_)
 from src.models.mlp import MLPClassifier
 from src.utils import ParameterView_
 
@@ -136,7 +138,7 @@ class MCMCInference(InferenceModule):
             return
 
         # Save sample
-        sample = self.posterior.state.clone()
+        sample = self.posterior.state.clone().detach()
         self.sample_container.append(sample)
         self._skip_val = False
 
@@ -167,7 +169,7 @@ class MCMCInference(InferenceModule):
 
         x, y = batch
 
-        probs_sum = torch.zeros((len(x), 10))
+        pred = 0
 
         for i, sample in self.sample_container.items():
 
@@ -175,18 +177,18 @@ class MCMCInference(InferenceModule):
                 self.val_preds[i] = {}
 
             if batch_idx in self.val_preds[i]:
-                probs = self.val_preds[i][batch_idx]
+                pred += self.val_preds[i][batch_idx]
+
             else:
-                self.posterior.state = sample
-                probs = self.model.forward(x).softmax(-1)
-                self.val_preds[i][batch_idx] = probs
+                self.sampler.samplable.state = sample
+                pred_ = self.model.predict(x)
+                pred += pred_
+                self.val_preds[i][batch_idx] = pred_
 
-            probs_sum += probs
+        pred /= len(self.sample_container)
 
-        preds = (probs_sum / len(self.sample_container)).argmax(-1)
-        self.log(
-            "val_err", 1 - torchmetrics.functional.accuracy(preds, y), prog_bar=True
-        )
+        for name, metric in self.val_metrics.items():
+            self.log(f"{name}/val", metric(pred, y), prog_bar=True)
 
     def validation_epoch_end(self, outputs) -> None:
 

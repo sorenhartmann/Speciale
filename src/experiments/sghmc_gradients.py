@@ -5,7 +5,7 @@ from pytorch_lightning import Callback, Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.data.mnist import MNISTDataModule
-from src.experiments.common import (ExperimentHandler, FlatTensorBoardLogger)
+from src.experiments.common import ExperimentHandler, FlatTensorBoardLogger
 from src.inference import BayesianClassifier
 
 
