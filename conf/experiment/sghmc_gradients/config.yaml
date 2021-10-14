@@ -15,8 +15,7 @@ inference:
   
 
 trainer:
-  max_epochs: 100
-  # limit_val_batches: 0 
+  max_epochs: 800
   callbacks:
     - _target_: src.experiments.sghmc_gradients.LogVarianceEstimates
     - _target_: src.utils.SilenceWarnings
