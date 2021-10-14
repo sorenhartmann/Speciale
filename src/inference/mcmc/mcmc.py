@@ -6,8 +6,7 @@ from torch.distributions import Gamma
 
 from src.inference.base import InferenceModule
 from src.inference.mcmc.sample_containers import FIFOSampleContainer
-from src.inference.mcmc.samplers import (Samplable,
-                                         StochasticGradientHamiltonian)
+from src.inference.mcmc.samplers import SGHMC, Samplable
 from src.inference.probabilistic import (KnownPrecisionNormalPrior,
                                          ModuleWithPrior,
                                          to_probabilistic_model_)
@@ -19,6 +18,8 @@ class ParameterPosterior(Samplable):
     """Posterior of model parameters given observations"""
 
     def __init__(self, model):
+
+        super().__init__()
 
         self.model = model
         self.view = ParameterView_(model)
@@ -82,7 +83,7 @@ class MCMCInference(InferenceModule):
         super().__init__()
 
         if sampler is None:
-            sampler = StochasticGradientHamiltonian()
+            sampler = SGHMC()
 
         if sample_container is None:
             sample_container = FIFOSampleContainer(max_items=10, keep_every=1)

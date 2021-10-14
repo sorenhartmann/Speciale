@@ -4,7 +4,6 @@ import seaborn as sns
 import torch
 
 
-
 @hydra.main("../../conf", "experiment/polynomial/config")
 def experiment(cfg):
 

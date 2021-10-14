@@ -1,12 +1,8 @@
 from abc import ABC, abstractmethod, abstractproperty
+from typing import Optional, Union
 
 import torch
 from torch.distributions import Normal
-
-
-@torch.no_grad()
-def clone_parameters(model):
-    return {k: x.clone() for k, x in model.named_parameters()}
 
 
 class Samplable(ABC):
@@ -86,7 +82,7 @@ class HamiltonianMixin:
         return self.U() + self.momentum.square().sum() / 2
 
 
-class Hamiltonian(Sampler, HamiltonianMixin):
+class HMC(Sampler, HamiltonianMixin):
     """
     M = I for now...
     """
@@ -143,7 +139,7 @@ class Hamiltonian(Sampler, HamiltonianMixin):
             return initial_state
 
 
-class HamiltonianNoMH(Hamiltonian):
+class HMCNoMH(HMC):
     def next_sample(self):
 
         self.resample_momentum()
@@ -155,12 +151,21 @@ class HamiltonianNoMH(Hamiltonian):
         return self.samplable.state.clone()
 
 
-class StochasticGradientHamiltonian(Sampler, HamiltonianMixin):
+import torch
+import torch.nn as nn
+
+
+class SGHMC(Sampler, HamiltonianMixin):
 
     is_batched = True
 
     def __init__(
-        self, alpha=1e-2, beta=0.0, lr=0.2e-5, n_steps=1, resample_momentum=False
+        self,
+        alpha: float = 1e-2,
+        beta: float = 0.0,
+        lr: float = 0.2e-5,
+        n_steps: int = 1,
+        resample_momentum: bool = False,
     ):
 
         self.alpha = torch.tensor(alpha)
@@ -170,7 +175,6 @@ class StochasticGradientHamiltonian(Sampler, HamiltonianMixin):
         self.err_std = torch.sqrt(2 * (self.alpha - self.beta) * self.lr)
 
         self.n_steps = n_steps
-
         self.resample_momentum = resample_momentum
 
     def setup(self, samplable: Samplable):
@@ -178,6 +182,7 @@ class StochasticGradientHamiltonian(Sampler, HamiltonianMixin):
         self.samplable = samplable
         self.nu = torch.zeros_like(self.samplable.state)
         self.resample_nu()
+
         return self
 
     def step_parameters(self):
@@ -185,6 +190,7 @@ class StochasticGradientHamiltonian(Sampler, HamiltonianMixin):
         self.samplable.state = self.samplable.state + self.nu
 
     def resample_nu(self):
+
         self.nu.normal_(0, self.lr.sqrt())
 
     def step_nu(self):
@@ -195,7 +201,7 @@ class StochasticGradientHamiltonian(Sampler, HamiltonianMixin):
             + torch.randn_like(self.nu) * self.err_std
         )
 
-    def next_sample(self, return_sample=True):
+    def next_sample(self, return_sample: bool = True):
 
         if self.resample_momentum:
             self.resample_nu()
@@ -208,12 +214,101 @@ class StochasticGradientHamiltonian(Sampler, HamiltonianMixin):
             return self.samplable.state.clone()
 
 
-def sghmc_original_parameterization(step_size, B, M, C, n_steps=1):
+def sghmc_original_parameterization(
+    step_size: int, B: float, M: float, C: float, n_steps: int = 1
+):
 
     lr = step_size ** 2 / M
     alpha = step_size / M * C
     beta = step_size / M * B
 
-    return StochasticGradientHamiltonian(
-        alpha, beta, lr, n_steps, resample_momentum=True
-    )
+    return SGHMC(alpha, beta, lr, n_steps, resample_momentum=True)
+
+
+class VarianceEstimator(nn.Module):
+
+    def __init__(self, beta_1=0.9, beta_2=0.999, adj_with_mean=False, clamp=False):
+        super().__init__()
+        self.register_buffer("beta_1", torch.tensor(beta_1))
+        self.register_buffer("beta_2", torch.tensor(beta_2))
+
+        self.adj_with_mean = adj_with_mean
+        self.clamp = clamp
+
+    def setup(self, shape):
+        self.register_buffer("mean_est", torch.zeros(shape))
+        self.register_buffer("var_est", torch.zeros(shape))
+        self.t = 0
+        self.beta_1_pow_t = 1.0
+        self.beta_2_pow_t = 1.0
+
+    def update(self, grad: torch.Tensor):
+
+        self.t += 1
+        self.beta_1_pow_t = self.beta_1_pow_t * self.beta_1
+        self.beta_2_pow_t = self.beta_2_pow_t * self.beta_2
+
+        self.mean_est.mul_(self.beta_1)
+        self.mean_est.addcmul_(1 - self.beta_1, grad)
+
+        self.var_est.mul_(self.beta_2)
+        self.var_est.addcmul_(1 - self.beta_2, grad ** 2)
+        
+    def estimate(self) -> torch.Tensor:
+
+        var_bias_corrected = self.var_est / (1 - self.beta_2_pow_t)
+
+        if self.adj_with_mean:
+            mean_bias_corrected = self.mean_est / (1 - self.beta_1_pow_t)
+            var_bias_corrected -= mean_bias_corrected**2
+
+        if self.clamp:
+            var_bias_corrected.clamp_(min=0)
+
+        return var_bias_corrected 
+        # - mean_bias_corrected ** 2
+
+
+class SGHMCWithVarianceEstimator(SGHMC):
+    def __init__(
+        self,
+        alpha: float = 1e-2,
+        lr: float = 0.2e-5,
+        var_estimator: Optional[VarianceEstimator] = None,
+        n_steps: int = 1,
+        resample_momentum: bool = False,
+    ):
+
+        self.alpha = torch.tensor(alpha)
+        self.lr = torch.tensor(lr)
+
+        if var_estimator is None:
+            self.var_estimator = VarianceEstimator()
+        else:
+            self.var_estimator = var_estimator
+
+        self.n_steps = n_steps
+        self.resample_momentum = resample_momentum
+
+    @property
+    def beta(self):
+        var_estimate = self.var_estimator.estimate()
+        return 2 * var_estimate * self.lr
+
+    @property
+    def err_std(self):
+        beta = self.beta
+        beta.clamp_max_(self.alpha / 1.3)
+        return torch.sqrt(2 * (self.alpha - beta) * self.lr)
+
+    def grad_U(self):
+        grad = super().grad_U()
+        self.var_estimator.update(grad)
+        return grad
+
+    def setup(self, samplable: Samplable):
+        super().setup(samplable)
+        self.var_estimator.setup(self.nu.shape)
+        return self
+
+    

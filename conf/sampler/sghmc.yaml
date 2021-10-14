@@ -1,2 +1,2 @@
-_target_: src.inference.mcmc.samplers.StochasticGradientHamiltonian
+_target_: src.inference.mcmc.samplers.SGHMC
 lr: 0.2e-5

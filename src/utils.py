@@ -29,6 +29,7 @@ def _get_item(value):
     else:
         return value
 
+
 # class HyperparameterMixin:
 
 #     @classmethod
@@ -39,7 +40,7 @@ def _get_item(value):
 #         """
 #         Adds w/e HPARAM typed attributes with __init__ defaults to argparser
 #         """
-        
+
 #         init_params = inspect.signature(cls.__init__).parameters
 #         parser = parent_parser.add_argument_group(cls.__name__)
 #         for name, hparam_type in cls.__annotations__.items():
@@ -71,7 +72,6 @@ def _get_item(value):
 #         }
 
 
-
 class SequentialBuilder:
 
     DUMMY_BATCH_SIZE = 1
@@ -95,15 +95,13 @@ class SequentialBuilder:
 
     def out_dim(self, dim):
         return self.out_shape[dim]
-        
+
     def build(self):
         return nn.Sequential(*self.modules)
-    
 
 
 class ParameterView:
-
-    def __init__(self, model : nn.Module):
+    def __init__(self, model: nn.Module):
 
         self.model = model
         self.param_shapes = {k: x.shape for k, x in self.model.named_parameters()}
@@ -122,10 +120,10 @@ class ParameterView:
             raise NotImplementedError
 
     def __setitem__(self, key, value):
-        
+
         if type(key) is slice:
             self._set_slice(key, value)
-    
+
     @property
     @torch.no_grad()
     def flat_grad(self):
@@ -146,7 +144,7 @@ class ParameterView:
                 parameter.copy_(state_dict[name])
         else:
             raise NotImplementedError
-            
+
     def _flatten(self, tensor_iter):
         return torch.cat([x.flatten() for x in tensor_iter])
 
@@ -161,10 +159,10 @@ class ParameterView:
     def apply(self, fnc):
         for param in self.model.parameters():
             fnc(param)
-            
-class ParameterView_:
 
-    def __init__(self, model : nn.Module, parameters=None, buffers=None):
+
+class ParameterView_:
+    def __init__(self, model: nn.Module, parameters=None, buffers=None):
 
         self.model = model
 
@@ -190,13 +188,25 @@ class ParameterView_:
 
     def named_attributes(self):
 
-        yield from ((n, buffer) for n, buffer in self.model.named_buffers() if n in self.buffers)
-        yield from ((n, parameter) for n, parameter in self.model.named_parameters() if n in self.parameters)
+        yield from (
+            (n, buffer) for n, buffer in self.model.named_buffers() if n in self.buffers
+        )
+        yield from (
+            (n, parameter)
+            for n, parameter in self.model.named_parameters()
+            if n in self.parameters
+        )
         # yield from ((n, self.model.get_buffer(n)) for n in self.buffers)
 
     def attributes(self):
-        yield from (buffer for n, buffer in self.model.named_buffers() if n in self.buffers)
-        yield from (parameter for n, parameter in self.model.named_parameters() if n in self.parameters)
+        yield from (
+            buffer for n, buffer in self.model.named_buffers() if n in self.buffers
+        )
+        yield from (
+            parameter
+            for n, parameter in self.model.named_parameters()
+            if n in self.parameters
+        )
         # yield fr
 
     def __getitem__(self, key):
@@ -207,7 +217,7 @@ class ParameterView_:
             raise NotImplementedError
 
     def __setitem__(self, key, value):
-        
+
         if type(key) is slice:
             self._set_slice(key, value)
 
@@ -233,14 +243,14 @@ class ParameterView_:
             state_dict = self._unflatten(value)
             for name, parameter in self.named_attributes():
 
-            #     if parameter.requires_grad:
-            #         parameter.copy_(state_dict[name])
-            # else:
+                #     if parameter.requires_grad:
+                #         parameter.copy_(state_dict[name])
+                # else:
                 parameter.detach_()
                 parameter.copy_(state_dict[name])
         else:
             raise NotImplementedError
-            
+
     def _flatten(self, tensor_iter):
         return torch.cat([x.flatten() for x in tensor_iter])
 
@@ -253,21 +263,15 @@ class ParameterView_:
         }
 
 
-class RegisteredComponents:
+import warnings
 
-    components = {}
+def silence_warnings():
+    warnings.filterwarnings("ignore", "`LightningModule.configure_optimizers` returned `None`")
+    warnings.filterwarnings("ignore", ".+does not have many workers which may be a bottleneck.")
 
-    @classmethod
-    def register_component(cls, module_cls: type, name : str):
-        cls.components[name] = module_cls
+from pytorch_lightning import Callback
 
+class SilenceWarnings(Callback):
 
-
-def register_component(name : str):
-    def decorator(module_cls):
-        RegisteredComponents.components[name] = module_cls
-        return module_cls
-
-    return decorator
-
-
+    def on_init_start(self, trainer):
+        silence_warnings()

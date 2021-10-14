@@ -1,8 +1,8 @@
 # @package _global_
 
 defaults:
-  - /sampling_config@_group_
-  - group : sghmc
+  - /sampling_config
+  - group: sghmc
   - override /distribution: example
   - _self_
 

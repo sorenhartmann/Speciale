@@ -1,0 +1,6 @@
+# @package _global_
+
+sampler:
+  var_estimator:
+    clamp: False
+    adj_with_mean: False

@@ -1,0 +1,23 @@
+# @package _global_
+defaults:
+  - /inference_config@_group_
+  - strategy: raw_estimates
+  - beta: zero
+  - override /model : mlp_classifier
+  - override /inference : mcmc
+  - override /sampler : sghmc_with_grad_est
+  - override /sample_container : all
+  - override /data : mnist
+  - _self_
+
+inference:
+  burn_in: 0
+  
+
+trainer:
+  max_epochs: 100
+  # limit_val_batches: 0 
+  progress_bar_refresh_rate: 0
+  callbacks:
+    - _target_: src.experiments.sghmc_gradients.LogVarianceEstimates
+    - _target_: src.utils.SilenceWarnings

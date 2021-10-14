@@ -20,68 +20,6 @@ from torch.utils.tensorboard.summary import hparams
 
 ROOT_DIR = Path(__file__).parents[2]
 
-class FlatCSVLogger(LightningLoggerBase):
-
-    def __init__(
-        self,
-        save_dir: str,
-    ):
-        super().__init__()
-        self._save_dir = save_dir
-        self._experiment = None
-        self._prefix = ""
-
-    @property
-    def save_dir(self) -> Optional[str]:
-        return self._save_dir
-
-    @property
-    @rank_zero_experiment
-    def experiment(self) -> ExperimentWriter:
-        r"""
-
-        Actual ExperimentWriter object. To use ExperimentWriter features in your
-        :class:`~pytorch_lightning.core.lightning.LightningModule` do the following.
-
-        Example::
-
-            self.logger.experiment.some_experiment_writer_function()
-
-        """
-        if self._experiment:
-            return self._experiment
-
-        os.makedirs(self.save_dir, exist_ok=True)
-        self._experiment = ExperimentWriter(log_dir=self.save_dir)
-        return self._experiment
-
-    @rank_zero_only
-    def log_hyperparams(self, params: Union[Dict[str, Any], Namespace]) -> None:
-        params = self._convert_params(params)
-        self.experiment.log_hparams(params)
-
-    @rank_zero_only
-    def log_metrics(self, metrics: Dict[str, float], step: Optional[int] = None) -> None:
-        metrics = self._add_prefix(metrics)
-        self.experiment.log_metrics(metrics, step)
-
-    @rank_zero_only
-    def save(self) -> None:
-        super().save()
-        self.experiment.save()
-
-    @rank_zero_only
-    def finalize(self, status: str) -> None:
-        self.save()
-
-    @property
-    def name(self):
-        pass
-
-    @property
-    def version(self):
-        pass
-
 
 class FlatTensorBoardLogger(LightningLoggerBase):
 
@@ -316,3 +254,67 @@ class Experiment():
 
     def as_dataframe(self):
         return pd.DataFrame.from_dict({(x.time, x.index): flatten_config(x.config) | {"path":  x.path} for x in self.runs()}, orient="index")
+
+
+# class FlatCSVLogger(LightningLoggerBase):
+
+#     def __init__(
+#         self,
+#         save_dir: str,
+#     ):
+#         super().__init__()
+#         self._save_dir = save_dir
+#         self._experiment = None
+#         self._prefix = ""
+
+#     @property
+#     def save_dir(self) -> Optional[str]:
+#         return self._save_dir
+
+#     @property
+#     @rank_zero_experiment
+#     def experiment(self) -> ExperimentWriter:
+#         r"""
+
+#         Actual ExperimentWriter object. To use ExperimentWriter features in your
+#         :class:`~pytorch_lightning.core.lightning.LightningModule` do the following.
+
+#         Example::
+
+#             self.logger.experiment.some_experiment_writer_function()
+
+#         """
+#         if self._experiment:
+#             return self._experiment
+
+#         os.makedirs(self.save_dir, exist_ok=True)
+#         self._experiment = ExperimentWriter(log_dir=self.save_dir)
+#         return self._experiment
+
+#     @rank_zero_only
+#     def log_hyperparams(self, params: Union[Dict[str, Any], Namespace]) -> None:
+#         params = self._convert_params(params)
+#         self.experiment.log_hparams(params)
+
+#     @rank_zero_only
+#     def log_metrics(self, metrics: Dict[str, float], step: Optional[int] = None) -> None:
+#         metrics = self._add_prefix(metrics)
+#         self.experiment.log_metrics(metrics, step)
+
+#     @rank_zero_only
+#     def save(self) -> None:
+#         super().save()
+#         self.experiment.save()
+
+#     @rank_zero_only
+#     def finalize(self, status: str) -> None:
+#         self.save()
+
+#     @property
+#     def name(self):
+#         pass
+
+#     @property
+#     def version(self):
+#         pass
+

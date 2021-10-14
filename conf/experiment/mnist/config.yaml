@@ -1,15 +1,15 @@
 # @package _global_
 defaults:
   - /inference_config@_group_
-  - _self_
-  - group : sghmc
+  - group : sghmc_with_grad_est
   - override /hydra/sweeper: optuna
   - override /data : mnist
   - override /model : mlp_classifier
+  - _self_
   
 trainer:
-  max_epochs: 500
-  progress_bar_refresh_rate: 0
+  max_epochs: 800
+  # progress_bar_refresh_rate: 0
 
 hydra:
   sweeper:

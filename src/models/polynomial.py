@@ -1,12 +1,12 @@
-from typing import List
+from typing import Dict, List
 
 import torch
 import torch.nn as nn
+import torchmetrics
 from torch import Tensor
 
 from src.models.base import Model
-import torchmetrics
-from typing import Dict
+
 
 class PolynomialModel(Model):
     def __init__(self, coeffs: List[float]):
