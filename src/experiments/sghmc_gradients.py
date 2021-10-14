@@ -4,26 +4,33 @@ import seaborn as sns
 import torch
 from hydra.utils import instantiate
 from pytorch_lightning import Callback, Trainer
-
+from pathlib import Path
 from src.inference.mcmc.samplers import VarianceEstimator
 
 
 class ZeroVarianceEstimator(VarianceEstimator):
-
     def estimate(self):
         return torch.tensor(0.0)
 
     def estimate_(self):
         return super().estimate()
 
+
 class LogVarianceEstimates(Callback):
+
+    inter_batch_variance_folder = Path("variance_inter_batch")
+    variance_estimated_folder = Path("variance_estimated")
 
     def _get_estimate(self, estimator):
         if type(estimator) is ZeroVarianceEstimator:
             return estimator.estimate_()
         else:
             return estimator.estimate()
-    
+
+    def on_init_start(self, trainer) -> None:
+
+        self.inter_batch_variance_folder.mkdir()
+        self.variance_estimated_folder.mkdir()
 
     def on_batch_end(self, trainer, pl_module) -> None:
         estimator = pl_module.sampler.var_estimator
@@ -47,32 +54,51 @@ class LogVarianceEstimates(Callback):
             pl_module.log("grad_var/max", variance.max())
             pl_module.log("grad_var/min", variance.min())
 
-            if trainer.current_epoch % 5 == 0:
-                estimate = self._get_estimate(pl_module.sampler.var_estimator)
-                non_zero = variance > 0
+            estimate = self._get_estimate(pl_module.sampler.var_estimator)
 
-                clamp = pl_module.sampler.var_estimator.clamp
-                adj_with_mean = pl_module.sampler.var_estimator.adj_with_mean
+            torch.save(
+                variance,
+                self.inter_batch_variance_folder / f"{trainer.current_epoch:04}.pt",
+            )
+            torch.save(
+                estimate,
+                self.variance_estimated_folder / f"{trainer.current_epoch:04}.pt",
+            )
 
-                sns.relplot(x="Variance", y="Estimate", data={
-                    "Estimate": estimate[non_zero].numpy(),
-                    "Variance": variance[non_zero].numpy()
-                })
-                plt.title(f"{clamp=},{adj_with_mean=}")
-                plt.axline((0, 0), slope=1.0, color="C1")
-                plt.axline(
-                    (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 0), 
-                    (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 1), 
-                    color="C2"
-                    )
-                pl_module.sampler.alpha
-                plt.xscale("log")
-                plt.yscale("log")
+            if trainer.current_epoch % 50 == 0:
+                self.plot_estimates(trainer, pl_module, variance, estimate)
+                
+    def plot_estimates(self, trainer, pl_module, variance, estimate):
 
-                pl_module.logger.experiment.add_figure(
-                    "grad_var_est_comp", plt.gcf(), trainer.current_epoch
-                )
-                plt.close()
+        non_zero = variance > 0
+
+        clamp = pl_module.sampler.var_estimator.clamp
+        adj_with_mean = pl_module.sampler.var_estimator.adj_with_mean
+        use_estimation = isinstance(pl_module.sampler.var_estimator, VarianceEstimator)
+
+        sns.relplot(
+            x="Variance",
+            y="Estimate",
+            data={
+                "Estimate": estimate[non_zero].numpy(),
+                "Variance": variance[non_zero].numpy(),
+            },
+        )
+        plt.title(f"{clamp=},{adj_with_mean=},{use_estimation=}")
+        plt.axline((0, 0), slope=1.0, color="C1")
+        plt.axline(
+            (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 0),
+            (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 1),
+            color="C2",
+        )
+        pl_module.sampler.alpha
+        plt.xscale("log")
+        plt.yscale("log")
+
+        pl_module.logger.experiment.add_figure(
+            "grad_var_est_comp", plt.gcf(), trainer.current_epoch
+        )
+        plt.close()
 
 
 @hydra.main("../../conf", "experiment/sghmc_gradients/config")
@@ -84,7 +110,6 @@ def experiment(cfg):
 
     inference = instantiate(cfg.inference)
     trainer = instantiate(cfg.trainer)
-
 
     trainer.fit(inference, dm)
 
