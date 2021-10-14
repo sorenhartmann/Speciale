@@ -95,3 +95,4 @@ wandb/
 experiment_results/
 
 _old
+/logs
