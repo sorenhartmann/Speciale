@@ -1,10 +1,11 @@
 import hydra
+import matplotlib.pyplot as plt
+import seaborn as sns
 import torch
 from hydra.utils import instantiate
 from pytorch_lightning import Callback, Trainer
+
 from src.inference.mcmc.samplers import VarianceEstimator
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 
 class ZeroVarianceEstimator(VarianceEstimator):
@@ -69,6 +70,7 @@ class LogVarianceEstimates(Callback):
 
 
 import warnings
+
 
 @hydra.main("../../conf", "experiment/sghmc_gradients/config")
 def experiment(cfg):

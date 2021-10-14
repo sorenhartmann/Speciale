@@ -5,7 +5,3 @@ defaults:
   - trainer : default
   - hydra : default
   - _self_
-
-
-warnings:
-  _target_: warnings.filterwarnings

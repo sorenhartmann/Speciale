@@ -2,19 +2,18 @@
 -e .
 
 # external requirements
-sklearn
-ipykernel
-tqdm
-matplotlib
-seaborn
-snakeviz
-
-torch
-torchvision
-pytorch-lightning
-optuna
-optuna-dashboard
-hydra-core
-hydra-joblib-launcher 
-hydra-optuna-sweeper 
-
+torch   
+torchvision   
+pytorch-lightning   
+torchmetrics
+optuna   
+optuna-dashboard   
+tensorboard   
+hydra-core   
+hydra-joblib-launcher    
+hydra-optuna-sweeper    
+tqdm   
+matplotlib  
+seaborn  
+snakeviz  
+ipykernel  

@@ -9,7 +9,7 @@ defaults:
   
 trainer:
   max_epochs: 800
-  # progress_bar_refresh_rate: 0
+  progress_bar_refresh_rate: 0
 
 hydra:
   sweeper:

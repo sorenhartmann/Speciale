@@ -265,11 +265,13 @@ class ParameterView_:
 
 import warnings
 
+
 def silence_warnings():
     warnings.filterwarnings("ignore", "`LightningModule.configure_optimizers` returned `None`")
     warnings.filterwarnings("ignore", ".+does not have many workers which may be a bottleneck.")
 
 from pytorch_lightning import Callback
+
 
 class SilenceWarnings(Callback):
 
