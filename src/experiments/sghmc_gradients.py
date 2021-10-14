@@ -59,7 +59,13 @@ class LogVarianceEstimates(Callback):
                     "Variance": variance[non_zero].numpy()
                 })
                 plt.title(f"{clamp=},{adj_with_mean=}")
-                plt.axline((0, 0), slope=1.0, color="red")
+                plt.axline((0, 0), slope=1.0, color="C1")
+                plt.axline(
+                    (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 0), 
+                    (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 1), 
+                    color="C2"
+                    )
+                pl_module.sampler.alpha
                 plt.xscale("log")
                 plt.yscale("log")
 
@@ -67,9 +73,6 @@ class LogVarianceEstimates(Callback):
                     "grad_var_est_comp", plt.gcf(), trainer.current_epoch
                 )
                 plt.close()
-
-
-import warnings
 
 
 @hydra.main("../../conf", "experiment/sghmc_gradients/config")
@@ -82,9 +85,8 @@ def experiment(cfg):
     inference = instantiate(cfg.inference)
     trainer = instantiate(cfg.trainer)
 
-    with warnings.catch_warnings():
 
-        trainer.fit(inference, dm)
+    trainer.fit(inference, dm)
 
 
 if __name__ == "__main__":
