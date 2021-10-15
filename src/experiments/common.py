@@ -188,13 +188,19 @@ import datetime
 from pathlib import Path
 
 import pandas as pd
-
+from omegaconf import OmegaConf
 
 def flatten_config(config):
     def iter_flat_config(config, prefixes=None):
         if prefixes is None:
             prefixes = []
-        for k, v in config.items():
+
+        if OmegaConf.is_list(config):
+            k_v_iter = ((str(i), x) for i, x in enumerate(config))
+        elif OmegaConf.is_dict(config):
+            k_v_iter = config.items()
+
+        for k, v in k_v_iter:
             if OmegaConf.is_config(v):
                 yield from iter_flat_config(v, prefixes=prefixes+[k])
             elif k == "_target_":
@@ -256,7 +262,12 @@ class Experiment():
         return pd.DataFrame.from_dict({(x.time, x.index): flatten_config(x.config) | {"path":  x.path} for x in self.runs()}, orient="index")
 
 
-# class FlatCSVLogger(LightningLoggerBase):
+    def get_plot_functions(self):
+        raise NotImplementedError
+
+    def latest(self):
+        pass
+    # class FlatCSVLogger(LightningLoggerBase):
 
 #     def __init__(
 #         self,

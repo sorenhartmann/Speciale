@@ -1,0 +1,4 @@
+experiment: sghmc_gradients
+out_path: plots/${experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+run: null
+multirun: 0

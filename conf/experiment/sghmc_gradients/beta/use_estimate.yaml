@@ -1,5 +1,0 @@
-# @package _global_
-
-sampler:
-  var_estimator:
-    _target_: src.inference.mcmc.samplers.VarianceEstimator

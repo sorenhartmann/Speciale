@@ -5,35 +5,62 @@ import torch
 from hydra.utils import instantiate
 from pytorch_lightning import Callback, Trainer
 from pathlib import Path
+from src.experiments.common import Experiment, Run
 from src.inference.mcmc.samplers import VarianceEstimator
 
 
-class ZeroVarianceEstimator(VarianceEstimator):
-    def estimate(self):
-        return torch.tensor(0.0)
+# TODO: Implemeter estimatorer med f.eks. ContantEstimator osv til sammenlignig. Evt med extra flag om man skal bruge estimatet
+#  
 
-    def estimate_(self):
-        return super().estimate()
 
+def plot(func):
+    func.__isplot = True
+    return func
+
+def result(func):
+    func.__isresult = True
+    return func
+
+class VarianceEstimatorWrapper(VarianceEstimator):
+
+    def __init__(self, variance_estimator, use_estimate, constant=0.):
+        
+        super().__init__()
+        self.use_estimate = use_estimate
+        self.constant = torch.tensor(constant)
+        self.variance_estimator = variance_estimator
+
+    def setup(self, shape):
+        self.variance_estimator.setup(shape)
+
+    def update(self, global_step, grad: torch.Tensor):
+        self.variance_estimator.update(global_step, grad)
+
+    def estimate(self) -> torch.Tensor:
+        if self.use_estimate:
+            return self.variance_estimator.estimate()
+        else:
+            return self.constant
 
 class LogVarianceEstimates(Callback):
 
     inter_batch_variance_folder = Path("variance_inter_batch")
     variance_estimated_folder = Path("variance_estimated")
 
-    def _get_estimate(self, estimator):
-        if type(estimator) is ZeroVarianceEstimator:
-            return estimator.estimate_()
-        else:
-            return estimator.estimate()
-
     def on_init_start(self, trainer) -> None:
 
         self.inter_batch_variance_folder.mkdir()
         self.variance_estimated_folder.mkdir()
 
+    def _get_estimate(self, estimator):
+        if type(estimator) is VarianceEstimatorWrapper:
+            return estimator.variance_estimator.estimate()
+        else:
+            return estimator.estimate()
+
     def on_batch_end(self, trainer, pl_module) -> None:
-        estimator = pl_module.sampler.var_estimator
+
+        estimator = pl_module.sampler.variance_estimator
 
         var_est = self._get_estimate(estimator)
 
@@ -54,7 +81,7 @@ class LogVarianceEstimates(Callback):
             pl_module.log("grad_var/max", variance.max())
             pl_module.log("grad_var/min", variance.min())
 
-            estimate = self._get_estimate(pl_module.sampler.var_estimator)
+            estimate = self._get_estimate(pl_module.sampler.variance_estimator)
 
             torch.save(
                 variance,
@@ -65,40 +92,108 @@ class LogVarianceEstimates(Callback):
                 self.variance_estimated_folder / f"{trainer.current_epoch:04}.pt",
             )
 
-            if trainer.current_epoch % 50 == 0:
-                self.plot_estimates(trainer, pl_module, variance, estimate)
-                
-    def plot_estimates(self, trainer, pl_module, variance, estimate):
+            # if trainer.current_epoch % 50 == 0:
+            #     self.plot_estimates(trainer, pl_module, variance, estimate)
 
-        non_zero = variance > 0
+    # def plot_estimates(self, trainer, pl_module, variance, estimate):
 
-        clamp = pl_module.sampler.var_estimator.clamp
-        adj_with_mean = pl_module.sampler.var_estimator.adj_with_mean
-        use_estimation = isinstance(pl_module.sampler.var_estimator, VarianceEstimator)
+    #     non_zero = variance > 0
 
-        sns.relplot(
-            x="Variance",
-            y="Estimate",
-            data={
-                "Estimate": estimate[non_zero].numpy(),
-                "Variance": variance[non_zero].numpy(),
-            },
-        )
-        plt.title(f"{clamp=},{adj_with_mean=},{use_estimation=}")
-        plt.axline((0, 0), slope=1.0, color="C1")
-        plt.axline(
-            (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 0),
-            (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 1),
-            color="C2",
-        )
-        pl_module.sampler.alpha
-        plt.xscale("log")
-        plt.yscale("log")
+    #     clamp = pl_module.sampler.variance_estimator.clamps
+    #     adj_with_mean = pl_module.sampler.variance_estimator.adj_with_mean
+    #     use_estimation = isinstance(pl_module.sampler.variance_estimator, VarianceEstimator)
 
-        pl_module.logger.experiment.add_figure(
-            "grad_var_est_comp", plt.gcf(), trainer.current_epoch
-        )
-        plt.close()
+    #     sns.relplot(
+    #         x="Variance",
+    #         y="Estimate",
+    #         data={
+    #             "Estimate": estimate[non_zero].numpy(),
+    #             "Variance": variance[non_zero].numpy(),
+    #         },
+    #     )
+    #     plt.title(f"{clamp=},{adj_with_mean=},{use_estimation=}")
+    #     plt.axline((0, 0), slope=1.0, color="C1")
+    #     plt.axline(
+    #         (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 0),
+    #         (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 1),
+    #         color="C2",
+    #     )
+    #     pl_module.sampler.alpha
+    #     plt.xscale("log")
+    #     plt.yscale("log")
+
+    #     pl_module.logger.experiment.add_figure(
+    #         "grad_var_est_comp", plt.gcf(), trainer.current_epoch
+    #     )
+    #     plt.close()
+
+
+# Kunne give run/run_collection til functionen her
+@result
+def variance_estimates_sample(cfg):
+
+    experiment = Experiment(cfg.experiment)
+
+    if cfg.run is None:
+        exp_df = experiment.as_dataframe()
+        latest_run_dir = exp_df.loc[lambda x: ~x.path.isna()].iloc[-1].path
+        run = Run(latest_run_dir)
+
+    sample_idx = None
+
+    variance_estimated = []
+    for file in (run.path / "variance_estimated").iterdir():
+        variance_estimated_ = torch.load(file)
+        if sample_idx is None:
+            sample_idx = torch.randint(len(variance_estimated_), (100,))
+        variance_estimated.append(variance_estimated_[sample_idx])
+    variance_estimated = torch.stack(variance_estimated)
+
+    variance_inter_batch = []
+    for file in (run.path / "variance_inter_batch").iterdir():
+        variance_inter_batch_ = torch.load(file)
+        variance_inter_batch.append(variance_inter_batch_[sample_idx])
+    variance_inter_batch = torch.stack(variance_inter_batch)
+
+    return {
+        "variance_inter_batch" : variance_inter_batch,
+        "variance_estimated" : variance_estimated,
+    }
+
+
+@plot
+def plot_estimates(variance_estimates_sample):
+
+    variance_inter_batch = variance_estimates_sample["variance_inter_batch"]
+    variance_estimated = variance_estimates_sample["variance_estimated"]
+    
+    plt.scatter(variance_inter_batch[0], variance_estimated[0])
+    plt.axline((0, 0), slope=1.0, color="C1")
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.savefig("estimates.pdf")
+
+
+@plot
+def plot_estimates_over_time(variance_estimates_sample):
+
+    variance_inter_batch = variance_estimates_sample["variance_inter_batch"]
+    variance_estimated = variance_estimates_sample["variance_estimated"]
+
+    torch.manual_seed(123)
+    sample_idx = torch.randint(variance_inter_batch.shape[1], (10,))
+
+    plt.plot(
+        variance_inter_batch[50:70,sample_idx],
+        variance_estimated[50:70,sample_idx],
+    )
+    
+    plt.axline((0, 0), slope=1.0, color="C1")
+
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.savefig("estimates_over_time.pdf") #TODO: move to outer call
+
 
 
 @hydra.main("../../conf", "experiment/sghmc_gradients/config")

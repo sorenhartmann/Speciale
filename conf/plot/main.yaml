@@ -1,0 +1,11 @@
+experiment: sghmc_gradients
+out_path: plots/${experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+run: null
+multirun: 0
+
+hydra:
+  run:
+    dir: ${out_path}
+  sweep:
+    dir: ${out_path}
+    subdir: ${hydra.job.num}

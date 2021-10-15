@@ -4,6 +4,8 @@ from typing import Optional, Union
 import torch
 from torch.distributions import Normal
 
+from src.inference.mcmc.var_estimators import ConstantEstimator, VarianceEstimator
+
 
 class Samplable(ABC):
     @abstractproperty
@@ -225,56 +227,14 @@ def sghmc_original_parameterization(
     return SGHMC(alpha, beta, lr, n_steps, resample_momentum=True)
 
 
-class VarianceEstimator(nn.Module):
-
-    def __init__(self, beta_1=0.9, beta_2=0.999, adj_with_mean=False, clamp=False):
-        super().__init__()
-        self.register_buffer("beta_1", torch.tensor(beta_1))
-        self.register_buffer("beta_2", torch.tensor(beta_2))
-
-        self.adj_with_mean = adj_with_mean
-        self.clamp = clamp
-
-    def setup(self, shape):
-        self.register_buffer("mean_est", torch.zeros(shape))
-        self.register_buffer("var_est", torch.zeros(shape))
-        self.t = 0
-        self.beta_1_pow_t = 1.0
-        self.beta_2_pow_t = 1.0
-
-    def update(self, grad: torch.Tensor):
-
-        self.t += 1
-        self.beta_1_pow_t = self.beta_1_pow_t * self.beta_1
-        self.beta_2_pow_t = self.beta_2_pow_t * self.beta_2
-
-        self.mean_est.mul_(self.beta_1)
-        self.mean_est.addcmul_(1 - self.beta_1, grad)
-
-        self.var_est.mul_(self.beta_2)
-        self.var_est.addcmul_(1 - self.beta_2, grad ** 2)
-        
-    def estimate(self) -> torch.Tensor:
-
-        var_bias_corrected = self.var_est / (1 - self.beta_2_pow_t)
-
-        if self.adj_with_mean:
-            mean_bias_corrected = self.mean_est / (1 - self.beta_1_pow_t)
-            var_bias_corrected -= mean_bias_corrected**2
-
-        if self.clamp:
-            var_bias_corrected.clamp_(min=0)
-
-        return var_bias_corrected 
-        # - mean_bias_corrected ** 2
-
 
 class SGHMCWithVarianceEstimator(SGHMC):
+
     def __init__(
         self,
         alpha: float = 1e-2,
         lr: float = 0.2e-5,
-        var_estimator: Optional[VarianceEstimator] = None,
+        variance_estimator: Union[float, VarianceEstimator] = 0.,
         n_steps: int = 1,
         resample_momentum: bool = False,
     ):
@@ -282,33 +242,33 @@ class SGHMCWithVarianceEstimator(SGHMC):
         self.alpha = torch.tensor(alpha)
         self.lr = torch.tensor(lr)
 
-        if var_estimator is None:
-            self.var_estimator = VarianceEstimator()
+        if type(variance_estimator) is float:
+            self.variance_estimator = ConstantEstimator(float)
         else:
-            self.var_estimator = var_estimator
+            self.variance_estimator = variance_estimator
 
         self.n_steps = n_steps
         self.resample_momentum = resample_momentum
 
     @property
     def beta(self):
-        var_estimate = self.var_estimator.estimate()
+        var_estimate = self.variance_estimator.estimate()
         return 2 * var_estimate * self.lr
 
     @property
     def err_std(self):
         beta = self.beta
-        beta.clamp_max_(self.alpha / 1.3)
-        return torch.sqrt(2 * (self.alpha - beta) * self.lr)
+        alpha = self.alpha.clamp(min=1.3*beta)
+        return torch.sqrt(2 * (alpha - beta) * self.lr)
 
     def grad_U(self):
         grad = super().grad_U()
-        self.var_estimator.update(grad)
+        self.variance_estimator.update(self, grad)
         return grad
 
     def setup(self, samplable: Samplable):
         super().setup(samplable)
-        self.var_estimator.setup(self.nu.shape)
+        self.variance_estimator.setup(self.nu.shape)
         return self
 
     
