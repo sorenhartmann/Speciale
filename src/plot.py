@@ -1,9 +1,12 @@
 
 
-import hydra
-from inspect import getmembers, isfunction, signature
 from importlib import import_module
+from inspect import getmembers, isfunction, signature
+
+import hydra
+
 from src.experiments.common import Experiment
+
 
 @hydra.main("../conf/plot", "main")
 def main(cfg):

@@ -1,7 +1,7 @@
 # @package _global_
 defaults:
   - /inference_config@_group_
-  - strategy: adam_mean_adj
+  - estimator: inter_batch
   - override /model : mlp_classifier
   - override /inference : mcmc
   - override /sampler : sghmc_with_grad_est
@@ -18,7 +18,8 @@ inference:
       constant: 0.
 
 trainer:
-  max_epochs: 50
+  max_epochs: 10
+  progress_bar_refresh_rate: 0
   callbacks:
     - _target_: src.experiments.sghmc_gradients.LogVarianceEstimates
     - _target_: src.utils.SilenceWarnings

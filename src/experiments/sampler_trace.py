@@ -9,7 +9,7 @@ import torch
 
 from src.experiments.common import ExperimentHandler
 from src.experiments.synthetic import Example
-from src.samplers import Hamiltonian, Sampler, SGHMC
+from src.samplers import SGHMC, Hamiltonian, Sampler
 
 
 class StateSpaceTracer:

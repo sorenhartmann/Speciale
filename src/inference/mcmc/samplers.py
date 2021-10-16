@@ -1,24 +1,14 @@
-from abc import ABC, abstractmethod, abstractproperty
-from typing import Optional, Union
+from abc import ABC, abstractmethod
+from typing import Union
 
 import torch
 from torch.distributions import Normal
 
-from src.inference.mcmc.var_estimators import ConstantEstimator, VarianceEstimator
+from src.inference.mcmc.samplable import Samplable
+from src.inference.mcmc.var_estimators import (ConstantEstimator,
+                                               VarianceEstimator)
 
 
-class Samplable(ABC):
-    @abstractproperty
-    def state(self) -> torch.Tensor:
-        pass
-
-    @abstractmethod
-    def prop_log_p(self) -> torch.Tensor:
-        pass
-
-    @abstractmethod
-    def grad_prop_log_p(self) -> torch.Tensor:
-        pass
 
 
 class Sampler(ABC):
@@ -161,6 +151,8 @@ class SGHMC(Sampler, HamiltonianMixin):
 
     is_batched = True
 
+    _before_next_sample_hook = None
+
     def __init__(
         self,
         alpha: float = 1e-2,
@@ -203,7 +195,18 @@ class SGHMC(Sampler, HamiltonianMixin):
             + torch.randn_like(self.nu) * self.err_std
         )
 
+    def register_before_next_sample_hook(self, func):
+        self._before_next_sample_hook = func
+
+    def before_next_sample_hook(self):
+        if self._before_next_sample_hook is None:
+            return
+        else:
+            self._before_next_sample_hook(self)
+
     def next_sample(self, return_sample: bool = True):
+
+        self.before_next_sample_hook()
 
         if self.resample_momentum:
             self.resample_nu()
@@ -263,12 +266,12 @@ class SGHMCWithVarianceEstimator(SGHMC):
 
     def grad_U(self):
         grad = super().grad_U()
-        self.variance_estimator.update(self, grad)
+        self.variance_estimator.update(grad)
         return grad
 
     def setup(self, samplable: Samplable):
         super().setup(samplable)
-        self.variance_estimator.setup(self.nu.shape)
+        self.variance_estimator.setup(self)
         return self
 
     

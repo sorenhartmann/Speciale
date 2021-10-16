@@ -1,0 +1,4 @@
+# @package inference.sampler.variance_estimator.variance_estimator
+
+_target_: src.inference.mcmc.var_estimators.AdamEstimator
+adj_with_mean: True

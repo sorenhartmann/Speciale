@@ -1,12 +1,12 @@
-from contextlib import contextmanager
 
 import torch
-import torchmetrics.functional
 from torch.distributions import Gamma
 
 from src.inference.base import InferenceModule
+from src.inference.mcmc.samplable import ParameterPosterior
 from src.inference.mcmc.sample_containers import FIFOSampleContainer
-from src.inference.mcmc.samplers import SGHMC, Samplable
+from src.inference.mcmc.samplers import SGHMC
+from src.inference.mcmc.var_estimators import NoStepException
 from src.inference.probabilistic import (KnownPrecisionNormalPrior,
                                          ModuleWithPrior,
                                          to_probabilistic_model_)
@@ -14,71 +14,16 @@ from src.models.mlp import MLPClassifier
 from src.utils import ParameterView_
 
 
-class ParameterPosterior(Samplable):
-    """Posterior of model parameters given observations"""
-
-    def __init__(self, model):
-
-        super().__init__()
-
-        self.model = model
-        self.view = ParameterView_(model)
-
-        self._x = None
-        self._y = None
-        self._sampling_fraction = 1.0
-
-    def prop_log_p(self) -> torch.Tensor:
-        return (
-            self.model.log_prior()
-            + self.model.log_likelihood(x=self._x, y=self._y).sum()
-            / self._sampling_fraction
-        )
-
-    def grad_prop_log_p(self):
-        self.model.zero_grad()
-        t = self.prop_log_p()
-        t.backward()
-        return self.view.flat_grad
-
-    def set_observation(self, x=None, y=None, sampling_fraction: float = 1.0):
-
-        self._x = x
-        self._y = y
-        self._sampling_fraction = sampling_fraction
-
-    @contextmanager
-    def observe(self, x=None, y=None, sampling_fraction: float = 1.0):
-
-        x_prev = self._x
-        y_prev = self._y
-        sampling_fraction_prev = self._sampling_fraction
-
-        try:
-            self.set_observation(x, y, sampling_fraction)
-            yield
-        finally:
-            self.set_observation(x_prev, y_prev, sampling_fraction_prev)
-
-    @property
-    def state(self):
-        return self.view[:]
-
-    @state.setter
-    def state(self, value):
-        self.model.load_state_dict(
-            {
-                k: value[a:b].view(shape)
-                for (k, shape), (a, b) in zip(
-                    self.view.param_shapes.items(), self.view.flat_index_pairs
-                )
-            },
-            strict=False,
-        )
-
 class MCMCInference(InferenceModule):
 
-    def __init__(self, model, sampler=None, sample_container=None, burn_in=0):
+    def __init__(
+        self, 
+        model, 
+        sampler=None, 
+        sample_container=None, 
+        burn_in=0,
+        steps_per_sample=None
+        ):
 
         super().__init__()
 
@@ -100,10 +45,13 @@ class MCMCInference(InferenceModule):
         self.sample_container = sample_container
 
         self.burn_in = burn_in
+        self.steps_per_sample = steps_per_sample
 
         self.val_metrics = self.model.get_metrics()
 
         self._skip_val = True
+
+
 
     def configure_optimizers(self):
         pass
@@ -116,21 +64,36 @@ class MCMCInference(InferenceModule):
 
         self.val_preds = {}
 
+    def on_train_start(self) -> None:
+
+        if self.steps_per_sample is None:
+            self.steps_per_sample = len(self.trainer.train_dataloader)
+
+        self.step_until_next_sample = self.steps_per_sample
+        self.burn_in_remaining = self.burn_in
+
     def training_step(self, batch, batch_idx):
 
         x, y = batch
         sampling_fraction = len(x) / len(self.trainer.train_dataloader.dataset)
         with self.posterior.observe(x, y, sampling_fraction):
-            self.sampler.next_sample(return_sample=False)
+            try:
+                self.sampler.next_sample(return_sample=False)
+            except NoStepException:
+                return
 
-        # Only procced after last batch
-        if batch_idx < len(self.trainer.train_dataloader) - 1:
+        # Only procceed after last batch
+        if self.step_until_next_sample > 0:
+            self.step_until_next_sample -= 1
             return
+        else:
+            self.step_until_next_sample = self.steps_per_sample
 
         self._precision_gibbs_step()
 
         # Burn in
-        if self.current_epoch < self.burn_in:
+        if self.burn_in_remaining > 0:
+            self.burn_in_remaining =- 1
             return
 
         # Sample is pruned

@@ -1,16 +1,14 @@
+from pathlib import Path
+
 import hydra
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
 from hydra.utils import instantiate
 from pytorch_lightning import Callback, Trainer
-from pathlib import Path
+
 from src.experiments.common import Experiment, Run
-from src.inference.mcmc.samplers import VarianceEstimator
-
-
-# TODO: Implemeter estimatorer med f.eks. ContantEstimator osv til sammenlignig. Evt med extra flag om man skal bruge estimatet
-#  
+from src.inference.mcmc.var_estimators import VarianceEstimator, WelfordEstimator
 
 
 def plot(func):
@@ -30,11 +28,12 @@ class VarianceEstimatorWrapper(VarianceEstimator):
         self.constant = torch.tensor(constant)
         self.variance_estimator = variance_estimator
 
-    def setup(self, shape):
-        self.variance_estimator.setup(shape)
 
-    def update(self, global_step, grad: torch.Tensor):
-        self.variance_estimator.update(global_step, grad)
+    def setup(self, sampler):
+        self.variance_estimator.setup(sampler)
+
+    def update(self, grad: torch.Tensor):
+        self.variance_estimator.update(grad)
 
     def estimate(self) -> torch.Tensor:
         if self.use_estimate:
@@ -58,26 +57,27 @@ class LogVarianceEstimates(Callback):
         else:
             return estimator.estimate()
 
-    def on_batch_end(self, trainer, pl_module) -> None:
+    # def on_batch_end(self, trainer, pl_module) -> None:
 
-        estimator = pl_module.sampler.variance_estimator
+    #     estimator = pl_module.sampler.variance_estimator
 
-        var_est = self._get_estimate(estimator)
+    #     var_est = self._get_estimate(estimator)
 
-        pl_module.log("grad_var_est/max", var_est.max())
-        pl_module.log("grad_var_est/min", var_est.min())
+    #     pl_module.log("grad_var_est/max", var_est.max())
+    #     pl_module.log("grad_var_est/min", var_est.min())
 
     def on_train_epoch_end(self, trainer: Trainer, pl_module) -> None:
 
-        gradients = []
         with torch.random.fork_rng():
+            wf_estimator = WelfordEstimator()
             for batch in trainer.train_dataloader:
                 x, y = batch
                 sampling_fraction = len(x) / len(trainer.train_dataloader.dataset)
                 with pl_module.posterior.observe(x, y, sampling_fraction):
-                    gradients.append(pl_module.posterior.grad_prop_log_p())
+                    wf_estimator.update(pl_module.posterior.grad_prop_log_p())
 
-            variance = torch.var(torch.stack(gradients), 0, unbiased=True)
+            variance = wf_estimator.estimate()
+            
             pl_module.log("grad_var/max", variance.max())
             pl_module.log("grad_var/min", variance.min())
 
@@ -91,41 +91,6 @@ class LogVarianceEstimates(Callback):
                 estimate,
                 self.variance_estimated_folder / f"{trainer.current_epoch:04}.pt",
             )
-
-            # if trainer.current_epoch % 50 == 0:
-            #     self.plot_estimates(trainer, pl_module, variance, estimate)
-
-    # def plot_estimates(self, trainer, pl_module, variance, estimate):
-
-    #     non_zero = variance > 0
-
-    #     clamp = pl_module.sampler.variance_estimator.clamps
-    #     adj_with_mean = pl_module.sampler.variance_estimator.adj_with_mean
-    #     use_estimation = isinstance(pl_module.sampler.variance_estimator, VarianceEstimator)
-
-    #     sns.relplot(
-    #         x="Variance",
-    #         y="Estimate",
-    #         data={
-    #             "Estimate": estimate[non_zero].numpy(),
-    #             "Variance": variance[non_zero].numpy(),
-    #         },
-    #     )
-    #     plt.title(f"{clamp=},{adj_with_mean=},{use_estimation=}")
-    #     plt.axline((0, 0), slope=1.0, color="C1")
-    #     plt.axline(
-    #         (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 0),
-    #         (pl_module.sampler.alpha / pl_module.sampler.lr / 2, 1),
-    #         color="C2",
-    #     )
-    #     pl_module.sampler.alpha
-    #     plt.xscale("log")
-    #     plt.yscale("log")
-
-    #     pl_module.logger.experiment.add_figure(
-    #         "grad_var_est_comp", plt.gcf(), trainer.current_epoch
-    #     )
-    #     plt.close()
 
 
 # Kunne give run/run_collection til functionen her
@@ -161,6 +126,8 @@ def variance_estimates_sample(cfg):
     }
 
 
+
+# plot kun hvor var > 1e-5 eller noget..
 @plot
 def plot_estimates(variance_estimates_sample):
 

@@ -190,6 +190,7 @@ from pathlib import Path
 import pandas as pd
 from omegaconf import OmegaConf
 
+
 def flatten_config(config):
     def iter_flat_config(config, prefixes=None):
         if prefixes is None:
