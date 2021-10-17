@@ -21,5 +21,7 @@ trainer:
   max_epochs: 10
   progress_bar_refresh_rate: 0
   callbacks:
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      dirpath: "./checkpoints"
     - _target_: src.experiments.sghmc_gradients.LogVarianceEstimates
     - _target_: src.utils.SilenceWarnings
