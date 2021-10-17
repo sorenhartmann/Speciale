@@ -82,20 +82,19 @@ class MCMCInference(InferenceModule):
             except NoStepException:
                 return
 
-        # print(f"{self.trainer.global_step=}, {self.step_until_next_sample=}, {self.burn_in_remaining=}")
-
         # Only procceed after last batch
-        if self.step_until_next_sample > 0:
-            self.step_until_next_sample -= 1
+        self.step_until_next_sample -= 1
+        is_last_batch = self.step_until_next_sample == 0
+        if not is_last_batch:
             return
         else:
             self.step_until_next_sample = self.steps_per_sample
-            
 
         self._precision_gibbs_step()
 
         # Burn in
-        if self.burn_in_remaining > 0:
+        burn_in = self.burn_in_remaining > 0
+        if burn_in:
             self.burn_in_remaining -= 1
             return
 
