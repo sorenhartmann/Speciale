@@ -9,8 +9,6 @@ from src.inference.mcmc.var_estimators import (ConstantEstimator,
                                                VarianceEstimator)
 
 
-
-
 class Sampler(ABC):
 
     is_batched: bool

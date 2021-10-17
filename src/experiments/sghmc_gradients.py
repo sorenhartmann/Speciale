@@ -8,7 +8,8 @@ from hydra.utils import instantiate
 from pytorch_lightning import Callback, Trainer
 
 from src.experiments.common import Experiment, Run
-from src.inference.mcmc.var_estimators import VarianceEstimator, WelfordEstimator
+from src.inference.mcmc.var_estimators import (VarianceEstimator,
+                                               WelfordEstimator)
 
 
 def plot(func):

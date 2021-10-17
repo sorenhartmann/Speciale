@@ -1,13 +1,11 @@
 import pytest
-
-from src.inference.probabilistic import (
-    ModuleWithPrior,
-    ProbabilisticModel,
-    attach_priors_,
-    to_probabilistic_model_,
-)
-from torch.nn import Linear
 import torch
+from torch.nn import Linear
+
+from src.inference.probabilistic import (ModuleWithPrior, ProbabilisticModel,
+                                         attach_priors_,
+                                         to_probabilistic_model_)
+
 
 @pytest.fixture
 def probabilistic_classifier(classifier):

@@ -8,5 +8,6 @@ logger:
 callbacks:
   - _target_: pytorch_lightning.callbacks.ModelCheckpoint
     dirpath: "./checkpoints"
+  - _target_: src.utils.SilenceWarnings
 
 

@@ -82,18 +82,21 @@ class MCMCInference(InferenceModule):
             except NoStepException:
                 return
 
+        # print(f"{self.trainer.global_step=}, {self.step_until_next_sample=}, {self.burn_in_remaining=}")
+
         # Only procceed after last batch
         if self.step_until_next_sample > 0:
             self.step_until_next_sample -= 1
             return
         else:
             self.step_until_next_sample = self.steps_per_sample
+            
 
         self._precision_gibbs_step()
 
         # Burn in
         if self.burn_in_remaining > 0:
-            self.burn_in_remaining =- 1
+            self.burn_in_remaining -= 1
             return
 
         # Sample is pruned
@@ -114,7 +117,6 @@ class MCMCInference(InferenceModule):
                 continue
 
             for name, prior in module.priors.items():
-                # FIXME: Hardcoded af
 
                 if not isinstance(prior, KnownPrecisionNormalPrior):
                     continue

@@ -1,4 +1,5 @@
 import pytest
+
 from src.data.mnist import MNISTDataModule
 from src.models.mlp import MLPClassifier
 

@@ -1,10 +1,12 @@
+import copy
+
 import pytest
+import torch
+from pytorch_lightning import Trainer
+
 from src.inference.mcmc import MCMCInference
 from src.inference.sgd import SGDInference
 from src.inference.vi import VariationalInference
-from pytorch_lightning import Trainer
-import torch
-import copy
 
 
 def dict_equal(dict_a, dict_b):
