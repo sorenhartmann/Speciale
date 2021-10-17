@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import List
 
 import torch
@@ -11,11 +12,9 @@ from src.models.base import Model
 class Prior(nn.Module):
     ...
 
+
 class KnownPrecisionNormalPrior(Prior):
-
-
-
-    def __init__(self, precision=10., mean=0.):
+    def __init__(self, precision=10.0, mean=0.0):
 
         super().__init__()
 
@@ -23,68 +22,38 @@ class KnownPrecisionNormalPrior(Prior):
         self.register_buffer("mean", torch.tensor(mean))
 
     def log_prob(self, parameter):
-        return(Normal(self.mean, 1. / self.precision.sqrt()).log_prob(parameter))
-        
+        return Normal(self.mean, 1.0 / self.precision.sqrt()).log_prob(parameter)
+
 
 _DEFAULT_PRIORS = {
-    nn.Linear : {
-        "weight" : {"cls" : KnownPrecisionNormalPrior, "kwargs" : {}},
-        "bias" : {"cls" : KnownPrecisionNormalPrior, "kwargs" : {}}, 
+    nn.Linear: {
+        "weight": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
+        "bias": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
     }
 }
 
 
-# Inspired by Pyro https://github.com/pyro-ppl/pyro/blob/dev/pyro/nn/module.py
-class _ModuleWithPriorMeta(type):
+class ModuleWithPrior(nn.Module):
 
-    _cache = {}
+    priors: nn.ModuleDict
 
-    # Unpickling helper
-    class _New:
-        def __init__(self, Module : type[nn.Module]):
-            self.__class__ = ModuleWithPrior[Module]
+    def __init__(self, module, priors: nn.ModuleDict):
 
-    def __getitem__(cls, Module):
+        super().__init__()
+        self.module = module
+        self.priors = priors
 
-        assert isinstance(Module, type)
-        assert issubclass(Module, torch.nn.Module)
+    def forward(self, x):
+        return self.module.forward(x)
 
-        if issubclass(Module, ModuleWithPrior):
-            return Module
-
-        if Module in _ModuleWithPriorMeta._cache:
-            return _ModuleWithPriorMeta._cache[Module]
-
-        class result(Module, ModuleWithPrior): # type: ignore
-
-            def __reduce__(self):
-                state = getattr(self, "__getstate__", self.__dict__.copy)()
-                return _ModuleWithPriorMeta._New, (Module,), state
-
-            def __init__(self, *args, **kwargs):
-                raise NotImplementedError
-
-
-        result.__name__ = f"{Module.__name__}WithPrior"
-
-        _ModuleWithPriorMeta._cache[Module] = result
-        return result
-
-
-class ModuleWithPrior(nn.Module, metaclass=_ModuleWithPriorMeta):
-
-    priors : nn.ModuleDict
-
-    def prior_log_prob(self : nn.Module):
+    def prior_log_prob(self: nn.Module):
         return sum(
-            prior.log_prob(getattr(self, name)).sum()
+            prior.log_prob(getattr(self.module, name)).sum()
             for name, prior in self.priors.items()
         )
 
-def attach_priors_(module : nn.Module, prior_specs = None):
 
-    if prior_specs is None:
-        prior_specs = _DEFAULT_PRIORS
+def with_priors(module: nn.Module, prior_specs):
 
     if type(module) not in prior_specs:
         return
@@ -94,48 +63,34 @@ def attach_priors_(module : nn.Module, prior_specs = None):
         spec = _DEFAULT_PRIORS[type(module)][parameter_name]
         priors[parameter_name] = spec["cls"](**spec["kwargs"])
 
-    module.priors = priors
-    module.__class__ = ModuleWithPrior[module.__class__]
+    return ModuleWithPrior(module, priors)
 
 
+class ProbabilisticModel(Model):
 
-class _ProbabilisticModelMeta(type):
+    model: Model
+    submodules_with_prior: List[ModuleWithPrior]
 
-    _cache = {}
+    def __init__(self, model, submodules_with_prior):
 
-    # Unpickling helper
-    class _New:
-        def __init__(self, Module : type[Model]):
-            self.__class__ = ProbabilisticModel[Module]
+        super().__init__()
+        self.model = model
+        self.submodules_with_prior = submodules_with_prior
 
-    def __getitem__(cls, Module):
+    def observation_model_gvn_output(self, output):
+        return self.model.observation_model_gvn_output(output)
 
-        assert isinstance(Module, type)
-        assert issubclass(Module, Model)
+    def observation_model(self, input):
+        return self.model.observation_model(input)
 
-        if issubclass(Module, ProbabilisticModel):
-            return Module
+    def loss(self, output, target):
+        return self.model.loss(output, target)
 
-        if Module in _ProbabilisticModelMeta._cache:
-            return _ProbabilisticModelMeta._cache[Module]
+    def get_metrics(self):
+        return self.model.get_metrics()
 
-        class result(Module, ProbabilisticModel): # type: ignore
-
-            def __reduce__(self):
-                state = getattr(self, "__getstate__", self.__dict__.copy)()
-                return _ProbabilisticModelMeta._New, (Module,), state
-
-            def __init__(self, *args, **kwargs):
-                raise NotImplementedError
-
-        result.__name__ = f"Probabilistic{Module.__name__}"
-
-        _ProbabilisticModelMeta._cache[Module] = result
-        return result
-
-class ProbabilisticModel(Model, metaclass = _ProbabilisticModelMeta): 
-
-    submodules_with_prior : List[ModuleWithPrior]
+    def predict(self, x):
+        return self.model.forward(x)
 
     def log_prior(self):
         """Returns p(theta)"""
@@ -145,15 +100,56 @@ class ProbabilisticModel(Model, metaclass = _ProbabilisticModelMeta):
         """Returns log p(y | x, theta)"""
         return self.observation_model(x).log_prob(y)
 
-def to_probabilistic_model_(model : Model, prior_specs=None):
 
-    assert(isinstance(model, Model))
+class ModuleAttributeHelper:
+    """Helper for getting/setting module attributes"""
+
+    def __init__(self, module):
+        self.module = module
+
+    def keyed_children(self):
+
+        if isinstance(self.module, nn.Sequential):
+            return enumerate(self.module)
+        else:
+            return self.module.named_children()
+
+    def __getitem__(self, key):
+
+        if isinstance(self.module, nn.Sequential):
+            return self.module[key]
+        else:
+            return getattr(self.module)
+
+    def __setitem__(self, key, value):
+
+        if isinstance(self.module, nn.Sequential):
+            self.module[key] = value
+        else:
+            setattr(self.module, key, value)
+
+
+def as_probabilistic_model(model: Model, prior_specs=None):
+
+    if prior_specs is None:
+        prior_specs = _DEFAULT_PRIORS
+
+    assert isinstance(model, Model)
+    model = deepcopy(model)
 
     submodules_with_prior = []
-    for module in model.modules():
-        attach_priors_(module, prior_specs)
-        if isinstance(module, ModuleWithPrior):
-            submodules_with_prior.append(module)
 
-    model.submodules_with_prior = submodules_with_prior
-    model.__class__ = ProbabilisticModel[model.__class__]
+    def replace_submodules_(module: nn.Module):
+
+        helper = ModuleAttributeHelper(module)
+        for key, child in helper.keyed_children():
+            if type(child) in prior_specs:
+                new_module = with_priors(child, prior_specs)
+                helper[key] = new_module
+                submodules_with_prior.append(new_module)
+            else:
+                replace_submodules_(child)
+
+    replace_submodules_(model)
+
+    return ProbabilisticModel(model, submodules_with_prior)

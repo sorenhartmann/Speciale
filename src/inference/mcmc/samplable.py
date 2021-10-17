@@ -5,7 +5,7 @@ from contextlib import contextmanager
 import torch
 
 from src.inference.probabilistic import ProbabilisticModel
-from src.utils import ParameterView_
+from src.utils import ParameterView
 
 
 class Samplable(ABC):
@@ -36,7 +36,7 @@ class ParameterPosterior(Samplable):
         super().__init__()
 
         self.model = model
-        self.view = ParameterView_(model)
+        self.view = ParameterView(model)
 
         self._x = None
         self._y = None

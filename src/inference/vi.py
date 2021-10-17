@@ -4,10 +4,10 @@ from torch.distributions import Normal
 
 from src.data.mnist import MNISTDataModule
 from src.inference.base import InferenceModule
-from src.inference.probabilistic import to_probabilistic_model_
+from src.inference.probabilistic import as_probabilistic_model
 from src.models.base import Model
 from src.models.mlp import MLPClassifier
-from src.utils import ParameterView_
+from src.utils import ParameterView
 
 
 def bufferize_parameters_(module):
@@ -29,13 +29,12 @@ class VariationalInference(InferenceModule):
         self.lr = lr
         self.n_samples = n_samples
 
-        self.model = model
-        to_probabilistic_model_(self.model)
-        parameter_names = [n for n, _ in model.named_parameters()]
+        self.model = as_probabilistic_model(model)
+        parameter_names = [n for n, _ in self.model.named_parameters()]
         for module in self.model.modules():
             bufferize_parameters_(module)
 
-        self.view = ParameterView_(self.model, buffers=parameter_names)
+        self.view = ParameterView(self.model, buffers=parameter_names)
         self.register_parameter(
             "rho", torch.nn.Parameter(torch.zeros(self.view.n_params))
         )

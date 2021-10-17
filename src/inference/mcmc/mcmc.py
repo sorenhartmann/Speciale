@@ -1,4 +1,3 @@
-
 import torch
 from torch.distributions import Gamma
 
@@ -9,21 +8,20 @@ from src.inference.mcmc.samplers import SGHMC
 from src.inference.mcmc.var_estimators import NoStepException
 from src.inference.probabilistic import (KnownPrecisionNormalPrior,
                                          ModuleWithPrior,
-                                         to_probabilistic_model_)
+                                         as_probabilistic_model)
 from src.models.mlp import MLPClassifier
-from src.utils import ParameterView_
+from src.utils import ParameterView
 
 
 class MCMCInference(InferenceModule):
-
     def __init__(
-        self, 
-        model, 
-        sampler=None, 
-        sample_container=None, 
+        self,
+        model,
+        sampler=None,
+        sample_container=None,
         burn_in=0,
-        steps_per_sample=None
-        ):
+        steps_per_sample=None,
+    ):
 
         super().__init__()
 
@@ -35,10 +33,7 @@ class MCMCInference(InferenceModule):
 
         self.automatic_optimization = False
 
-        self.model = model
-        to_probabilistic_model_(self.model)
-        self.view = ParameterView_(self.model)
-
+        self.model = as_probabilistic_model(model)
         self.posterior = ParameterPosterior(self.model)
         self.sampler = sampler
 
@@ -50,8 +45,6 @@ class MCMCInference(InferenceModule):
         self.val_metrics = self.model.get_metrics()
 
         self._skip_val = True
-
-
 
     def configure_optimizers(self):
         pass
@@ -120,7 +113,7 @@ class MCMCInference(InferenceModule):
                 if not isinstance(prior, KnownPrecisionNormalPrior):
                     continue
 
-                parameter = getattr(module, name)
+                parameter = getattr(module.module, name)
                 alpha = 1.0 + parameter.numel() / 2
                 beta = 1.0 + parameter.square().sum() / 2
                 new_precision = Gamma(alpha, beta).sample()
@@ -167,27 +160,13 @@ class MCMCInference(InferenceModule):
 
 if __name__ == "__main__":
 
-    # model = 
+    # model =
     # sampler = StochasticGradientHamiltonian()
     # sample_container = FIFOSampleContainer(max_items=750, keep_every=1)
     inference = MCMCInference(MLPClassifier(hidden_layers=[100, 100]))
 
-
-
-
     # datamodule = MNISTDataModule(500)
-
-
 
     # Trainer(max_epochs=800).fit(inference, datamodule)
 
-
-
-            # yield 
-
-        
-
-        
-
-
-    
+    # yield
