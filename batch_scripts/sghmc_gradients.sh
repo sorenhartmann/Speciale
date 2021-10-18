@@ -16,6 +16,7 @@ cd ~/Documents/Speciale
 source .venv/bin/activate
 
 python src/experiments/sghmc_gradients.py -m hydra/launcher=joblib \
-    experiment/sghmc_gradients/strategy@strategy="glob(*)" \
-    experiment/sghmc_gradients/beta@beta="glob(*)" \
-    ++trainer.progress_bar_refresh_rate=0
+    experiment/sghmc_gradients/estimator@estimator="glob(*)" \
+    inference.sampler.variance_estimator.use_estimate="True,False" \
+    ++trainer.progress_bar_refresh_rate=0 \
+    ++trainer.max_epochs=800
