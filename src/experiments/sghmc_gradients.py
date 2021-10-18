@@ -1,3 +1,4 @@
+from functools import cache
 from pathlib import Path
 
 import hydra
@@ -16,19 +17,19 @@ def plot(func):
     func.__isplot = True
     return func
 
+
 def result(func):
     func.__isresult = True
     return func
 
-class VarianceEstimatorWrapper(VarianceEstimator):
 
-    def __init__(self, variance_estimator, use_estimate, constant=0.):
-        
+class VarianceEstimatorWrapper(VarianceEstimator):
+    def __init__(self, variance_estimator, use_estimate, constant=0.0):
+
         super().__init__()
         self.use_estimate = use_estimate
         self.constant = torch.tensor(constant)
         self.variance_estimator = variance_estimator
-
 
     def setup(self, sampler):
         self.variance_estimator.setup(sampler)
@@ -42,10 +43,16 @@ class VarianceEstimatorWrapper(VarianceEstimator):
         else:
             return self.constant
 
+
 class LogVarianceEstimates(Callback):
 
     inter_batch_variance_folder = Path("variance_inter_batch")
     variance_estimated_folder = Path("variance_estimated")
+
+    def __init__(self, n_gradients=1000, logs_per_epoch=10):
+
+        self.n_gradients = n_gradients
+        self.logs_per_epoch = logs_per_epoch
 
     def on_init_start(self, trainer) -> None:
 
@@ -58,18 +65,34 @@ class LogVarianceEstimates(Callback):
         else:
             return estimator.estimate()
 
-    # def on_batch_end(self, trainer, pl_module) -> None:
-
-    #     estimator = pl_module.sampler.variance_estimator
-
-    #     var_est = self._get_estimate(estimator)
-
-    #     pl_module.log("grad_var_est/max", var_est.max())
-    #     pl_module.log("grad_var_est/min", var_est.min())
-
-    def on_train_epoch_end(self, trainer: Trainer, pl_module) -> None:
+    def on_fit_start(self, trainer, pl_module) -> None:
 
         with torch.random.fork_rng():
+            torch.manual_seed(123)
+            self.log_idx, _ = torch.sort(
+                torch.randperm(pl_module.posterior.shape[0])[: self.n_gradients]
+            )
+        torch.save(self.log_idx, "log_idx.pt")
+
+    @cache
+    def sample_steps(self, trainer):
+        num_batches = len(trainer.train_dataloader)
+        steps_between_samples = num_batches / self.logs_per_epoch
+        return [
+            int(i * steps_between_samples) for i in range(1, self.logs_per_epoch + 1)
+        ]
+
+    def on_train_batch_end(
+        self, trainer, pl_module, outputs, batch, batch_idx, unused
+    ) -> None:
+
+        if batch_idx in self.sample_steps(trainer):
+            self.log_gradient_estimate(trainer, pl_module, batch_idx)
+
+    def log_gradient_estimate(self, trainer, pl_module, batch_idx):
+
+        with torch.random.fork_rng():
+
             wf_estimator = WelfordEstimator()
             for batch in trainer.train_dataloader:
                 x, y = batch
@@ -78,19 +101,19 @@ class LogVarianceEstimates(Callback):
                     wf_estimator.update(pl_module.posterior.grad_prop_log_p())
 
             variance = wf_estimator.estimate()
-            
+
             pl_module.log("grad_var/max", variance.max())
             pl_module.log("grad_var/min", variance.min())
 
             estimate = self._get_estimate(pl_module.sampler.variance_estimator)
 
             torch.save(
-                variance,
-                self.inter_batch_variance_folder / f"{trainer.current_epoch:04}.pt",
+                variance[self.log_idx],
+                self.inter_batch_variance_folder / f"{trainer.global_step:06}.pt",
             )
             torch.save(
-                estimate,
-                self.variance_estimated_folder / f"{trainer.current_epoch:04}.pt",
+                estimate[self.log_idx],
+                self.variance_estimated_folder / f"{trainer.global_step:06}.pt",
             )
 
 
@@ -122,10 +145,9 @@ def variance_estimates_sample(cfg):
     variance_inter_batch = torch.stack(variance_inter_batch)
 
     return {
-        "variance_inter_batch" : variance_inter_batch,
-        "variance_estimated" : variance_estimated,
+        "variance_inter_batch": variance_inter_batch,
+        "variance_estimated": variance_estimated,
     }
-
 
 
 # plot kun hvor var > 1e-5 eller noget..
@@ -134,7 +156,7 @@ def plot_estimates(variance_estimates_sample):
 
     variance_inter_batch = variance_estimates_sample["variance_inter_batch"]
     variance_estimated = variance_estimates_sample["variance_estimated"]
-    
+
     plt.scatter(variance_inter_batch[0], variance_estimated[0])
     plt.axline((0, 0), slope=1.0, color="C1")
     plt.xscale("log")
@@ -152,16 +174,15 @@ def plot_estimates_over_time(variance_estimates_sample):
     sample_idx = torch.randint(variance_inter_batch.shape[1], (10,))
 
     plt.plot(
-        variance_inter_batch[50:70,sample_idx],
-        variance_estimated[50:70,sample_idx],
+        variance_inter_batch[50:70, sample_idx],
+        variance_estimated[50:70, sample_idx],
     )
-    
+
     plt.axline((0, 0), slope=1.0, color="C1")
 
     plt.xscale("log")
     plt.yscale("log")
-    plt.savefig("estimates_over_time.pdf") #TODO: move to outer call
-
+    plt.savefig("estimates_over_time.pdf")  # TODO: move to outer call
 
 
 @hydra.main("../../conf", "experiment/sghmc_gradients/config")

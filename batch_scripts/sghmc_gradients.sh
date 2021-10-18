@@ -1,8 +1,8 @@
 #!/bin/sh
 #BSUB -q hpc
 #BSUB -J sghmc_gradients
-#BSUB -n 6
-#BSUB -W 1:00
+#BSUB -n 12
+#BSUB -W 8:00
 #BSUB -B
 #BSUB -N
 #BSUB -R span[hosts=1]
