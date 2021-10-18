@@ -79,7 +79,7 @@ class LogVarianceEstimates(Callback):
         num_batches = len(trainer.train_dataloader)
         steps_between_samples = num_batches / self.logs_per_epoch
         return [
-            int(i * steps_between_samples) for i in range(1, self.logs_per_epoch + 1)
+            int(i * steps_between_samples)-1 for i in range(1, self.logs_per_epoch + 1)
         ]
 
     def on_train_batch_end(
