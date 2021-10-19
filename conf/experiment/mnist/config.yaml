@@ -2,7 +2,6 @@
 defaults:
   - /inference_config@_group_
   - group : sghmc
-  - override /hydra/sweeper: optuna
   - override /data : mnist
   - override /model : mlp_classifier
   - _self_
@@ -10,8 +9,8 @@ defaults:
 trainer:
   max_epochs: 800
 
-hydra:
-  sweeper:
-    study_name: ${hydra.job.name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
-    storage: sqlite:///optuna.db
+# hydra:
+#   sweeper:
+#     study_name: ${hydra.job.name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+#     storage: sqlite:///optuna.db
 

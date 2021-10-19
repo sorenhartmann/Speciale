@@ -1,11 +1,17 @@
-experiment: sghmc_gradients
-out_path: plots/${experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
-run: null
-multirun: 0
+experiment_name: mnist
+
+# run_dir: experiment_results/${latest_run_dir:${experiment_name}}
+run_dir: experiment_results/mnist/2021-10-12/17-04-43
+out_dir: ${run_dir}/_plots_
+
+run:
+  _target_: src.experiments.common.get_run_from_path
+  path: ${run_dir}
+
 
 hydra:
   run:
-    dir: ${out_path}
+    dir: ${out_dir}
   sweep:
-    dir: ${out_path}
+    dir: ${out_dir}
     subdir: ${hydra.job.num}

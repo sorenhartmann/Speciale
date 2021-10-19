@@ -3,10 +3,12 @@
 defaults:
   - override /inference : mcmc
   - override /sample_container : all
-  - override /sampler : sghmc
+  - override /sampler : sghmc_with_grad_est
 
 sampler:
+  variance_estimator:
+    _target_: src.inference.mcmc.var_estimators.InterBatchEstimator
   lr : 2.0e-06
+
 inference:
   burn_in: 50
-

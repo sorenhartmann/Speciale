@@ -8,19 +8,10 @@ import torch
 from hydra.utils import instantiate
 from pytorch_lightning import Callback, Trainer
 
-from src.experiments.common import Experiment, Run
-from src.inference.mcmc.var_estimators import (VarianceEstimator,
-                                               WelfordEstimator)
+from src.experiments.common import Experiment, Run, PlotType, plot, result
+from src.inference.mcmc.var_estimators import VarianceEstimator, WelfordEstimator
 
-
-def plot(func):
-    func.__isplot = True
-    return func
-
-
-def result(func):
-    func.__isresult = True
-    return func
+from typing import Dict, Any
 
 
 class VarianceEstimatorWrapper(VarianceEstimator):
@@ -79,7 +70,8 @@ class LogVarianceEstimates(Callback):
         num_batches = len(trainer.train_dataloader)
         steps_between_samples = num_batches / self.logs_per_epoch
         return [
-            int(i * steps_between_samples)-1 for i in range(1, self.logs_per_epoch + 1)
+            int(i * steps_between_samples) - 1
+            for i in range(1, self.logs_per_epoch + 1)
         ]
 
     def on_train_batch_end(
@@ -117,72 +109,122 @@ class LogVarianceEstimates(Callback):
             )
 
 
-# Kunne give run/run_collection til functionen her
 @result
-def variance_estimates_sample(cfg):
-
-    experiment = Experiment(cfg.experiment)
-
-    if cfg.run is None:
-        exp_df = experiment.as_dataframe()
-        latest_run_dir = exp_df.loc[lambda x: ~x.path.isna()].iloc[-1].path
-        run = Run(latest_run_dir)
-
-    sample_idx = None
-
-    variance_estimated = []
-    for file in (run.path / "variance_estimated").iterdir():
-        variance_estimated_ = torch.load(file)
-        if sample_idx is None:
-            sample_idx = torch.randint(len(variance_estimated_), (100,))
-        variance_estimated.append(variance_estimated_[sample_idx])
-    variance_estimated = torch.stack(variance_estimated)
+def variance_estimates():
 
     variance_inter_batch = []
-    for file in (run.path / "variance_inter_batch").iterdir():
-        variance_inter_batch_ = torch.load(file)
-        variance_inter_batch.append(variance_inter_batch_[sample_idx])
-    variance_inter_batch = torch.stack(variance_inter_batch)
+    for file in sorted(Path("variance_inter_batch").iterdir()):
+        variance_inter_batch.append(torch.load(file))
+
+    variance_estimated = []
+    for file in sorted(Path("variance_estimated").iterdir()):
+        variance_estimated.append(torch.load(file))
 
     return {
-        "variance_inter_batch": variance_inter_batch,
-        "variance_estimated": variance_estimated,
+        "variance_inter_batch": torch.stack(variance_inter_batch),
+        "variance_estimated": torch.stack(variance_estimated),
     }
 
 
+@result
+def global_steps():
+    return [int(file.stem) for file in sorted(Path("variance_inter_batch").iterdir())]
+
+
+import pandas as pd
+
+
 # plot kun hvor var > 1e-5 eller noget..
-@plot
-def plot_estimates(variance_estimates_sample):
+@plot(multirun=True)
+def final_estimates(variance_estimates, _run_):
 
-    variance_inter_batch = variance_estimates_sample["variance_inter_batch"]
-    variance_estimated = variance_estimates_sample["variance_estimated"]
-
-    plt.scatter(variance_inter_batch[0], variance_estimated[0])
-    plt.axline((0, 0), slope=1.0, color="C1")
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.savefig("estimates.pdf")
-
-
-@plot
-def plot_estimates_over_time(variance_estimates_sample):
-
-    variance_inter_batch = variance_estimates_sample["variance_inter_batch"]
-    variance_estimated = variance_estimates_sample["variance_estimated"]
-
-    torch.manual_seed(123)
-    sample_idx = torch.randint(variance_inter_batch.shape[1], (10,))
-
-    plt.plot(
-        variance_inter_batch[50:70, sample_idx],
-        variance_estimated[50:70, sample_idx],
+    plot_data = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "Using estimate": run.get_override_value(
+                        "inference.sampler.variance_estimator.use_estimate"
+                    ),
+                    "Estimator": run.get_override_value(
+                        "experiment/sghmc_gradients/estimator@estimator"
+                    ),
+                    "Inter batch variance": x["variance_inter_batch"][-1],
+                    "Estimated variance": x["variance_estimated"][-1],
+                }
+            )
+            for run, x in zip(_run_.values(), variance_estimates.values())
+        ]
     )
 
-    plt.axline((0, 0), slope=1.0, color="C1")
+    fg = sns.relplot(
+        data=plot_data,
+        x="Inter batch variance",
+        y="Estimated variance",
+        col="Estimator",
+        row="Using estimate",
+    )
+    fg.set(xscale="log")
+    fg.set(yscale="log")
+    for ax in fg.axes.flatten():
+        ax.axline((0, 0), (1, 1), color="C1")
 
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.savefig("estimates_over_time.pdf")  # TODO: move to outer call
+    plt.savefig("final_estimates.pdf")
+
+
+# todo: multirun over a few epochs
+
+
+
+@plot(multirun=False)
+def all_estimates_sampled_variables(variance_estimates, global_steps, _run_):
+
+    is_zero = variance_estimates["variance_estimated"].isclose(torch.tensor(0.0)).all(0)
+    is_zero |= (
+        variance_estimates["variance_inter_batch"].isclose(torch.tensor(0.0)).all(0)
+    )
+
+    non_zero_index = (~is_zero).nonzero().flatten()
+
+    with torch.random.fork_rng():
+        torch.manual_seed(123)
+        plot_idx = non_zero_index[torch.randperm(len(non_zero_index))[:9]]
+
+    def get_data(idx):
+
+        return pd.DataFrame(
+            {
+                "Inter batch variance": variance_estimates["variance_inter_batch"][
+                    :, idx
+                ],
+                "Estimated variance": variance_estimates["variance_estimated"][:, idx],
+            },
+            index=pd.MultiIndex.from_product(
+                [[idx.item()], global_steps], names=("index", "step")
+            ),
+        )
+
+    fg = (
+        pd.concat(map(get_data, plot_idx))
+        .assign(step_mod_100=lambda x: x.index.get_level_values("step") % 100)
+        .reset_index()
+        .sample(frac=1.0)
+        .pipe(
+            (sns.relplot, "data"),
+            x="Inter batch variance",
+            y="Estimated variance",
+            col="index",
+            col_wrap=3,
+            hue="step_mod_100",
+            facet_kws={"sharey": False, "sharex": False},
+        )
+    )
+
+    fg.set(xscale="log")
+    fg.set(yscale="log")
+    for ax in fg.axes.flatten():
+        ax.axline((0, 0), (1, 1), color="red")
+
+    plt.savefig("all_estimates.pdf")
 
 
 @hydra.main("../../conf", "experiment/sghmc_gradients/config")

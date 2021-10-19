@@ -1,36 +1,37 @@
-
-
-from importlib import import_module
-from inspect import getmembers, isfunction, signature
-
 import hydra
+from hydra.utils import instantiate
 
-from src.experiments.common import Experiment
+from src.experiments.common import EXPERIMENT_PATH, Experiment
+from omegaconf import OmegaConf
+
+
+def latest_run_dir(name):
+    run_dirs = Experiment(name).run_dirs()
+    latest_dir = run_dirs[-1]
+    return str(latest_dir.relative_to(EXPERIMENT_PATH))
+
+
+OmegaConf.register_new_resolver("latest_run_dir", latest_run_dir)
+
+import logging
+
+log = logging.getLogger(__name__)
 
 
 @hydra.main("../conf/plot", "main")
 def main(cfg):
 
-    experiment_module = import_module(f"src.experiments.{cfg.experiment}")
-    members = getmembers(experiment_module)
+    run = instantiate(cfg.run)
+    log.info(
+        f"Generating plots for \"{cfg.experiment_name}\", run at {run.time}"
+    )
 
-    plot_funcs = {name: x for name, x in members if getattr(x, "__isplot", False)}
-    result_funcs =  {name: x for name, x in members if getattr(x, "__isresult", False)}
-
-    results = {}
-    for func in plot_funcs.values():
-        args = {}
-        for arg_name in signature(func).parameters:
-            if arg_name not in results:
-                result = result_funcs[arg_name](cfg)
-                results[arg_name]  = result
-            args[arg_name] = results[arg_name] 
-        func(**args)
-
+    plot_funcs = run.experiment.get_plot_funcs()
+    for plot_func in plot_funcs.values():
+        # for arg_name in signature(plot_func).parameters:
+        run.call_plot_func(plot_func)
 
 
 if __name__ == "__main__":
-
-
 
     main()
