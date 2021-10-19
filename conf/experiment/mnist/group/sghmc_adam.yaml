@@ -13,3 +13,6 @@ sampler:
 
 inference:
   burn_in: 50
+
+
+tag: sghmc_adam
