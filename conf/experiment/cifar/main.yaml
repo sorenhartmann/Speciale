@@ -1,11 +1,15 @@
 # @package _global_
 defaults:
   - /inference_config@_group_
-  - group : vi
-  - override /data : mnist
-  - override /model : mlp_classifier
+  - override /inference: vi
+  - override /data : cifar
+  - override /model : conv_classifier
   - _self_
   
+
+inference:
+  lr: 0.001
+
 trainer:
   max_epochs: 800
 

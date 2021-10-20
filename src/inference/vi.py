@@ -42,7 +42,10 @@ class VariationalInference(InferenceModule):
             "mu", torch.nn.Parameter(torch.zeros(self.view.n_params))
         )
 
+        self.train_metrics = self.model.get_metrics()
         self.val_metrics = self.model.get_metrics()
+
+        self.automatic_optimization = False
 
     def training_step(self, batch, batch_idx):
 
@@ -57,26 +60,36 @@ class VariationalInference(InferenceModule):
 
         self.view[:] = w
 
-        kl = Normal(self.mu, sigma).log_prob(w).sum() - self.model.log_prior()
-        log_lik = self.model.log_likelihood(x, y).sum()
+        N = len(self.trainer.train_dataloader.dataset)
 
-        elbo = kl / len(self.trainer.train_dataloader) - log_lik
+        kl = (Normal(self.mu, sigma).log_prob(w).sum() - self.model.log_prior()) / N
+        # kl = 0
+        
+        output = self.model(x)
+        obs_model = self.model.observation_model_gvn_output(output)
+        log_lik = obs_model.log_prob(y).mean()
+
+        elbo = log_lik - kl 
 
         self._eps = eps  # Save reference for grad
         self._w = w  # Save reference for grad
 
         self.log("elbo/train", elbo, prog_bar=True, on_epoch=True, on_step=False)
+        self.log("kl/train", kl, on_epoch=True, on_step=False)
+        self.log("log_lik/train", log_lik, on_epoch=True, on_step=False)
+        for name, metric in self.train_metrics.items():
+            self.log(f"{name}/train", metric(output, y), on_epoch=True, on_step=False)
 
-        return elbo
 
-    def on_after_backward(self) -> None:
-
+        self.zero_grad()
+        (-elbo).backward()
+        
         with torch.no_grad():
-            self.mu.grad.add_(self._w.grad)
-            self.rho.grad.add_(self._w.grad * (self._eps / (1 + torch.exp(-self.rho))))
+            self.mu.grad.add_(w.grad)
+            self.rho.grad.add_(w.grad * (eps / (1 + torch.exp(-self.rho))))
 
-        del self._w
-        del self._eps
+            self.mu.sub_(self.mu.grad * self.lr)
+            self.rho.sub_(self.rho.grad * self.lr)
 
     def on_validation_epoch_start(self) -> None:
 
@@ -88,29 +101,23 @@ class VariationalInference(InferenceModule):
 
         x, y = batch
 
-        output = 0
+        prediction = 0
         for w in self.w_samples:
             self.view[:] = w
-            output += self.model.predict(x)
+            prediction += self.model.predict(x)
         
-        output /= self.n_samples
+        prediction /= self.n_samples
+        # self.log("max_p/val", output., on_epoch=True, on_step=False)
 
         for name, metric in self.val_metrics.items():
-            self.log(f"{name}/val", metric(output, y))
+            self.log(f"{name}/val", metric(prediction, y))
+
 
     def on_validation_epoch_end(self) -> None:
         del self.w_samples
 
     def configure_optimizers(self):
 
-        optimizer = torch.optim.SGD((self.mu, self.rho), lr=self.lr)
-        return optimizer
+        # optimizer = torch.optim.SGD((self.mu, self.rho), lr=self.lr)
+        return None
 
-
-if __name__ == "__main__":
-
-    model = MLPClassifier()
-    inference = VariationalInference(model)
-    datamodule = MNISTDataModule(128)
-
-    Trainer().fit(inference, datamodule)

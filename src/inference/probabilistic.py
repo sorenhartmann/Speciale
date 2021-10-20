@@ -29,6 +29,10 @@ _DEFAULT_PRIORS = {
     nn.Linear: {
         "weight": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
         "bias": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
+    },
+    nn.Conv2d: {
+        "weight": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
+        "bias": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
     }
 }
 
@@ -90,6 +94,9 @@ class ProbabilisticModel(Model):
         return self.model.get_metrics()
 
     def predict(self, x):
+        return self.model.predict(x)
+
+    def forward(self, x):
         return self.model.forward(x)
 
     def log_prior(self):

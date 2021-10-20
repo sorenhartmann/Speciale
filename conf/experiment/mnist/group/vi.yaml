@@ -1,0 +1,9 @@
+# @package _global_
+
+defaults:
+  - override /inference : vi
+
+inference:
+  lr : 5.0e-01
+
+tag: vi

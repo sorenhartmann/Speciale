@@ -1,3 +1,0 @@
-# @package sampler.variance_estimator.variance_estimator
-
-_target_: src.inference.mcmc.var_estimators.InterBatchEstimator

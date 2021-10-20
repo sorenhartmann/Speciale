@@ -1,0 +1,2 @@
+_target_ : src.data.cifar.CIFARDataModule
+batch_size: 128
