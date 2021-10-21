@@ -6,7 +6,8 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 import pandas as pd
 from src.experiments.common import result, plot
 from src.inference.base import InferenceModule
-from pytorch_lightning import Trainer
+from pytorch_lightning import Trainer, Callback
+
 
 @hydra.main("../../conf", "experiment/cifar/main")
 def experiment(cfg):

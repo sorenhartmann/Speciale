@@ -1,10 +1,11 @@
 from copy import deepcopy
-from typing import List
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 from torch.distributions import Normal
 from torch.distributions.normal import Normal
+from src.experiments.cifar import model_performance
 
 from src.models.base import Model
 
@@ -14,7 +15,7 @@ class Prior(nn.Module):
 
 
 class KnownPrecisionNormalPrior(Prior):
-    def __init__(self, precision=10.0, mean=0.0):
+    def __init__(self, precision=1.0, mean=0.0):
 
         super().__init__()
 
@@ -24,17 +25,52 @@ class KnownPrecisionNormalPrior(Prior):
     def log_prob(self, parameter):
         return Normal(self.mean, 1.0 / self.precision.sqrt()).log_prob(parameter)
 
+from torch.distributions import MixtureSameFamily, Bernoulli, Categorical
 
-_DEFAULT_PRIORS = {
-    nn.Linear: {
-        "weight": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
-        "bias": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
-    },
-    nn.Conv2d: {
-        "weight": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
-        "bias": {"cls": KnownPrecisionNormalPrior, "kwargs": {}},
-    }
-}
+class NormalMixturePrior(Prior):
+    def __init__(
+        self, mean=[0.0, 0.0], log_sigma=[-1, -7], mixture_ratio=0.5
+    ):
+
+        super().__init__()
+
+        self.register_buffer("mean", torch.tensor(mean))
+        self.register_buffer("log_sigma", torch.tensor(log_sigma))
+        mixture_logits = torch.tensor([mixture_ratio, 1-mixture_ratio])
+        self.register_buffer("mixture_logits", mixture_logits)
+
+    def log_prob(self, parameter):
+
+        dist = MixtureSameFamily(
+            Categorical(self.mixture_logits),
+            Normal(self.mean, self.log_sigma.exp()),
+            )
+
+        return dist.log_prob(parameter)
+
+from typing import Type, Any, Dict
+from dataclasses import dataclass, field
+
+
+@dataclass
+class PriorSpec:
+
+    default_prior: Prior
+    modules_to_replace: List[Type[nn.Module]] = field(
+        default_factory=lambda: [nn.Linear, nn.Conv2d]
+    )
+    overrides: Dict[Tuple[Type[nn.Module], str], Prior] = field(default_factory=dict)
+
+    def __getitem__(self, key):
+        module_class, str = key
+        prior = self.overrides.get(key, self.default_prior)
+        return deepcopy(prior)
+
+    def __contains__(self, key):
+        return key in self.modules_to_replace
+
+
+_DEFAULT_PRIORS = PriorSpec(KnownPrecisionNormalPrior())
 
 
 class ModuleWithPrior(nn.Module):
@@ -59,13 +95,14 @@ class ModuleWithPrior(nn.Module):
 
 def with_priors(module: nn.Module, prior_specs):
 
-    if type(module) not in prior_specs:
+    module_class = type(module)
+
+    if module_class not in prior_specs:
         return
 
     priors = nn.ModuleDict()
     for parameter_name, _ in module.named_parameters():
-        spec = _DEFAULT_PRIORS[type(module)][parameter_name]
-        priors[parameter_name] = spec["cls"](**spec["kwargs"])
+        priors[parameter_name] = prior_specs[module_class, parameter_name]
 
     return ModuleWithPrior(module, priors)
 
@@ -136,10 +173,10 @@ class ModuleAttributeHelper:
             setattr(self.module, key, value)
 
 
-def as_probabilistic_model(model: Model, prior_specs=None):
+def as_probabilistic_model(model: Model, prior_spec=None):
 
-    if prior_specs is None:
-        prior_specs = _DEFAULT_PRIORS
+    if prior_spec is None:
+        prior_spec = _DEFAULT_PRIORS
 
     assert isinstance(model, Model)
     model = deepcopy(model)
@@ -150,8 +187,8 @@ def as_probabilistic_model(model: Model, prior_specs=None):
 
         helper = ModuleAttributeHelper(module)
         for key, child in helper.keyed_children():
-            if type(child) in prior_specs:
-                new_module = with_priors(child, prior_specs)
+            if type(child) in prior_spec:
+                new_module = with_priors(child, prior_spec)
                 helper[key] = new_module
                 submodules_with_prior.append(new_module)
             else:
