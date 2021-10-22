@@ -1,7 +1,7 @@
 # @package _global_
 defaults:
   - /inference_config@_group_
-  - estimator: inter_batch
+  - /variance_estimator: inter_batch
   - override /model : mlp_classifier
   - override /inference : mcmc
   - override /sampler : sghmc_with_grad_est
@@ -14,11 +14,12 @@ inference:
   sampler:
     variance_estimator:
       _target_: src.experiments.sghmc_gradients.VarianceEstimatorWrapper
-      use_estimate: True
+      variance_estimator: ${variance_estimator}
+      use_estimate: False
       constant: 0.
 
 trainer:
-  max_epochs: 10
+  max_epochs: 50
   progress_bar_refresh_rate: 0
   callbacks:
     - _target_: pytorch_lightning.callbacks.ModelCheckpoint

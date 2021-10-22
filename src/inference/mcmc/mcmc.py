@@ -5,13 +5,15 @@ from src.inference.base import InferenceModule
 from src.inference.mcmc.samplable import ParameterPosterior
 from src.inference.mcmc.sample_containers import FIFOSampleContainer
 from src.inference.mcmc.samplers import SGHMC
-from src.inference.mcmc.var_estimators import NoStepException
+from src.inference.mcmc.var_estimators import NoStepException, NextEpochException
 from src.inference.probabilistic import (KnownPrecisionNormalPrior,
                                          ModuleWithPrior,
                                          as_probabilistic_model)
 from src.models.mlp import MLPClassifier
 from src.utils import ParameterView
+import logging
 
+log = logging.getLogger(__name__)
 
 class MCMCInference(InferenceModule):
     def __init__(
@@ -65,15 +67,27 @@ class MCMCInference(InferenceModule):
         self.step_until_next_sample = self.steps_per_sample
         self.burn_in_remaining = self.burn_in
 
-    def training_step(self, batch, batch_idx):
+    def on_train_batch_start(self, batch, batch_idx, dataloader_idx):
+        if getattr(self, "_finish_train_epoch", False):
+            self._finish_train_epoch = False
+            return -1
 
+    def on_train_epoch_start(self) -> None:
+        self.sampler.on_train_epoch_start(self)
+
+    def training_step(self, batch, batch_idx):
+        
         x, y = batch
         sampling_fraction = len(x) / len(self.trainer.train_dataloader.dataset)
-        with self.posterior.observe(x, y, sampling_fraction):
-            try:
+    
+        try:
+            with self.posterior.observe(x, y, sampling_fraction):
                 self.sampler.next_sample(return_sample=False)
-            except NoStepException:
-                return
+        except NoStepException:
+            return
+        except NextEpochException:
+            self._finish_train_epoch = True
+            return
 
         # Only procceed after last batch
         self.step_until_next_sample -= 1

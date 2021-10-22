@@ -5,10 +5,17 @@ from src.inference.mcmc.samplable import ParameterPosterior
 
 
 class VarianceEstimator(nn.Module):
-    def setup(self, sampler):
+    
+    def setup(self, sampler, inference_module=None):
         pass
 
-    def update(self, grad: torch.Tensor):
+    def on_train_epoch_start(self, inference_module):
+        pass
+
+    def on_after_grad(self, grad: torch.Tensor):
+        pass
+
+    def on_before_next_sample(self, sampler):
         pass
 
     def estimate(self) -> torch.Tensor:
@@ -34,14 +41,14 @@ class AdamEstimator(VarianceEstimator):
         self.adj_with_mean = adj_with_mean
 
     def setup(self, sampler):
-        shape = sampler.samplable.shape 
+        shape = sampler.samplable.shape
         self.register_buffer("mean_est", torch.zeros(shape))
         self.register_buffer("var_est", torch.zeros(shape))
         self.t = 0
         self.beta_1_pow_t = 1.0
         self.beta_2_pow_t = 1.0
 
-    def update(self, grad: torch.Tensor):
+    def on_after_grad(self, grad: torch.Tensor):
 
         self.t += 1
         self.beta_1_pow_t = self.beta_1_pow_t * self.beta_1
@@ -66,12 +73,7 @@ class AdamEstimator(VarianceEstimator):
         return var_bias_corrected
 
 
-class NoStepException(Exception):
-    ...
-
-
 class WelfordEstimator(nn.Module):
-
     def __init__(self):
         super().__init__()
 
@@ -95,7 +97,7 @@ class WelfordEstimator(nn.Module):
 
         if not self.initialized_buffers:
             self.init_buffers(value.shape)
-            
+
         n = self.n + 1
 
         if n > 1:
@@ -106,48 +108,51 @@ class WelfordEstimator(nn.Module):
         self.n = n
 
     def estimate(self):
-        return self.S_n / (self.n-1)
+        return self.S_n / (self.n - 1)
+
+
+class NoStepException(Exception):
+    ...
+
+class NextEpochException(Exception):
+    ...
 
 class InterBatchEstimator(VarianceEstimator):
 
-    def __init__(self, n_estimation_steps=10, n_inference_steps=90):
+    def __init__(self, n_estimation_steps=10):
 
         super().__init__()
 
         self.n_estimation_steps = n_estimation_steps
-        self.n_inference_steps = n_inference_steps
-        self.period = n_estimation_steps + n_inference_steps
-        self.global_step = 0
+        self.is_estimating = False
 
     def setup(self, sampler):
-
-        # Method for just calling the grad function, enabling the grad hook, without stepping
-        def hook(sampler):
-            if self.is_estimating():
-                sampler.grad_U()
-                raise NoStepException
-            else:
-                return
-
-        sampler.register_before_next_sample_hook(hook)
         self.wf_estimator = WelfordEstimator()
 
-    def is_estimating(self):
-        return self.global_step % self.period < self.n_estimation_steps
+    def on_train_epoch_start(self, inference_module):
 
-    def update(self, grad):
-
-        if not self.is_estimating():
-            self.global_step += 1
-            return
-
-        if self.global_step % self.period == 0:
+        self.is_estimating = inference_module.current_epoch % 2 == 0
+        if self.is_estimating:
             self.wf_estimator.reset()
 
-        self.wf_estimator.update(grad)
-        self.global_step += 1
+    def on_before_next_sample(self, sampler):
+        if self.is_estimating:
+            sampler.grad_U()
+            raise NoStepException
 
+    def on_after_grad(self, grad): 
+
+        if not self.is_estimating:
+            return
+
+        self.wf_estimator.update(grad)
+
+        if self.wf_estimator.n == self.n_estimation_steps:
+            raise NextEpochException
+            
     def estimate(self) -> torch.Tensor:
+
+        # return torch.tensor(0.0)
         if self.wf_estimator.n < 2:
             return torch.tensor(0.0)
         else:

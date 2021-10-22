@@ -5,13 +5,15 @@ import torch
 from torch.distributions import Normal
 
 from src.inference.mcmc.samplable import Samplable
-from src.inference.mcmc.var_estimators import (ConstantEstimator,
-                                               VarianceEstimator)
+from src.inference.mcmc.var_estimators import ConstantEstimator, VarianceEstimator
 
 
 class Sampler(ABC):
 
     is_batched: bool
+
+    def on_train_epoch_start(self, inference_module):
+        """Only called in case of inference sampling"""
 
     @abstractmethod
     def setup(self, samplable: Samplable):
@@ -20,7 +22,6 @@ class Sampler(ABC):
     @abstractmethod
     def next_sample(self):
         pass
-
 
 class MetropolisHastings(Sampler):
 
@@ -193,18 +194,7 @@ class SGHMC(Sampler, HamiltonianMixin):
             + torch.randn_like(self.nu) * self.err_std
         )
 
-    def register_before_next_sample_hook(self, func):
-        self._before_next_sample_hook = func
-
-    def before_next_sample_hook(self):
-        if self._before_next_sample_hook is None:
-            return
-        else:
-            self._before_next_sample_hook(self)
-
     def next_sample(self, return_sample: bool = True):
-
-        self.before_next_sample_hook()
 
         if self.resample_momentum:
             self.resample_nu()
@@ -228,14 +218,12 @@ def sghmc_original_parameterization(
     return SGHMC(alpha, beta, lr, n_steps, resample_momentum=True)
 
 
-
 class SGHMCWithVarianceEstimator(SGHMC):
-
     def __init__(
         self,
         alpha: float = 1e-2,
         lr: float = 0.2e-5,
-        variance_estimator: Union[float, VarianceEstimator] = 0.,
+        variance_estimator: Union[float, VarianceEstimator] = 0.0,
         n_steps: int = 1,
         resample_momentum: bool = False,
     ):
@@ -259,17 +247,22 @@ class SGHMCWithVarianceEstimator(SGHMC):
     @property
     def err_std(self):
         beta = self.beta
-        alpha = self.alpha.clamp(min=1.3*beta)
+        alpha = self.alpha.clamp(min=1.3 * beta)
         return torch.sqrt(2 * (alpha - beta) * self.lr)
 
     def grad_U(self):
         grad = super().grad_U()
-        self.variance_estimator.update(grad)
+        self.variance_estimator.on_after_grad(grad)
         return grad
 
     def setup(self, samplable: Samplable):
         super().setup(samplable)
-        self.variance_estimator.setup(self)
+        self.variance_estimator.setup(self) 
         return self
 
-    
+    def next_sample(self, return_sample: bool = True):
+        self.variance_estimator.on_before_next_sample(self)
+        return super().next_sample(return_sample)
+
+    def on_train_epoch_start(self, inference_module):
+        self.variance_estimator.on_train_epoch_start(inference_module)

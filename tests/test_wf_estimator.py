@@ -1,6 +1,6 @@
-from src.inference.mcmc.var_estimators import WelfordEstimator
 import torch
 
+from src.inference.mcmc.var_estimators import WelfordEstimator
 
 
 def test_welford_estimator():

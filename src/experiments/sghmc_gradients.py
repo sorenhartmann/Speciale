@@ -12,27 +12,34 @@ from src.experiments.common import Experiment, Run, PlotType, plot, result
 from src.inference.mcmc.var_estimators import VarianceEstimator, WelfordEstimator
 
 from typing import Dict, Any
+import pandas as pd
 
 
 class VarianceEstimatorWrapper(VarianceEstimator):
-    def __init__(self, variance_estimator, use_estimate, constant=0.0):
+    def __init__(self, variance_estimator: VarianceEstimator, use_estimate, constant=0.0):
 
         super().__init__()
         self.use_estimate = use_estimate
         self.constant = torch.tensor(constant)
-        self.variance_estimator = variance_estimator
+        self.wrapped = variance_estimator
 
     def setup(self, sampler):
-        self.variance_estimator.setup(sampler)
-
-    def update(self, grad: torch.Tensor):
-        self.variance_estimator.update(grad)
+        self.wrapped.setup(sampler)
 
     def estimate(self) -> torch.Tensor:
         if self.use_estimate:
-            return self.variance_estimator.estimate()
+            return self.wrapped.estimate()
         else:
             return self.constant
+
+    def on_train_epoch_start(self, inference_module):
+        self.wrapped.on_train_epoch_start(inference_module)
+
+    def on_after_grad(self, grad: torch.Tensor):
+        self.wrapped.on_after_grad(grad)
+
+    def on_before_next_sample(self, sampler):
+        self.wrapped.on_before_next_sample(sampler)
 
 
 class LogVarianceEstimates(Callback):
@@ -52,7 +59,7 @@ class LogVarianceEstimates(Callback):
 
     def _get_estimate(self, estimator):
         if type(estimator) is VarianceEstimatorWrapper:
-            return estimator.variance_estimator.estimate()
+            return estimator.wrapped.estimate()
         else:
             return estimator.estimate()
 
@@ -92,21 +99,19 @@ class LogVarianceEstimates(Callback):
                 with pl_module.posterior.observe(x, y, sampling_fraction):
                     wf_estimator.update(pl_module.posterior.grad_prop_log_p())
 
-            variance = wf_estimator.estimate()
+        variance = wf_estimator.estimate()
+        estimate = self._get_estimate(pl_module.sampler.variance_estimator)
 
-            pl_module.log("grad_var/max", variance.max())
-            pl_module.log("grad_var/min", variance.min())
+        variance, estimate = torch.broadcast_tensors(variance, estimate)
 
-            estimate = self._get_estimate(pl_module.sampler.variance_estimator)
-
-            torch.save(
-                variance[self.log_idx],
-                self.inter_batch_variance_folder / f"{trainer.global_step:06}.pt",
-            )
-            torch.save(
-                estimate[self.log_idx],
-                self.variance_estimated_folder / f"{trainer.global_step:06}.pt",
-            )
+        torch.save(
+            variance[self.log_idx],
+            self.inter_batch_variance_folder / f"{trainer.global_step:06}.pt",
+        )
+        torch.save(
+            estimate[self.log_idx],
+            self.variance_estimated_folder / f"{trainer.global_step:06}.pt",
+        )
 
 
 @result
@@ -131,10 +136,6 @@ def global_steps():
     return [int(file.stem) for file in sorted(Path("variance_inter_batch").iterdir())]
 
 
-import pandas as pd
-
-
-# plot kun hvor var > 1e-5 eller noget..
 @plot(multirun=True)
 def final_estimates(variance_estimates, _run_):
 
@@ -169,10 +170,6 @@ def final_estimates(variance_estimates, _run_):
         ax.axline((0, 0), (1, 1), color="C1")
 
     plt.savefig("final_estimates.pdf")
-
-
-# todo: multirun over a few epochs
-
 
 
 @plot(multirun=False)

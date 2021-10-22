@@ -1,13 +1,11 @@
-experiment_name: mnist
+experiment_name: sghmc_gradients
 
-# run_dir: experiment_results/${latest_run_dir:${experiment_name}}
-run_dir: experiment_results/mnist/2021-10-12/17-04-43
+run_dir: experiment_results/${latest_run_dir:${experiment_name}}
 out_dir: ${run_dir}/_plots_
 
 run:
   _target_: src.experiments.common.get_run_from_path
   path: ${run_dir}
-
 
 hydra:
   run:
