@@ -5,13 +5,12 @@ import hydra
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
-from hydra.utils import instantiate
-from pytorch_lightning import Callback, Trainer
+from pytorch_lightning import Callback
 
-from src.experiments.common import Experiment, Run, PlotType, plot, result
+from src.experiments.common import plot, result
 from src.inference.mcmc.var_estimators import VarianceEstimator, WelfordEstimator
 
-from typing import Dict, Any
+
 import pandas as pd
 
 
@@ -223,23 +222,6 @@ def all_estimates_sampled_variables(variance_estimates, global_steps, _run_):
 
     plt.savefig("all_estimates.pdf")
 
-
-@hydra.main("../../conf", "experiment/sghmc_gradients/config")
-def experiment(cfg):
-
-    torch.manual_seed(123)
-
-    dm = instantiate(cfg.data)
-
-    inference = instantiate(cfg.inference)
-    trainer = instantiate(cfg.trainer)
-
-    trainer.fit(inference, dm)
-
-
-if __name__ == "__main__":
-
-    experiment()
 
 
 # class LogGradientVariance(Callback):

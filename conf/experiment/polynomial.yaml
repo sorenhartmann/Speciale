@@ -1,12 +1,13 @@
 # @package _global_
 
 defaults:
-  - /inference_config
   - override /model : polynomial
   - override /data : sampled_data
   - override /inference : mcmc
   - override /sample_container : all
   - _self_
+
+out_dir : polynomial
 
 trainer:
   max_epochs: 100

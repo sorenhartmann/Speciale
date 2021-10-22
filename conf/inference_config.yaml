@@ -5,3 +5,6 @@ defaults:
   - trainer : default
   - hydra : default
   - _self_
+
+out_dir : "inference"
+seed : 123

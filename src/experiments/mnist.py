@@ -1,24 +1,7 @@
-import hydra
-import torch
-from hydra.utils import instantiate
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 import pandas as pd
 from src.experiments.common import result, plot
-
-
-@hydra.main("../../conf", "experiment/mnist/config")
-def experiment(cfg):
-
-    torch.manual_seed(123)
-    dm = instantiate(cfg.data)
-
-    inference = instantiate(cfg.inference)
-    trainer = instantiate(cfg.trainer)
-
-    trainer.fit(inference, dm)
-
-    return trainer.callback_metrics["err/val"].item()
 
 
 @result

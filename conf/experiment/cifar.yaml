@@ -1,11 +1,11 @@
 # @package _global_
 defaults:
-  - /inference_config@_group_
   - override /inference: vi
   - override /data : cifar
   - override /model : conv_classifier
   - _self_
   
+out_dir : mnist
 
 inference:
   lr: 0.05

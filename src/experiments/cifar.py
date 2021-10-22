@@ -1,27 +1,8 @@
-import hydra
-import torch
-from hydra.utils import instantiate
+
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 import pandas as pd
 from src.experiments.common import result, plot
-from src.inference.base import InferenceModule
-from pytorch_lightning import Trainer, Callback
-
-
-@hydra.main("../../conf", "experiment/cifar/main")
-def experiment(cfg):
-
-    torch.manual_seed(123)
-    dm = instantiate(cfg.data)
-
-    inference : InferenceModule = instantiate(cfg.inference)
-    trainer : Trainer = instantiate(cfg.trainer)
-
-    trainer.fit(inference, dm)
-
-    if "err/val" in trainer.callback_metrics:
-        return trainer.callback_metrics["err/val"].item()
 
 
 

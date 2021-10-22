@@ -1,10 +1,11 @@
 # @package _global_
 
 defaults:
-  - /sampling_config
   - group: sghmc
   - override /distribution: example
   - _self_
+
+out_dir : synthetic
 
 sampler:
   step_size: 0.1
