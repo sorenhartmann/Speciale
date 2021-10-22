@@ -1,8 +1,8 @@
 #!/bin/sh
 #BSUB -q hpc
 #BSUB -J sghmc_gradients
-#BSUB -n 12
-#BSUB -W 12:00
+#BSUB -n 4
+#BSUB -W 1:00
 #BSUB -B
 #BSUB -N
 #BSUB -R span[hosts=1]
@@ -15,8 +15,7 @@ module load python3/3.9.6
 cd ~/Documents/Speciale
 source .venv/bin/activate
 
-python src/experiments/sghmc_gradients.py -m hydra/launcher=joblib \
-    variance_estimator="adam,inter_batch" 
-    inference.sampler.variance_estimator.use_estimate="True,False" \
+python src/experiments/mnist.py -m hydra/launcher=joblib \
+    experiment/mnist/group@group="glob(*)" \
     ++trainer.progress_bar_refresh_rate=0 \
     ++trainer.max_epochs=800
