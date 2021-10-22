@@ -1,0 +1,2 @@
+_target_: src.inference.mcmc.var_estimators.AdamEstimator
+adj_with_mean: True
