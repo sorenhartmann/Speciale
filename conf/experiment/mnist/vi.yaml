@@ -4,6 +4,9 @@ defaults:
   - override /inference : vi
 
 inference:
-  lr : 5.0e-01
+  lr : 1.e-03
+
+data:
+  batch_size: 128
 
 tag: vi

@@ -18,6 +18,9 @@ trainer:
   gradient_clip_val: 5.
   gradient_clip_algorithm: norm
 
+plots:
+  - parameter_sweep
+
 # hydra:
 #   sweeper:
 #     study_name: ${hydra.job.name}/${now:%Y-%m-%d}/${now:%H-%M-%S}

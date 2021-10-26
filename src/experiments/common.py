@@ -1,11 +1,13 @@
-from inspect import signature
+import logging
 import os
+import re
 from argparse import Namespace
+from inspect import signature
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
-from typing_extensions import runtime
 
 import torch
+from hydra.utils import get_original_cwd, to_absolute_path
 from omegaconf import Container, OmegaConf
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.core.saving import save_hparams_to_yaml
@@ -22,10 +24,7 @@ from pytorch_lightning.utilities.distributed import rank_zero_only
 # from src.utils import Component, HPARAM
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.tensorboard.summary import hparams
-import logging
-import re
-from hydra.utils import get_original_cwd, to_absolute_path
-
+from typing_extensions import runtime
 
 ROOT_DIR = Path(__file__).parents[2]
 
@@ -191,34 +190,6 @@ class FlatTensorBoardLogger(LightningLoggerBase):
         pass
 
 
-from enum import Enum, auto
-
-class PlotType(Enum):
-    SINGLE_RUN = auto()
-    MULTI_RUN = auto()
-
-def plot(multirun=False):
-
-    if multirun:
-        plot_type = PlotType.MULTI_RUN
-    else:
-        plot_type = PlotType.SINGLE_RUN
-
-    def decorator(func):
-        func.__isplot = True
-        func.__plot_type = plot_type
-        return func
-
-    return decorator
-
-
-def result(func):
-    func.__isresult = True
-    return func
-
-
-
-
 import datetime
 from pathlib import Path
 
@@ -234,7 +205,7 @@ def flatten_config(config):
         if OmegaConf.is_list(config):
             k_v_iter = ((str(i), x) for i, x in enumerate(config))
         elif OmegaConf.is_dict(config):
-            k_v_iter = config.items()
+            k_v_iter = config.items
 
         for k, v in k_v_iter:
             if OmegaConf.is_config(v):
@@ -247,22 +218,18 @@ def flatten_config(config):
     return dict(sorted(list(iter_flat_config(config))))
 
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 
 EXPERIMENT_PATH = Path(__file__).parents[2] / "experiment_results"
 
 import datetime
+import os
+from contextlib import contextmanager
 from dataclasses import dataclass, field
-
-from omegaconf import DictConfig
-
+from pathlib import Path
 from typing import List
 
-
-from contextlib import contextmanager
-from pathlib import Path
-
-import os
+from omegaconf import DictConfig
 
 
 @contextmanager
@@ -404,13 +371,53 @@ def get_run_from_path(path):
         run_index = int(run_index[0]) if len(run_index) > 0 else None
         return Run(name, time, config, overrides, path, run_index)
     else:
-        runs = [
-            get_run_from_path(x)
-            for x in path.iterdir()
-            if x.stem.isdigit() and x.is_dir()
-        ]
+        runs = sorted(
+            [
+                get_run_from_path(x)
+                for x in path.iterdir()
+                if x.stem.isdigit() and x.is_dir()
+            ]
+        )
         if len(runs) > 0:
             return MultiRun(name, time, runs, path)
+
+
+from inspect import signature
+
+
+from dataclasses import asdict
+from functools import wraps
+
+def cast_run(func):
+
+    sig = signature(func)
+
+    multirun_args = [
+        (a, k.annotation) for a, k in sig.parameters.items() if k.annotation is MultiRun
+    ]
+    singlerun_args = [ 
+        (a, k.annotation) for a, k in sig.parameters.items() if k.annotation is Run
+    ]
+    ((arg_name, arg_type),) = multirun_args + singlerun_args
+
+    @wraps(func)
+    def wrapper(run, *args, **kwargs):
+
+        if isinstance(run, arg_type):
+            func(run, *args, **kwargs)
+        elif arg_type is MultiRun:
+            data = asdict(run)
+            data["run_index"] = 0
+            multirun = MultiRun(run.experiment_name, run.time, [Run(**data)], run.path)
+            func(multirun, *args, **kwargs)
+        elif arg_type is Run:
+            for run_ in run.runs:
+                out_dir = (Path(".") / f"{run_.run_index}").resolve()
+                out_dir.mkdir(exist_ok=True)
+                with (set_directory(out_dir)):
+                    func(run_, *args, **kwargs)
+
+    return wrapper
 
 
 from importlib import import_module
@@ -432,6 +439,11 @@ class Experiment:
     def runs(self):
         return [get_run_from_path(dir_) for dir_ in self.run_dirs()]
 
+    def latest_run(self):
+        run_dirs = self.run_dirs()
+        latest_dir = run_dirs[-1]
+        return get_run_from_path(latest_dir.absolute())
+
     def members(self):
         experiment_module = import_module(f"src.experiments.{self.name}")
         return getmembers(experiment_module)
@@ -443,5 +455,3 @@ class Experiment:
         return {
             name: x for name, x in self.members() if getattr(x, "__isresult", False)
         }
-
-    

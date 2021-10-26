@@ -4,11 +4,8 @@ from torch.distributions import Normal
 
 from src.data.mnist import MNISTDataModule
 from src.inference.base import InferenceModule
-from src.inference.probabilistic import (
-    NormalMixturePrior,
-    PriorSpec,
-    as_probabilistic_model,
-)
+from src.inference.probabilistic import (NormalMixturePrior, PriorSpec,
+                                         as_probabilistic_model)
 from src.models.base import Model
 from src.models.mlp import MLPClassifier
 from src.utils import ParameterView
@@ -72,15 +69,15 @@ class VariationalInference(InferenceModule):
 
         self.view[:] = w
 
-        N = len(self.trainer.train_dataloader.dataset)
-
-        kl = (Normal(self.mu, sigma).log_prob(w).sum() - self.model.log_prior()) / N
+        kl = Normal(self.mu, sigma).log_prob(w).sum() - self.model.log_prior()
 
         output = self.model(x)
         obs_model = self.model.observation_model_gvn_output(output)
-        log_lik = obs_model.log_prob(y).mean()
+        log_lik = obs_model.log_prob(y).sum()
 
-        elbo = log_lik - kl
+        M = len(self.trainer.train_dataloader)
+
+        elbo = log_lik - kl / M
 
         # Save references for grad
         self._eps = eps
@@ -141,7 +138,7 @@ class VariationalInference(InferenceModule):
         # self.log("max_p/val", output., on_epoch=True, on_step=False)
 
         for name, metric in self.val_metrics.items():
-            self.log(f"{name}/val", metric(prediction, y))
+            self.log(f"{name}/val", metric(prediction, y), prog_bar=True)
 
     def on_validation_epoch_end(self) -> None:
         del self.w_samples

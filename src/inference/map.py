@@ -5,6 +5,7 @@ from src.models.base import Model
 from .base import InferenceModule
 from .probabilistic import as_probabilistic_model
 
+
 class MAPInference(InferenceModule):
 
 

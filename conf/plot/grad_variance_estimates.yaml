@@ -1,0 +1,5 @@
+grad_variance_estimates:
+  _target_: src.visualization.grad_variance_estimates.grad_variance_estimates
+
+all_estimates_sampled_variables:
+  _target_: src.visualization.grad_variance_estimates.all_estimates_sampled_variables

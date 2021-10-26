@@ -3,18 +3,17 @@ from pathlib import Path
 
 import hydra
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 import torch
 from pytorch_lightning import Callback
 
 from src.experiments.common import plot, result
-from src.inference.mcmc.var_estimators import VarianceEstimator, WelfordEstimator
+from src.inference.mcmc.variance_estimators import (VarianceEstimator,
+                                               WelfordEstimator)
 
 
-import pandas as pd
-
-
-class VarianceEstimatorWrapper(VarianceEstimator):
+class DummyVarianceEstimator(VarianceEstimator):
     def __init__(self, variance_estimator: VarianceEstimator, use_estimate, constant=0.0):
 
         super().__init__()

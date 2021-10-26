@@ -161,3 +161,30 @@ class InterBatchEstimator(VarianceEstimator):
 
 # class Hybrid:
 #     ...
+
+
+class DummyVarianceEstimator(VarianceEstimator):
+    def __init__(self, variance_estimator: VarianceEstimator, use_estimate, constant=0.0):
+
+        super().__init__()
+        self.use_estimate = use_estimate
+        self.constant = torch.tensor(constant)
+        self.wrapped = variance_estimator
+
+    def setup(self, sampler):
+        self.wrapped.setup(sampler)
+
+    def estimate(self) -> torch.Tensor:
+        if self.use_estimate:
+            return self.wrapped.estimate()
+        else:
+            return self.constant
+
+    def on_train_epoch_start(self, inference_module):
+        self.wrapped.on_train_epoch_start(inference_module)
+
+    def on_after_grad(self, grad: torch.Tensor):
+        self.wrapped.on_after_grad(grad)
+
+    def on_before_next_sample(self, sampler):
+        self.wrapped.on_before_next_sample(sampler)

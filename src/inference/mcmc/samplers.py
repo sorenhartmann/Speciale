@@ -5,7 +5,8 @@ import torch
 from torch.distributions import Normal
 
 from src.inference.mcmc.samplable import Samplable
-from src.inference.mcmc.var_estimators import ConstantEstimator, VarianceEstimator
+from src.inference.mcmc.variance_estimators import (ConstantEstimator,
+                                               VarianceEstimator)
 
 
 class Sampler(ABC):
@@ -247,7 +248,7 @@ class SGHMCWithVarianceEstimator(SGHMC):
     @property
     def err_std(self):
         beta = self.beta
-        alpha = self.alpha.clamp(min=1.3 * beta)
+        alpha = self.alpha.clamp(min=10 * beta)
         return torch.sqrt(2 * (alpha - beta) * self.lr)
 
     def grad_U(self):

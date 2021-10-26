@@ -2,11 +2,18 @@
 
 defaults:
   - _self_
-  - /experiment/mnist : sghmc
+  - /experiment/mnist : vi
   - override /data : mnist
   - override /model : mlp_classifier
   
 out_dir : mnist
+
+model:
+  hidden_layers:
+    - 800
+    - 800  
+  activation_func:
+    _target_: torch.nn.ReLU
 
 trainer:
   max_epochs: 800

@@ -1,4 +1,6 @@
-experiment_name: sghmc_gradients
+defaults:
+  - plot/experiment: sghmc_gradients
+  - _self_
 
 run_dir: experiment_results/${latest_run_dir:${experiment_name}}
 out_dir: ${run_dir}/_plots_
@@ -7,9 +9,8 @@ run:
   _target_: src.experiments.common.get_run_from_path
   path: ${run_dir}
 
+seed: 123
+
 hydra:
   run:
     dir: ${out_dir}
-  sweep:
-    dir: ${out_dir}
-    subdir: ${hydra.job.num}

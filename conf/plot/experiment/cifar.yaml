@@ -1,0 +1,15 @@
+# @package _global_
+
+defaults:
+  - /plot: 
+    - parameter_sweep
+
+plot:
+
+  parameter_sweep:
+    parameters:
+      - inference.lr
+      - inference.initial_rho
+      - trainer.gradient_clip_val
+
+experiment_name: cifar

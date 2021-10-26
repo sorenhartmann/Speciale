@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 from torch.distributions import Normal
 from torch.distributions.normal import Normal
-from src.experiments.cifar import model_performance
 
 from src.models.base import Model
 
@@ -25,7 +24,8 @@ class KnownPrecisionNormalPrior(Prior):
     def log_prob(self, parameter):
         return Normal(self.mean, 1.0 / self.precision.sqrt()).log_prob(parameter)
 
-from torch.distributions import MixtureSameFamily, Bernoulli, Categorical
+from torch.distributions import Bernoulli, Categorical, MixtureSameFamily
+
 
 class NormalMixturePrior(Prior):
     def __init__(
@@ -48,8 +48,8 @@ class NormalMixturePrior(Prior):
 
         return dist.log_prob(parameter)
 
-from typing import Type, Any, Dict
 from dataclasses import dataclass, field
+from typing import Dict, Type
 
 
 @dataclass
