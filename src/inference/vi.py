@@ -1,4 +1,5 @@
 import torch
+from typing import Callable, Optional
 from pytorch_lightning import Trainer
 from torch.distributions import Normal
 
@@ -19,6 +20,25 @@ def bufferize_parameters_(module):
         module.register_buffer(name, buffer)
 
 
+class KLWeightingScheme(Callable):
+    ...
+
+
+class ConstantKLWeight(KLWeightingScheme):
+    
+    @staticmethod
+    def __call__(batch_idx, M):
+        return 1/M
+
+class ExponentialKLWeight(KLWeightingScheme):
+
+    @staticmethod
+    def __call__(batch_idx, M):
+        weight = 2**(M-(batch_idx+1)) / (2**M-1)
+        if weight < 1e-8:
+            weight=0.
+        return weight
+
 class VariationalInference(InferenceModule):
 
     # TODO: specifiy prior
@@ -29,6 +49,7 @@ class VariationalInference(InferenceModule):
         n_samples=10,
         prior_spec=None,
         initial_rho=-2,
+        kl_weighting_scheme : Optional[KLWeightingScheme]=None,
     ):
 
         super().__init__()
@@ -36,6 +57,11 @@ class VariationalInference(InferenceModule):
         # self.automatic_optimization = False
         self.lr = lr
         self.n_samples = n_samples
+
+        if  kl_weighting_scheme is None:
+            kl_weighting_scheme = ConstantKLWeight()
+        
+        self.kl_weighting_scheme = kl_weighting_scheme
 
         if prior_spec is None:
             prior_spec = PriorSpec(NormalMixturePrior())
@@ -75,21 +101,20 @@ class VariationalInference(InferenceModule):
         obs_model = self.model.observation_model_gvn_output(output)
         log_lik = obs_model.log_prob(y).sum()
 
-        M = len(self.trainer.train_dataloader)
-
-        elbo = log_lik - kl / M
+        kl_w = self.kl_weighting_scheme(batch_idx, len(self.trainer.train_dataloader))
+        batch_elbo = log_lik - kl * kl_w
 
         # Save references for grad
         self._eps = eps
         self._w = w
 
-        self.log("elbo/train", elbo)
+        self.log("elbo/train", batch_elbo, on_step=False, on_epoch=True)
         self.log("kl/train", kl)
         self.log("log_lik/train", log_lik)
         for name, metric in self.train_metrics.items():
             self.log(f"{name}/train", metric(output, y), on_epoch=True, on_step=False)
 
-        return -elbo
+        return -batch_elbo
 
     def on_after_backward(self) -> None:
 

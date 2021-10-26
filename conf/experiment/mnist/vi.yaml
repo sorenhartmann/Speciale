@@ -5,8 +5,15 @@ defaults:
 
 inference:
   lr : 1.e-03
+  kl_weighting_scheme: 
+    _target_: src.inference.vi.ExponentialKLWeight
 
 data:
   batch_size: 128
 
+trainer:
+  gradient_clip_val: 50.
+  gradient_clip_algorithm: value
+
 tag: vi
+
