@@ -5,8 +5,11 @@ from torch.distributions import Normal
 
 from src.data.mnist import MNISTDataModule
 from src.inference.base import InferenceModule
-from src.inference.probabilistic import (NormalMixturePrior, PriorSpec,
-                                         as_probabilistic_model)
+from src.inference.probabilistic import (
+    NormalMixturePrior,
+    PriorSpec,
+    as_probabilistic_model,
+)
 from src.models.base import Model
 from src.models.mlp import MLPClassifier
 from src.utils import ParameterView
@@ -23,20 +26,18 @@ def bufferize_parameters_(module):
 class KLWeightingScheme(Callable):
     ...
 
-
 class ConstantKLWeight(KLWeightingScheme):
-    
     @staticmethod
     def __call__(batch_idx, M):
-        return 1/M
+        return 1 / M
+
 
 class ExponentialKLWeight(KLWeightingScheme):
-
     @staticmethod
     def __call__(batch_idx, M):
-        weight = 2**(M-(batch_idx+1)) / (2**M-1)
+        weight = 2 ** (M - (batch_idx + 1)) / (2 ** M - 1)
         if weight < 1e-8:
-            weight=0.
+            weight = 0.0
         return weight
 
 class VariationalInference(InferenceModule):
@@ -49,7 +50,7 @@ class VariationalInference(InferenceModule):
         n_samples=10,
         prior_spec=None,
         initial_rho=-2,
-        kl_weighting_scheme : Optional[KLWeightingScheme]=None,
+        kl_weighting_scheme: Optional[KLWeightingScheme] = None,
     ):
 
         super().__init__()
@@ -58,9 +59,9 @@ class VariationalInference(InferenceModule):
         self.lr = lr
         self.n_samples = n_samples
 
-        if  kl_weighting_scheme is None:
+        if kl_weighting_scheme is None:
             kl_weighting_scheme = ConstantKLWeight()
-        
+
         self.kl_weighting_scheme = kl_weighting_scheme
 
         if prior_spec is None:
@@ -125,21 +126,6 @@ class VariationalInference(InferenceModule):
         del self._w
         del self._eps
 
-    def on_train_batch_end(self, outputs, batch, batch_idx, dataloader_idx) -> None:
-        if batch_idx == len(self.trainer.train_dataloader) - 1:
-            self.logger.experiment.add_histogram(
-                "mu/value", self.mu, self.current_epoch
-            )
-            self.logger.experiment.add_histogram(
-                "mu/grad", self.mu.grad, self.current_epoch
-            )
-            self.logger.experiment.add_histogram(
-                "rho/value", self.rho, self.current_epoch
-            )
-            self.logger.experiment.add_histogram(
-                "rho/grad", self.rho.grad, self.current_epoch
-            )
-
     def on_validation_epoch_start(self) -> None:
 
         self.w_samples = torch.randn((self.n_samples,) + self.mu.shape)
@@ -156,11 +142,6 @@ class VariationalInference(InferenceModule):
             prediction += self.model.predict(x)
 
         prediction /= self.n_samples
-
-        # if batch_idx == 0:
-        #     print("ayy")
-
-        # self.log("max_p/val", output., on_epoch=True, on_step=False)
 
         for name, metric in self.val_metrics.items():
             self.log(f"{name}/val", metric(prediction, y), prog_bar=True)
