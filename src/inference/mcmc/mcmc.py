@@ -7,7 +7,7 @@ from src.inference.base import InferenceModule
 from src.inference.mcmc.samplable import ParameterPosterior
 from src.inference.mcmc.sample_containers import FIFOSampleContainer
 from src.inference.mcmc.samplers import SGHMC
-from src.inference.mcmc.var_estimators import (NextEpochException,
+from src.inference.mcmc.variance_estimators import (NextEpochException,
                                                NoStepException)
 from src.inference.probabilistic import (KnownPrecisionNormalPrior,
                                          ModuleWithPrior,
