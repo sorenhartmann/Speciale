@@ -21,10 +21,16 @@ from pytorch_lightning.utilities import (
 from pytorch_lightning.utilities.cloud_io import get_filesystem
 from pytorch_lightning.utilities.distributed import rank_zero_only
 
-# from src.utils import Component, HPARAM
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.tensorboard.summary import hparams
 from typing_extensions import runtime
+
+from inspect import signature
+
+
+from dataclasses import asdict
+from functools import wraps
+
 
 ROOT_DIR = Path(__file__).parents[2]
 
@@ -260,11 +266,11 @@ log = logging.getLogger(__name__)
 class Run:
 
     experiment_name: str
-    time: datetime.datetime
+    date: datetime.date
+    id: str
     config: DictConfig = field(repr=False, compare=False)
     overrides: DictConfig = field(repr=False, compare=False)
     path: Path = field(repr=False, compare=False)
-    run_index: Optional[int]
 
     @property
     def experiment(self):
@@ -276,41 +282,6 @@ class Run:
         if self.run_index is not None:
             name += f"[{self.run_index}]"
         return name
-
-    @cache
-    def load_result(self, result_func_name=None):
-
-        log.info(f"Loading <{result_func_name}> for run {self.short_name}")
-        result_func = self.experiment.get_result_funcs()[result_func_name]
-        with set_directory(self.path):
-            results = result_func()
-        return results
-
-    def call_plot_func(self, plot_func):
-
-        if getattr(plot_func, ("__plot_type")) == PlotType.SINGLE_RUN:
-
-            kwargs = {}
-            for arg_name in signature(plot_func).parameters:
-                if arg_name == "_run_":
-                    kwargs["_run_"] = self
-                else:
-                    kwargs[arg_name] = self.load_result(arg_name)
-            log.info(f"Plotting single run plot: <{plot_func.__name__}>")
-
-            plot_func(**kwargs)
-        else:
-            data = asdict(self)
-            data["run_index"] = 0
-            multirun = MultiRun(
-                self.experiment_name, self.time, [Run(**data)], self.path
-            )
-            try:
-                multirun.call_plot_func(plot_func)
-            except:
-                log.info(
-                    f"Plotting single run as multi run failed. Skipping <{plot_func.__name__}>"
-                )
 
     def get_override_value(self, value):
 
@@ -326,7 +297,8 @@ class Run:
 class MultiRun:
 
     experiment_name: str
-    time: datetime.datetime
+    date: datetime.date
+    id: str
     runs: List[Run] = field(compare=False)
     path: Path = field(repr=False, compare=False)
 
@@ -334,59 +306,39 @@ class MultiRun:
     def experiment(self):
         return Experiment(self.experiment_name)
 
-    def collect_results(self, result_func_name):
-        return {i: x.load_result(result_func_name) for i, x in enumerate(self.runs)}
 
-    def call_plot_func(self, plot_func):
-
-        if getattr(plot_func, ("__plot_type")) == PlotType.MULTI_RUN:
-            kwargs = {}
-            for arg_name in signature(plot_func).parameters:
-                if arg_name == "_run_":
-                    kwargs["_run_"] = dict(enumerate(self.runs))
-                else:
-                    kwargs[arg_name] = self.collect_results(arg_name)
-
-            log.info(f'Plotting multi run plot: "{plot_func.__name__}"')
-            plot_func(**kwargs)
-
-        elif getattr(plot_func, ("__plot_type")) == PlotType.SINGLE_RUN:
-            for run in self.runs:
-                out_dir = (Path(".") / f"{run.run_index}").resolve()
-                out_dir.mkdir(exist_ok=True)
-                with (set_directory(out_dir)):
-                    run.call_plot_func(plot_func)
-
-
-def get_run_from_path(path):
+def get_run_from_path(path, recurse=True):
 
     path = Path(to_absolute_path(path))
 
-    name, day, time, *run_index = str(path.relative_to(EXPERIMENT_PATH)).split("/")
-    time = datetime.datetime.strptime(f"{day}/{time}", r"%Y-%m-%d/%H-%M-%S")
+    name, date, *id_ = str(path.relative_to(EXPERIMENT_PATH)).split("/")
+    date = datetime.date.fromisoformat(date)
+    id_ = "/".join(id_)
 
     if (path / ".hydra").exists():
         config = OmegaConf.load(path / ".hydra" / "config.yaml")
         overrides = OmegaConf.load(path / ".hydra" / "overrides.yaml")
-        run_index = int(run_index[0]) if len(run_index) > 0 else None
-        return Run(name, time, config, overrides, path, run_index)
-    else:
-        runs = sorted(
-            [
-                get_run_from_path(x)
-                for x in path.iterdir()
-                if x.stem.isdigit() and x.is_dir()
-            ]
-        )
+        return Run(name, date, id_, config, overrides, path)
+    elif recurse:
+        runs = []
+        for x in path.iterdir():
+            if not x.is_dir() or x.stem.startswith("_"):
+                continue
+            run = get_run_from_path(x, recurse=False)
+            if run is not None:
+                runs.append(run)
+
         if len(runs) > 0:
-            return MultiRun(name, time, runs, path)
+            runs = sorted(
+                runs,
+                key=lambda x: f"{int(x.path.stem):03}"
+                if x.path.stem.isnumeric()
+                else x.path.stem,
+            )
+            return MultiRun(name, date, id_, runs, path)
+    else:
+        return None
 
-
-from inspect import signature
-
-
-from dataclasses import asdict
-from functools import wraps
 
 def cast_run(func):
 
@@ -395,7 +347,7 @@ def cast_run(func):
     multirun_args = [
         (a, k.annotation) for a, k in sig.parameters.items() if k.annotation is MultiRun
     ]
-    singlerun_args = [ 
+    singlerun_args = [
         (a, k.annotation) for a, k in sig.parameters.items() if k.annotation is Run
     ]
     ((arg_name, arg_type),) = multirun_args + singlerun_args
@@ -422,6 +374,7 @@ def cast_run(func):
 
 from importlib import import_module
 from inspect import getmembers
+import os
 
 
 @dataclass

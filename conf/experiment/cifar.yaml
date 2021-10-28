@@ -1,25 +1,18 @@
 # @package _global_
 defaults:
-  - override /inference: vi
+  - /experiment/cifar : vi
   - override /data : cifar
   - override /model : conv_classifier
   - _self_
-  
-out_dir : mnist
 
-inference:
-  lr: 0.05
+out_dir : cifar
 
 data:
   batch_size: 128
 
 trainer:
   max_epochs: 800
-  gradient_clip_val: 5.
-  gradient_clip_algorithm: norm
 
-plots:
-  - parameter_sweep
 
 # hydra:
 #   sweeper:
