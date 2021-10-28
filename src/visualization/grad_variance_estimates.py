@@ -49,9 +49,9 @@ def load_estimates(run: Run, sub_dir, single_step=None):
 def grad_variance_estimates(multirun: MultiRun):
 
     def get_estimates(run):
-        variance_inter_batch = load_estimates(run, "variance_inter_batch", -1)
+        variance_interbatch = load_estimates(run, "variance_interbatch", -1)
         variance_estimated = load_estimates(run, "variance_estimated", -1)
-        return pd.concat([variance_inter_batch, variance_estimated], axis=1)
+        return pd.concat([variance_interbatch, variance_estimated], axis=1)
 
     estimates = {run.run_index: get_estimates(run) for run in multirun.runs}
 
@@ -78,7 +78,7 @@ def grad_variance_estimates(multirun: MultiRun):
         )
         .pipe(
             (sns.relplot, "data"),
-            x="variance_inter_batch",
+            x="variance_interbatch",
             y="variance_estimated",
             col="estimator",
             row="use_estimate",
@@ -95,16 +95,16 @@ def grad_variance_estimates(multirun: MultiRun):
 @cast_run
 def all_estimates_sampled_variables(run: Run, n_parameters=9, seed=123):
 
-    variance_inter_batch = load_estimates(run, "variance_inter_batch")
+    variance_interbatch = load_estimates(run, "variance_interbatch")
     variance_estimated = load_estimates(run, "variance_estimated")
     # fmt: off
     data = (
-        pd.concat([variance_inter_batch, variance_estimated], axis=1)
+        pd.concat([variance_interbatch, variance_estimated], axis=1)
         .unstack("parameter_index")
     )
     is_zero = (
-        np.isclose(data["variance_inter_batch"], 0).all(0) 
-        |  np.isclose(data["variance_inter_batch"], 0).all(0)
+        np.isclose(data["variance_interbatch"], 0).all(0) 
+        |  np.isclose(data["variance_interbatch"], 0).all(0)
     )
     # fmt: on
     no_zero_columns = (
@@ -121,7 +121,7 @@ def all_estimates_sampled_variables(run: Run, n_parameters=9, seed=123):
     )
     fg = sns.relplot(
         data=sampled_data,
-        x="variance_inter_batch",
+        x="variance_interbatch",
         y="variance_estimated",
         col="parameter_index",
         col_wrap=3,

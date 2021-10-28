@@ -1,0 +1,14 @@
+# @package _global_
+
+defaults:
+  - override /inference : sgd
+
+inference:
+  lr : 1.e-03
+  use_map : True
+  
+data:
+  batch_size: 128
+
+tag: sgd-map
+

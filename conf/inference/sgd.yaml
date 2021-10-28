@@ -1,0 +1,6 @@
+_target_ : src.inference.sgd.SGDInference
+model : ${model}
+lr: 0.001
+use_map : False
+
+

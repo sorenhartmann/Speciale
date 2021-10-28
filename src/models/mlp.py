@@ -14,6 +14,7 @@ class MLPModel(Model):
         out_features=10,
         hidden_layers=[100],
         activation_func: Optional[nn.Module] = None,
+        dropout: float = None,
     ):
 
         super().__init__()
@@ -23,10 +24,16 @@ class MLPModel(Model):
 
         self.hidden_layers = hidden_layers
 
+        if dropout is not None:
+            dropout_module = nn.Dropout(dropout)
+
         seq_builder = SequentialBuilder(in_shape=(in_features,))
         for hidden_size in hidden_layers:
             seq_builder.add(nn.Linear(seq_builder.out_dim(0), hidden_size))
             seq_builder.add(activation_func)
+            if dropout is not None:
+                seq_builder.add(dropout_module)
+
         seq_builder.add(nn.Linear(seq_builder.out_dim(0), out_features))
 
         self.ffnn = seq_builder.build()

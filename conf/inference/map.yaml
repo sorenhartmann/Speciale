@@ -1,5 +1,0 @@
-_target_ : src.inference.map.MAPInference
-model : ${model}
-lr: 0.001
-
-

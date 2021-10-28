@@ -1,13 +1,16 @@
 # @package _global_
 
 defaults:
-  - override /inference : fifo
+  - override /inference : sgd
 
 inference:
   lr : 1.e-03
+  use_map: False
   
 data:
   batch_size: 128
 
-tag: map
+model:
+  dropout: 0.5
 
+tag: sgd-dropout

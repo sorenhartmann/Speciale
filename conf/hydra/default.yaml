@@ -1,7 +1,4 @@
 
-
-
-
 run:
   dir: experiment_results/${out_dir}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 sweep:

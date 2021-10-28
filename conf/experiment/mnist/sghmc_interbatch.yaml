@@ -4,12 +4,16 @@ defaults:
   - override /inference : mcmc
   - override /sample_container : fifo
   - override /sampler : sghmc_with_grad_est
-  - override /variance_estimator: inter_batch
+  - override /variance_estimator: interbatch
 
 sampler:
   lr : 2.0e-06
 
 inference:
   burn_in: 50
+
+model:
+  activation_func:
+    _target_: torch.nn.Sigmoid
 
 tag: sghmc_interbatch

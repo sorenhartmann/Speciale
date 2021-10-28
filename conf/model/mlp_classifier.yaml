@@ -1,1 +1,2 @@
 _target_ : src.models.mlp.MLPClassifier
+dropout: null

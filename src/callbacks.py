@@ -2,7 +2,7 @@
 
 class LogVarianceEstimates(Callback):
 
-    inter_batch_variance_folder = Path("variance_inter_batch")
+    interbatch_variance_folder = Path("variance_interbatch")
     variance_estimated_folder = Path("variance_estimated")
 
     def __init__(self, n_gradients=1000, logs_per_epoch=10):
@@ -12,7 +12,7 @@ class LogVarianceEstimates(Callback):
 
     def on_init_start(self, trainer) -> None:
 
-        self.inter_batch_variance_folder.mkdir()
+        self.interbatch_variance_folder.mkdir()
         self.variance_estimated_folder.mkdir()
 
     def _get_estimate(self, estimator):
@@ -64,7 +64,7 @@ class LogVarianceEstimates(Callback):
 
         torch.save(
             variance[self.log_idx],
-            self.inter_batch_variance_folder / f"{trainer.global_step:06}.pt",
+            self.interbatch_variance_folder / f"{trainer.global_step:06}.pt",
         )
         torch.save(
             estimate[self.log_idx],

@@ -12,4 +12,8 @@ sampler:
 inference:
   burn_in: 50
 
+model:
+  activation_func:
+    _target_: torch.nn.Sigmoid
+
 tag: sghmc_adam

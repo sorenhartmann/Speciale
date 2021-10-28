@@ -42,7 +42,7 @@ class DummyVarianceEstimator(VarianceEstimator):
 
 class LogVarianceEstimates(Callback):
 
-    inter_batch_variance_folder = Path("variance_inter_batch")
+    interbatch_variance_folder = Path("variance_interbatch")
     variance_estimated_folder = Path("variance_estimated")
 
     def __init__(self, n_gradients=1000, logs_per_epoch=10):
@@ -52,7 +52,7 @@ class LogVarianceEstimates(Callback):
 
     def on_init_start(self, trainer) -> None:
 
-        self.inter_batch_variance_folder.mkdir()
+        self.interbatch_variance_folder.mkdir()
         self.variance_estimated_folder.mkdir()
 
     def _get_estimate(self, estimator):
@@ -104,7 +104,7 @@ class LogVarianceEstimates(Callback):
 
         torch.save(
             variance[self.log_idx],
-            self.inter_batch_variance_folder / f"{trainer.global_step:06}.pt",
+            self.interbatch_variance_folder / f"{trainer.global_step:06}.pt",
         )
         torch.save(
             estimate[self.log_idx],
@@ -115,23 +115,23 @@ class LogVarianceEstimates(Callback):
 @result
 def variance_estimates():
 
-    variance_inter_batch = []
-    for file in sorted(Path("variance_inter_batch").iterdir()):
-        variance_inter_batch.append(torch.load(file))
+    variance_interbatch = []
+    for file in sorted(Path("variance_interbatch").iterdir()):
+        variance_interbatch.append(torch.load(file))
 
     variance_estimated = []
     for file in sorted(Path("variance_estimated").iterdir()):
         variance_estimated.append(torch.load(file))
 
     return {
-        "variance_inter_batch": torch.stack(variance_inter_batch),
+        "variance_interbatch": torch.stack(variance_interbatch),
         "variance_estimated": torch.stack(variance_estimated),
     }
 
 
 @result
 def global_steps():
-    return [int(file.stem) for file in sorted(Path("variance_inter_batch").iterdir())]
+    return [int(file.stem) for file in sorted(Path("variance_interbatch").iterdir())]
 
 
 @plot(multirun=True)
@@ -147,7 +147,7 @@ def final_estimates(variance_estimates, _run_):
                     "Estimator": run.get_override_value(
                         "experiment/sghmc_gradients/estimator@estimator"
                     ),
-                    "Inter batch variance": x["variance_inter_batch"][-1],
+                    "Interbatch variance": x["variance_interbatch"][-1],
                     "Estimated variance": x["variance_estimated"][-1],
                 }
             )
@@ -175,7 +175,7 @@ def all_estimates_sampled_variables(variance_estimates, global_steps, _run_):
 
     is_zero = variance_estimates["variance_estimated"].isclose(torch.tensor(0.0)).all(0)
     is_zero |= (
-        variance_estimates["variance_inter_batch"].isclose(torch.tensor(0.0)).all(0)
+        variance_estimates["variance_interbatch"].isclose(torch.tensor(0.0)).all(0)
     )
 
     non_zero_index = (~is_zero).nonzero().flatten()
@@ -188,7 +188,7 @@ def all_estimates_sampled_variables(variance_estimates, global_steps, _run_):
 
         return pd.DataFrame(
             {
-                "Inter batch variance": variance_estimates["variance_inter_batch"][
+                "Inter batch variance": variance_estimates["variance_interbatch"][
                     :, idx
                 ],
                 "Estimated variance": variance_estimates["variance_estimated"][:, idx],

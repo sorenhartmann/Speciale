@@ -17,7 +17,7 @@ source .venv/bin/activate
 
 python scripts/inference.py -m hydra/launcher=joblib \
     +experiment=sghmc_gradients \
-    variance_estimator="adam,inter_batch" \
+    variance_estimator="adam,interbatch" \
     inference.sampler.variance_estimator.use_estimate="True,False" \
     ++trainer.progress_bar_refresh_rate=0 \
     ++trainer.max_epochs=800

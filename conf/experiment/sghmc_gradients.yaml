@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - /variance_estimator: inter_batch
+  - /variance_estimator: interbatch
   - override /model : mlp_classifier
   - override /inference : mcmc
   - override /sampler : sghmc_with_grad_est
