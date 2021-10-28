@@ -80,8 +80,8 @@ class VariationalInference(InferenceModule):
             "mu", torch.nn.Parameter(torch.zeros(self.view.n_params))
         )
 
-        self.train_metrics = self.model.get_metrics()
-        self.val_metrics = self.model.get_metrics()
+        self.train_metrics = torch.nn.ModuleDict(self.model.get_metrics())
+        self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
 
     def training_step(self, batch, batch_idx):
 
@@ -128,7 +128,7 @@ class VariationalInference(InferenceModule):
 
     def on_validation_epoch_start(self) -> None:
 
-        self.w_samples = torch.randn((self.n_samples,) + self.mu.shape)
+        self.w_samples = torch.randn((self.n_samples,) + self.mu.shape, device=self.device)
         self.w_samples.mul_(torch.log(1 + self.rho.exp()))
         self.w_samples.add_(self.mu)
 
