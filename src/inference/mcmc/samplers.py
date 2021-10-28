@@ -9,20 +9,18 @@ from src.inference.mcmc.variance_estimators import (ConstantEstimator,
                                                VarianceEstimator)
 
 
-class Sampler(ABC):
+class Sampler(torch.nn.Module):
 
     is_batched: bool
 
     def on_train_epoch_start(self, inference_module):
         """Only called in case of inference sampling"""
 
-    @abstractmethod
     def setup(self, samplable: Samplable):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def next_sample(self):
-        pass
+        raise NotImplementedError
 
 class MetropolisHastings(Sampler):
 
@@ -30,7 +28,8 @@ class MetropolisHastings(Sampler):
 
     def __init__(self, step_size=0.01):
 
-        self.step_size = step_size
+        super().__init__()
+        self.register_buffer("step_size", torch.tensor(0.01))
 
     def setup(self, samplable):
 
@@ -83,7 +82,9 @@ class HMC(Sampler, HamiltonianMixin):
 
     def __init__(self, step_size=0.01, n_steps=1) -> None:
 
-        self.step_size = step_size
+        super().__init__()
+
+        self.register_buffer("step_size", torch.tensor(step_size))
         self.n_steps = n_steps
 
     def setup(self, samplable: Samplable):
@@ -161,6 +162,7 @@ class SGHMC(Sampler, HamiltonianMixin):
         n_steps: int = 1,
         resample_momentum: bool = False,
     ):
+        super().__init__()
 
         self.alpha = torch.tensor(alpha)
         self.beta = torch.tensor(beta)
@@ -219,7 +221,7 @@ def sghmc_original_parameterization(
     return SGHMC(alpha, beta, lr, n_steps, resample_momentum=True)
 
 
-class SGHMCWithVarianceEstimator(SGHMC):
+class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
     def __init__(
         self,
         alpha: float = 1e-2,
@@ -229,8 +231,10 @@ class SGHMCWithVarianceEstimator(SGHMC):
         resample_momentum: bool = False,
     ):
 
-        self.alpha = torch.tensor(alpha)
-        self.lr = torch.tensor(lr)
+        torch.nn.Module.__init__(self)
+
+        self.register_buffer("alpha", torch.tensor(alpha))
+        self.register_buffer("lr", torch.tensor(lr))
 
         if type(variance_estimator) is float:
             self.variance_estimator = ConstantEstimator(float)
@@ -248,7 +252,7 @@ class SGHMCWithVarianceEstimator(SGHMC):
     @property
     def err_std(self):
         beta = self.beta
-        alpha = self.alpha.clamp(min=10 * beta)
+        alpha = self.alpha.clamp(min=2 * beta)
         return torch.sqrt(2 * (alpha - beta) * self.lr)
 
     def grad_U(self):
