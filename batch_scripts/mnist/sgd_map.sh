@@ -3,7 +3,7 @@
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -J mnist_sgd_map
 #BSUB -n 4
-#BSUB -W 1:00
+#BSUB -W 10:00
 #BSUB -B
 #BSUB -N
 #BSUB -R span[hosts=1]
@@ -23,5 +23,5 @@ python scripts/inference.py -m \
     experiment/mnist=sgd_map \
     inference.lr="1.e-03,1.e-04,1.e-05" \
     ++trainer.progress_bar_refresh_rate=0 \
-    ++trainer.max_epochs=800 \
+    ++trainer.max_epochs=800 \
     ++trainer.gpus=1

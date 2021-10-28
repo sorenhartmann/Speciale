@@ -74,29 +74,20 @@ class AdamEstimator(VarianceEstimator):
 
 
 class WelfordEstimator(nn.Module):
-    def __init__(self):
-        super().__init__()
 
+    def __init__(self, shape):
+        super().__init__()
         self.n = 0
-        self.initialized_buffers = False
+        self.register_buffer("S_n", torch.zeros(shape))
+        self.register_buffer("m_n", torch.zeros(shape))
 
     def reset(self):
 
         self.n = 0
-        if self.initialized_buffers:
-            self.S_n.zero_()
-            self.m_n.zero_()
-
-    def init_buffers(self, shape):
-
-        self.register_buffer("S_n", torch.zeros(shape))
-        self.register_buffer("m_n", torch.zeros(shape))
-        self.initialized_buffers = True
+        self.S_n.zero_()
+        self.m_n.zero_()
 
     def update(self, value):
-
-        if not self.initialized_buffers:
-            self.init_buffers(value.shape)
 
         n = self.n + 1
 
@@ -127,7 +118,9 @@ class InterBatchEstimator(VarianceEstimator):
         self.is_estimating = False
 
     def setup(self, sampler):
-        self.wf_estimator = WelfordEstimator()
+
+        shape = sampler.samplable.shape
+        self.wf_estimator = WelfordEstimator(shape)
 
     def on_train_epoch_start(self, inference_module):
 
