@@ -10,7 +10,8 @@ out_dir : mnist
 
 model:
   hidden_layers:
-    - 100
+    - 800
+    - 800
   activation_func:
     _target_: torch.nn.ReLU
 

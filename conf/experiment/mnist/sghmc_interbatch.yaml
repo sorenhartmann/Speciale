@@ -2,7 +2,7 @@
 
 defaults:
   - override /inference : mcmc
-  - override /sample_container : all
+  - override /sample_container : fifo
   - override /sampler : sghmc_with_grad_est
   - override /variance_estimator: inter_batch
 
@@ -11,6 +11,5 @@ sampler:
 
 inference:
   burn_in: 50
-
 
 tag: sghmc_interbatch

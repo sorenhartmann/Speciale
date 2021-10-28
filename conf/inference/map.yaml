@@ -3,4 +3,3 @@ model : ${model}
 lr: 0.001
 
 
-# batch_size :  noget noget overide i data?

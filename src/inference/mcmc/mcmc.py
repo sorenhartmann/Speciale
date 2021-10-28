@@ -46,7 +46,7 @@ class MCMCInference(InferenceModule):
         self.burn_in = burn_in
         self.steps_per_sample = steps_per_sample
 
-        self.val_metrics = self.model.get_metrics()
+        self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
 
         self._skip_val = True
 
@@ -173,16 +173,3 @@ class MCMCInference(InferenceModule):
 
         self._skip_val = True
 
-
-if __name__ == "__main__":
-
-    # model =
-    # sampler = StochasticGradientHamiltonian()
-    # sample_container = FIFOSampleContainer(max_items=750, keep_every=1)
-    inference = MCMCInference(MLPClassifier(hidden_layers=[100, 100]))
-
-    # datamodule = MNISTDataModule(500)
-
-    # Trainer(max_epochs=800).fit(inference, datamodule)
-
-    # yield

@@ -176,7 +176,7 @@ class SGHMC(Sampler, HamiltonianMixin):
     def setup(self, samplable: Samplable):
 
         self.samplable = samplable
-        self.nu = torch.zeros_like(self.samplable.state)
+        self.register_buffer("nu", torch.zeros_like(self.samplable.state))
         self.resample_nu()
 
         return self

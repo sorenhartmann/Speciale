@@ -1,3 +1,3 @@
 _target_: src.inference.mcmc.sample_containers.FIFOSampleContainer
-max_items: 20
-keep_every: 5
+max_items: 10
+keep_every: 50

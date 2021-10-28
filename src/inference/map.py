@@ -1,5 +1,5 @@
 import torch.optim
-
+from torch import nn
 from src.models.base import Model
 
 from .base import InferenceModule
@@ -9,16 +9,15 @@ from .probabilistic import as_probabilistic_model
 class MAPInference(InferenceModule):
 
 
-    def __init__(self, model : Model, lr: float=1e-3):
+    def __init__(self, model : Model, lr: float=1e-3, prior_spec=None):
 
         super().__init__()
 
-        self.model = as_probabilistic_model(model)
+        self.model = as_probabilistic_model(model, prior_spec)
         self.lr = lr
 
-
-        self.train_metrics = self.model.get_metrics()
-        self.val_metrics = self.model.get_metrics()
+        self.train_metrics = nn.ModuleDict(self.model.get_metrics())
+        self.val_metrics = nn.ModuleDict(self.model.get_metrics())
 
     
     def training_step(self, batch, batch_idx):
@@ -33,7 +32,7 @@ class MAPInference(InferenceModule):
         
         self.log("loss/train", loss)
         for name, metric in self.train_metrics.items():
-            self.log(f"{name}/train", metric(output, y), on_epoch=True, on_step=False)
+            self.log(f"{name}/train", metric(output, y))
 
         return loss
 
@@ -43,7 +42,7 @@ class MAPInference(InferenceModule):
         output = self.model(x)
 
         for name, metric in self.val_metrics.items():
-            self.log(f"{name}/val", metric(output, y))
+            self.log(f"{name}/val", metric(output, y), prog_bar=True)
 
     def configure_optimizers(self):
 
