@@ -223,7 +223,7 @@ def sghmc_original_parameterization(
 class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
     def __init__(
         self,
-        alpha: float = 1e-1,
+        alpha: float = 1e-2,
         lr: float = 2e-6,
         variance_estimator: Union[float, VarianceEstimator] = 0.0,
         n_steps: int = 1,
@@ -243,19 +243,39 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         self.n_steps = n_steps
         self.resample_momentum = resample_momentum
 
-        self.estimation_margin = 1.3
+        self.estimation_margin = 10
 
     def set_lr_beta(self):
 
         var_estimate = self.variance_estimator.estimate()
+        beta_0 = self.base_lr * var_estimate / 2
 
-        max_var_est = var_estimate.max()
-        if max_var_est == 0:
-            self.lr = self.base_lr
-        else:
-            self.lr = min(self.alpha / self.estimation_margin / 2 / max_var_est, self.base_lr)
+        mass_scaling = self.estimation_margin * beta_0 / self.alpha
+        mass_scaling.clamp_(min=1)
 
-        self.beta = 2 * var_estimate * self.lr
+        self.beta = beta_0 / mass_scaling
+        self.lr = self.base_lr / mass_scaling
+
+        # beta_estimate = 2 * var_estimate * self.lr
+        
+        # beta_estimate_adj = beta_estimate.clamp(max=self.alpha / self.estimation_margin)
+
+        # beta_estimate * inv_mass_scaling <= inv_mass_scaling * M- * self.alpha / self.estimation_margin 
+
+        # beta_estimate / beta_estimate_adj
+
+        # var_estimate.clamp(max=self.alpha * self.estimation_margin)
+
+        # self.alpha / self.estimation_margin / 2 / var_estimate
+
+        
+        # # alpha <= self.estimation_margin * beta
+
+        # self.alpha / self.estimation_margin / 2 / var_estimate
+
+
+
+
 
     @property
     def err_std(self):
