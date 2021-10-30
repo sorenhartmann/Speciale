@@ -2,7 +2,6 @@
 
 defaults:
   - override /inference : mcmc
-  - override /sample_container : fifo
   - override /sampler : sghmc
 
 
@@ -11,6 +10,9 @@ sampler:
   
 inference:
   burn_in: 50
+
+sample_container:
+  max_items: 10
 
 model:
   activation_func:

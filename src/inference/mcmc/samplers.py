@@ -177,7 +177,6 @@ class SGHMC(Sampler, HamiltonianMixin):
 
         self.samplable = samplable
         self.register_buffer("nu", torch.zeros_like(self.samplable.state))
-        self.resample_nu()
 
         return self
 
@@ -224,8 +223,8 @@ def sghmc_original_parameterization(
 class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
     def __init__(
         self,
-        alpha: float = 1e-2,
-        lr: float = 0.2e-5,
+        alpha: float = 1e-1,
+        lr: float = 2e-6,
         variance_estimator: Union[float, VarianceEstimator] = 0.0,
         n_steps: int = 1,
         resample_momentum: bool = False,
@@ -234,7 +233,7 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         torch.nn.Module.__init__(self)
 
         self.register_buffer("alpha", torch.tensor(alpha))
-        self.register_buffer("lr", torch.tensor(lr))
+        self.register_buffer("base_lr", torch.tensor(lr))
 
         if type(variance_estimator) is float:
             self.variance_estimator = ConstantEstimator(float)
@@ -244,16 +243,23 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         self.n_steps = n_steps
         self.resample_momentum = resample_momentum
 
-    @property
-    def beta(self):
+        self.estimation_margin = 1.3
+
+    def set_lr_beta(self):
+
         var_estimate = self.variance_estimator.estimate()
-        return 2 * var_estimate * self.lr
+
+        max_var_est = var_estimate.max()
+        if max_var_est == 0:
+            self.lr = self.base_lr
+        else:
+            self.lr = min(self.alpha / self.estimation_margin / 2 / max_var_est, self.base_lr)
+
+        self.beta = 2 * var_estimate * self.lr
 
     @property
     def err_std(self):
-        beta = self.beta
-        alpha = self.alpha.clamp(min=2 * beta)
-        return torch.sqrt(2 * (alpha - beta) * self.lr)
+        return torch.sqrt(2 * (self.alpha - self.beta) * self.lr)
 
     def grad_U(self):
         grad = super().grad_U()
@@ -261,12 +267,18 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         return grad
 
     def setup(self, samplable: Samplable):
-        super().setup(samplable)
+        
+        self.samplable = samplable
+        self.register_buffer("nu", torch.zeros_like(self.samplable.state))
         self.variance_estimator.setup(self) 
+        self.set_lr_beta()
+        self.resample_nu()
+
         return self
 
     def next_sample(self, return_sample: bool = True):
         self.variance_estimator.on_before_next_sample(self)
+        self.set_lr_beta()
         return super().next_sample(return_sample)
 
     def on_train_epoch_start(self, inference_module):

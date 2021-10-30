@@ -408,3 +408,4 @@ class Experiment:
         return {
             name: x for name, x in self.members() if getattr(x, "__isresult", False)
         }
+

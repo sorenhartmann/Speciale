@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from omegaconf import OmegaConf
-from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from src.experiments.common import MultiRun, Run, cast_run
 
@@ -39,25 +38,6 @@ def parameter_sweep(multi_run: MultiRun, parameters, tag):
     parallel_coordinates(metrics, parameters, tag, cmap="plasma")
 
     plt.savefig("parameter_sweep.pdf")
-
-
-@cache
-def get_run_statistics(run: Run, tag="err/val"):
-
-    accumulator = EventAccumulator(str(run.path / "metrics"))
-    accumulator.Reload()
-
-    def get_series(tag):
-        index = [x.step for x in accumulator.Scalars(tag)]
-        value = [x.value for x in accumulator.Scalars(tag)]
-        return pd.Series(value, index=index)
-
-    return pd.DataFrame(
-        {
-            "Epoch": get_series("epoch"),
-            tag: get_series(tag),
-        }
-    )
 
 
 @cast_run

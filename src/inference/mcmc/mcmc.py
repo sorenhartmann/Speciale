@@ -5,24 +5,26 @@ from torch.distributions import Gamma
 
 from src.inference.base import InferenceModule
 from src.inference.mcmc.samplable import ParameterPosterior
-from src.inference.mcmc.sample_containers import FIFOSampleContainer
+from src.inference.mcmc.sample_containers import CompleteSampleContainer, FIFOSampleContainer, SampleContainer
 from src.inference.mcmc.samplers import SGHMC
-from src.inference.mcmc.variance_estimators import (NextEpochException,
-                                               NoStepException)
-from src.inference.probabilistic import (KnownPrecisionNormalPrior,
-                                         ModuleWithPrior,
-                                         as_probabilistic_model)
+from src.inference.mcmc.variance_estimators import NextEpochException, NoStepException
+from src.inference.probabilistic import (
+    KnownPrecisionNormalPrior,
+    ModuleWithPrior,
+    as_probabilistic_model,
+)
 from src.models.mlp import MLPClassifier
 from src.utils import ParameterView
 
 log = logging.getLogger(__name__)
+
 
 class MCMCInference(InferenceModule):
     def __init__(
         self,
         model,
         sampler=None,
-        sample_container=None,
+        sample_container: SampleContainer = None,
         burn_in=0,
         steps_per_sample=None,
     ):
@@ -33,7 +35,7 @@ class MCMCInference(InferenceModule):
             sampler = SGHMC()
 
         if sample_container is None:
-            sample_container = FIFOSampleContainer(max_items=10, keep_every=1)
+            sample_container = CompleteSampleContainer()
 
         self.automatic_optimization = False
 
@@ -47,8 +49,6 @@ class MCMCInference(InferenceModule):
         self.steps_per_sample = steps_per_sample
 
         self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
-
-        self._skip_val = True
 
     def configure_optimizers(self):
         pass
@@ -78,10 +78,10 @@ class MCMCInference(InferenceModule):
         self.sampler.on_train_epoch_start(self)
 
     def training_step(self, batch, batch_idx):
-        
+
         x, y = batch
         sampling_fraction = len(x) / len(self.trainer.train_dataloader.dataset)
-    
+
         try:
             with self.posterior.observe(x, y, sampling_fraction):
                 self.sampler.next_sample(return_sample=False)
@@ -107,15 +107,11 @@ class MCMCInference(InferenceModule):
             self.burn_in_remaining -= 1
             return
 
-        # Sample is pruned
-        if not self.sample_container.can_use_next():
-            self.sample_container.stream_position += 1
-            return
+        # Register sample with sample container. Pruning is handled by container
+        def get_sample():
+            return self.posterior.state.clone().detach()
 
-        # Save sample
-        sample = self.posterior.state.clone().detach()
-        self.sample_container.append(sample)
-        self._skip_val = False
+        self.sample_container.register_sample(get_sample)
 
     def _precision_gibbs_step(self):
 
@@ -138,8 +134,8 @@ class MCMCInference(InferenceModule):
     @torch.no_grad()
     def validation_step(self, batch, batch_idx):
 
-        if self._skip_val:
-            return None
+        if len(self.sample_container) == 0:
+            return
 
         x, y = batch
 
@@ -170,6 +166,4 @@ class MCMCInference(InferenceModule):
         delete_keys = set(self.val_preds) - set(self.sample_container.samples)
         for key in delete_keys:
             del self.val_preds[key]
-
-        self._skip_val = True
 

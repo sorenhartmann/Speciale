@@ -1,0 +1,31 @@
+# @package _global_
+
+defaults:
+  - override /inference : mcmc
+  - override /sampler : sghmc_with_grad_est
+  - override /variance_estimator: interbatch
+
+sampler:
+  lr : 2.0e-06
+
+inference:
+  burn_in: 0
+
+sample_container:
+  max_items: 10
+
+model:
+  activation_func:
+    _target_: torch.nn.Sigmoid
+    
+tag: sghmc_var_est
+
+trainer:
+  callbacks:
+    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
+      dirpath: "./checkpoints"
+    - _target_: src.utils.SilenceWarnings
+    - _target_: src.callbacks.LogAttributes
+      on_epoch_end: 
+        - "sampler.lr"
+  

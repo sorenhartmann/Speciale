@@ -2,7 +2,7 @@
 
 defaults:
   - _self_
-  - /experiment/mnist : sgd_dropout
+  - /experiment/mnist : sghmc_var_est
   - override /data : mnist
   - override /model : mlp_classifier
   

@@ -1,73 +1,91 @@
+from pytorch_lightning import Callback
+
+class LogAttributes(Callback):
+
+    def __init__(self, on_epoch_end=[]):
+
+        self.log_on_epoch_end = on_epoch_end
+
+    def on_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        
+        for attribute in self.log_on_epoch_end:
+            obj = pl_module
+            for a in attribute.split("."):
+                obj = getattr(obj, a)
+
+            pl_module.log(attribute, obj,  prog_bar=True)
+        
 
 
-class LogVarianceEstimates(Callback):
 
-    interbatch_variance_folder = Path("variance_interbatch")
-    variance_estimated_folder = Path("variance_estimated")
+# class LogVarianceEstimates(Callback):
 
-    def __init__(self, n_gradients=1000, logs_per_epoch=10):
+#     interbatch_variance_folder = Path("variance_interbatch")
+#     variance_estimated_folder = Path("variance_estimated")
 
-        self.n_gradients = n_gradients
-        self.logs_per_epoch = logs_per_epoch
+#     def __init__(self, n_gradients=1000, logs_per_epoch=10):
 
-    def on_init_start(self, trainer) -> None:
+#         self.n_gradients = n_gradients
+#         self.logs_per_epoch = logs_per_epoch
 
-        self.interbatch_variance_folder.mkdir()
-        self.variance_estimated_folder.mkdir()
+#     def on_init_start(self, trainer) -> None:
 
-    def _get_estimate(self, estimator):
-        if type(estimator) is VarianceEstimatorWrapper:
-            return estimator.wrapped.estimate()
-        else:
-            return estimator.estimate()
+#         self.interbatch_variance_folder.mkdir()
+#         self.variance_estimated_folder.mkdir()
 
-    def on_fit_start(self, trainer, pl_module) -> None:
+#     def _get_estimate(self, estimator):
+#         if type(estimator) is VarianceEstimatorWrapper:
+#             return estimator.wrapped.estimate()
+#         else:
+#             return estimator.estimate()
 
-        with torch.random.fork_rng():
-            torch.manual_seed(123)
-            self.log_idx, _ = torch.sort(
-                torch.randperm(pl_module.posterior.shape[0])[: self.n_gradients]
-            )
-        torch.save(self.log_idx, "log_idx.pt")
+#     def on_fit_start(self, trainer, pl_module) -> None:
 
-    @cache
-    def sample_steps(self, trainer):
-        num_batches = len(trainer.train_dataloader)
-        steps_between_samples = num_batches / self.logs_per_epoch
-        return [
-            int(i * steps_between_samples) - 1
-            for i in range(1, self.logs_per_epoch + 1)
-        ]
+#         with torch.random.fork_rng():
+#             torch.manual_seed(123)
+#             self.log_idx, _ = torch.sort(
+#                 torch.randperm(pl_module.posterior.shape[0])[: self.n_gradients]
+#             )
+#         torch.save(self.log_idx, "log_idx.pt")
 
-    def on_train_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx, unused
-    ) -> None:
+#     @cache
+#     def sample_steps(self, trainer):
+#         num_batches = len(trainer.train_dataloader)
+#         steps_between_samples = num_batches / self.logs_per_epoch
+#         return [
+#             int(i * steps_between_samples) - 1
+#             for i in range(1, self.logs_per_epoch + 1)
+#         ]
 
-        if batch_idx in self.sample_steps(trainer):
-            self.log_gradient_estimate(trainer, pl_module, batch_idx)
+#     def on_train_batch_end(
+#         self, trainer, pl_module, outputs, batch, batch_idx, unused
+#     ) -> None:
 
-    def log_gradient_estimate(self, trainer, pl_module, batch_idx):
+#         if batch_idx in self.sample_steps(trainer):
+#             self.log_gradient_estimate(trainer, pl_module, batch_idx)
 
-        with torch.random.fork_rng():
+#     def log_gradient_estimate(self, trainer, pl_module, batch_idx):
 
-            wf_estimator = WelfordEstimator()
-            for batch in trainer.train_dataloader:
-                x, y = batch
-                sampling_fraction = len(x) / len(trainer.train_dataloader.dataset)
-                with pl_module.posterior.observe(x, y, sampling_fraction):
-                    wf_estimator.update(pl_module.posterior.grad_prop_log_p())
+#         with torch.random.fork_rng():
 
-        variance = wf_estimator.estimate()
-        estimate = self._get_estimate(pl_module.sampler.variance_estimator)
+#             wf_estimator = WelfordEstimator()
+#             for batch in trainer.train_dataloader:
+#                 x, y = batch
+#                 sampling_fraction = len(x) / len(trainer.train_dataloader.dataset)
+#                 with pl_module.posterior.observe(x, y, sampling_fraction):
+#                     wf_estimator.update(pl_module.posterior.grad_prop_log_p())
 
-        variance, estimate = torch.broadcast_tensors(variance, estimate)
+#         variance = wf_estimator.estimate()
+#         estimate = self._get_estimate(pl_module.sampler.variance_estimator)
 
-        torch.save(
-            variance[self.log_idx],
-            self.interbatch_variance_folder / f"{trainer.global_step:06}.pt",
-        )
-        torch.save(
-            estimate[self.log_idx],
-            self.variance_estimated_folder / f"{trainer.global_step:06}.pt",
-        )
+#         variance, estimate = torch.broadcast_tensors(variance, estimate)
+
+#         torch.save(
+#             variance[self.log_idx],
+#             self.interbatch_variance_folder / f"{trainer.global_step:06}.pt",
+#         )
+#         torch.save(
+#             estimate[self.log_idx],
+#             self.variance_estimated_folder / f"{trainer.global_step:06}.pt",
+#         )
 

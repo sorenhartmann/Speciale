@@ -1,6 +1,6 @@
 defaults:
   - /sampler@_group_ : sghmc
-  - /sample_container@_group_ : fifo
+  - /sample_container@_group_ : doubling
 
 _target_: src.inference.mcmc.MCMCInference
 model : ${model}
