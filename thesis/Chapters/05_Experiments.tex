@@ -1,0 +1,22 @@
+
+\begin{align*}
+    \eta_0 &= \varepsilon^2 M^{-1} \\
+    \alpha_0 &= \varepsilon M^{-1} C \\
+    \hat{\beta}_0 &= \varepsilon M^{-1} \hat{B} = \eta_0\hat{V}/2
+\end{align*}
+
+\begin{align*}
+    \alpha &= \alpha_0/k \quad \text{where $\alpha$ is the user specified value} \\
+    \eta &= \eta_0/k  \\
+    \hat{\beta} &= \hat{\beta_0}/k \\
+\end{align*}
+\begin{align*}
+    W \hat{\beta} &\leq \alpha \Leftrightarrow\\ 
+    W \hat{\beta}_0/k &\leq \alpha \Leftrightarrow\\ 
+    W \eta_0 \hat{V}/2k &\leq \alpha \Leftrightarrow \\
+    k &\geq \frac{W\eta_0 \hat{V}}{2 \alpha} \impliedby \\
+    k &= \begin{cases}
+        1 & \frac{W\eta_0 \hat{V}}{2  \alpha} < 1 \\
+        \frac{W\eta_0 \hat{V}}{2 \alpha} & \text{otherwise}
+    \end{cases}
+\end{align*}
