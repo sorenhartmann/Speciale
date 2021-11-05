@@ -1,0 +1,1 @@
+_target_: src.inference.mcmc.variance_estimators.ConstantEstimator
