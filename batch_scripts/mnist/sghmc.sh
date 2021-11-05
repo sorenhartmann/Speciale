@@ -21,8 +21,9 @@ source .venv/bin/activate
 python scripts/inference.py -m \
     +experiment=mnist \
     experiment/mnist=sghmc \
-    sampler.lr="1.e-05,1.e-06,1.e-07" \
+    ++sampler.lr="5.e-07,1.e-06,2.e-06,5.e-06" \
+    ++sampler.alpha="0.01,0.1" \
     ++model.activation_func._target_="torch.nn.ReLU,torch.nn.Sigmoid" \
     ++trainer.progress_bar_refresh_rate=0 \
-    ++trainer.max_epochs=800 \
+    ++trainer.max_epochs=1000 \
     ++trainer.gpus=1

@@ -25,7 +25,8 @@ class VarianceEstimator(nn.Module):
 class ConstantEstimator(VarianceEstimator):
     def __init__(self, value=0.0):
 
-        self.value = torch.tensor(value)
+        super().__init__()
+        self.register_buffer("value",torch.tensor(value))
 
     def estimate(self):
         return self.value

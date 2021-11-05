@@ -228,6 +228,7 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         variance_estimator: Union[float, VarianceEstimator] = 0.0,
         n_steps: int = 1,
         resample_momentum: bool = False,
+        estimation_margin=10
     ):
 
         torch.nn.Module.__init__(self)
@@ -243,7 +244,7 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         self.n_steps = n_steps
         self.resample_momentum = resample_momentum
 
-        self.estimation_margin = 10
+        self.estimation_margin = estimation_margin
 
     def set_lr_beta(self):
 
@@ -255,26 +256,6 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
 
         self.beta = beta_0 / mass_scaling
         self.lr = self.base_lr / mass_scaling
-
-        # beta_estimate = 2 * var_estimate * self.lr
-        
-        # beta_estimate_adj = beta_estimate.clamp(max=self.alpha / self.estimation_margin)
-
-        # beta_estimate * inv_mass_scaling <= inv_mass_scaling * M- * self.alpha / self.estimation_margin 
-
-        # beta_estimate / beta_estimate_adj
-
-        # var_estimate.clamp(max=self.alpha * self.estimation_margin)
-
-        # self.alpha / self.estimation_margin / 2 / var_estimate
-
-        
-        # # alpha <= self.estimation_margin * beta
-
-        # self.alpha / self.estimation_margin / 2 / var_estimate
-
-
-
 
 
     @property
