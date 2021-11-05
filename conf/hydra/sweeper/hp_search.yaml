@@ -1,0 +1,6 @@
+defaults:
+  - optuna
+  - _self_
+
+n_jobs: 1
+storage: sqlite:///optuna.db

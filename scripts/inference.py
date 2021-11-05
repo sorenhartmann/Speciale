@@ -10,6 +10,7 @@ def main(cfg):
     inference = instantiate(cfg.inference)
     trainer = instantiate(cfg.trainer)
     trainer.fit(inference, dm)
-
+    return trainer.logged_metrics.get("err/val")
+    
 if __name__ == "__main__":
     main()
