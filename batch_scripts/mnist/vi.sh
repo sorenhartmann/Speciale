@@ -22,6 +22,8 @@ python scripts/inference.py -m \
     +experiment=mnist \
     experiment/mnist=vi \
     inference.lr="1.e-03,1.e-04,1.e-05" \
+    inference.prior_spec.default_prior.log_sigma_1="0,-1,-2" \
+    inference.prior_spec.default_prior.log_sigma_2="-6,-7,-8" \
     inference.kl_weighting_scheme._target_="src.inference.vi.ExponentialKLWeight,src.inference.vi.ConstantKLWeight" \
     ++trainer.progress_bar_refresh_rate=0 \
     trainer.max_epochs=800 \

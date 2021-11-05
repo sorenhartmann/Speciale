@@ -29,13 +29,13 @@ from torch.distributions import Bernoulli, Categorical, MixtureSameFamily
 
 class NormalMixturePrior(Prior):
     def __init__(
-        self, mean=[0.0, 0.0], log_sigma=[-1, -7], mixture_ratio=0.5
+        self, mean_1=0.0, mean_2= 0.0, log_sigma_1=-1, log_sigma_2=-7, mixture_ratio=0.5
     ):
 
         super().__init__()
 
-        self.register_buffer("mean", torch.tensor(mean))
-        self.register_buffer("log_sigma", torch.tensor(log_sigma))
+        self.register_buffer("mean", torch.tensor([mean_1, mean_2]))
+        self.register_buffer("log_sigma", torch.tensor([log_sigma_1, log_sigma_2]))
         mixture_logits = torch.tensor([mixture_ratio, 1-mixture_ratio])
         self.register_buffer("mixture_logits", mixture_logits)
 
