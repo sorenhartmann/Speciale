@@ -28,11 +28,12 @@ class MNISTDataModule(pl.LightningDataModule):
 
     data_dir = "~/.pytorch"
 
-    def __init__(self, batch_size=32):
+    def __init__(self, batch_size=32, num_workers=0):
 
         super().__init__()
         
         self.batch_size = batch_size
+        self.num_workers = num_workers
         self.dims = (1, 28, 28)
 
     def prepare_data(self):
@@ -53,10 +54,10 @@ class MNISTDataModule(pl.LightningDataModule):
             self.mnist_test = MNIST(self.data_dir, train=False, transform=ToTensor())
 
     def train_dataloader(self):
-        return DataLoader(self.mnist_train, batch_size=self.batch_size, num_workers=0, shuffle=True)
+        return DataLoader(self.mnist_train, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True)
 
     def val_dataloader(self):
-        return DataLoader(self.mnist_val, batch_size=self.batch_size, num_workers=0)
+        return DataLoader(self.mnist_val, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
-        return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=0)
+        return DataLoader(self.mnist_test, batch_size=self.batch_size, num_workers=self.num_workers)
