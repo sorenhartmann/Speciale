@@ -21,7 +21,11 @@ source .venv/bin/activate
 python scripts/inference.py -m \
     +experiment=mnist \
     experiment/mnist=sgd_map \
-    inference.lr="1.e-03,1.e-04,1.e-05" \
+    hydra/sweeper=hp_search \
+    hydra.sweeper.study_name="mnist-sgd-map" \
+    inference.lr="choice(1.e-03,1.e-04,1.e-05)" \
+    inference.prior_spec.default_prior.log_sigma_1="choice(0,-1,-2)" \
+    inference.prior_spec.default_prior.log_sigma_2="choice(-6,-7,-8)" \
     ++trainer.progress_bar_refresh_rate=0 \
     ++trainer.max_epochs=800 \
     ++trainer.gpus=1

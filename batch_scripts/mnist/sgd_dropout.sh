@@ -21,8 +21,10 @@ source .venv/bin/activate
 python scripts/inference.py -m \
     +experiment=mnist \
     experiment/mnist=sgd_dropout \
-    inference.lr="1.e-03,1.e-04,1.e-05" \
-    model.dropout="0.2,0.5" \
+    hydra/sweeper=hp_search \
+    hydra.sweeper.study_name="mnist-sgd-dropout" \
+    inference.lr="choice(1.e-03,1.e-04,1.e-05)" \
+    model.dropout="interval(0.2,0.5)" \
     ++trainer.progress_bar_refresh_rate=0 \
     ++trainer.max_epochs=800 \
     ++trainer.gpus=1
