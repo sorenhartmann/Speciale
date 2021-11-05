@@ -29,5 +29,5 @@ python scripts/inference.py -m \
     inference.kl_weighting_scheme._target_="choice(src.inference.vi.ExponentialKLWeight,src.inference.vi.ConstantKLWeight)" \
     ++trainer.progress_bar_refresh_rate=0 \
     trainer.max_epochs=800 \
-    ++data.num_workers=4
+    ++data.num_workers=4 \
     ++trainer.gpus=1
