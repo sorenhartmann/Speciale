@@ -1,7 +1,7 @@
 #!/bin/sh
 #BSUB -q gpuv100
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -J sghmc_adam
+#BSUB -J sghmc_var_est
 #BSUB -n 4
 #BSUB -W 24:00
 #BSUB -B
