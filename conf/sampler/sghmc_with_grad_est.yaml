@@ -3,4 +3,6 @@ defaults:
 
 _target_: src.inference.mcmc.samplers.SGHMCWithVarianceEstimator
 lr: 0.2e-5
+alpha: 0.01
+estimation_margin: 10
 variance_estimator: ${variance_estimator}

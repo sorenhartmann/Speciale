@@ -1,0 +1,9 @@
+inference.lr: 
+  type: float
+  high: 1.e-03 
+  low: 1.e-05
+  log: true
+model.dropout:
+  type: float
+  low: 0.2
+  high: 0.7

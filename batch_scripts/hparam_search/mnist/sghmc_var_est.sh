@@ -1,9 +1,9 @@
 #!/bin/sh
 #BSUB -q gpuv100
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -J mnist_sgd_dropout
+#BSUB -J mnist_sghmc_var_est
 #BSUB -n 4
-#BSUB -W 10:00
+#BSUB -W 24:00
 #BSUB -B
 #BSUB -N
 #BSUB -R span[hosts=1]
@@ -18,13 +18,12 @@ module load cudnn/v7.0-prod-cuda8
 cd ~/Documents/Speciale
 source .venv/bin/activate
 
-python scripts/inference.py -m \
+python scripts/hparam_search.py \
     +experiment=mnist \
-    experiment/mnist=sgd_dropout \
-    hydra/sweeper=hp_search \
-    hydra.sweeper.study_name="mnist-sgd-dropout" \
-    inference.lr="choice(1.e-03,1.e-04,1.e-05)" \
-    model.dropout="interval(0.2,0.5)" \
-    ++trainer.progress_bar_refresh_rate=0 \
-    ++trainer.max_epochs=800 \
+    variance_estimator="interbatch" \
+    experiment/mnist=sghmc_var_est \
+    optuna/search_space=sghmc_var_est \
+    study.study_name="mnist-sghmc-var-est" \
+    ++trainer.max_epochs=1600 \
+    ++data.num_workers=4 \
     ++trainer.gpus=1

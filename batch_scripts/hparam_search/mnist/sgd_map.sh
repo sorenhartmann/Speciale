@@ -3,7 +3,7 @@
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -J mnist_sgd_map
 #BSUB -n 4
-#BSUB -W 10:00
+#BSUB -W 24:00
 #BSUB -B
 #BSUB -N
 #BSUB -R span[hosts=1]
@@ -18,14 +18,11 @@ module load cudnn/v7.0-prod-cuda8
 cd ~/Documents/Speciale
 source .venv/bin/activate
 
-python scripts/inference.py -m \
+python scripts/hparam_search.py \
     +experiment=mnist \
     experiment/mnist=sgd_map \
-    hydra/sweeper=hp_search \
-    hydra.sweeper.study_name="mnist-sgd-map" \
-    inference.lr="choice(1.e-03,1.e-04,1.e-05)" \
-    ++inference.prior_spec.default_prior.log_sigma_1="choice(0,-1,-2)" \
-    ++inference.prior_spec.default_prior.log_sigma_2="choice(-6,-7,-8)" \
-    ++trainer.progress_bar_refresh_rate=0 \
+    optuna/search_space=sgd_map \
+    study.study_name="mnist-sgd-map" \
     ++trainer.max_epochs=800 \
+    ++data.num_workers=4 \
     ++trainer.gpus=1

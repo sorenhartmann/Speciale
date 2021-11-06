@@ -5,7 +5,7 @@ defaults:
   - override /model : conv_classifier
   - _self_
   
-out_dir : mnist
+out_dir : cifar
 
 inference:
   lr: 0.05
