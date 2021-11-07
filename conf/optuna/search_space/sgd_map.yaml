@@ -12,8 +12,6 @@ inference.prior_spec.default_prior.log_sigma_2:
   low: -8
   high: -6
 inference.prior_spec.default_prior.mixture_ratio: 
-  type: "categorical"
-  choices:
-    - 0.25
-    - 0.50
-    - 0.75
+  type: "float"
+  low: 0.2
+  high: 0.7

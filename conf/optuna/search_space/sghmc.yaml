@@ -5,8 +5,8 @@ sampler.lr:
   log: true
 sampler.alpha: 
   type: float
-  low: 0.005
-  high: 0.1
+  low: 0.01
+  high: 0.2
   log: true
 model.activation_func._target_:
   type: "categorical"
