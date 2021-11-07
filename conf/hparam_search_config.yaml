@@ -2,7 +2,7 @@ defaults:
   - model: "???"
   - inference: "???"
   - data: "???"
-  - trainer: default
+  - trainer: no_checkpoints
   - optuna/search_space: "???"
   - hydra: sweep
   - _self_
@@ -24,8 +24,6 @@ study:
 
 trainer:
   progress_bar_refresh_rate: 0
-  callbacks: null
-  enable_checkpointing: false
 
 optimize_args:
   n_trials: 100

@@ -20,12 +20,3 @@ model:
     
 tag: sghmc_var_est
 
-trainer:
-  callbacks:
-    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
-      dirpath: "./checkpoints"
-    - _target_: src.utils.SilenceWarnings
-    # - _target_: src.callbacks.LogAttributes
-    #   on_epoch_end: 
-    #     - "sampler.lr"
-  

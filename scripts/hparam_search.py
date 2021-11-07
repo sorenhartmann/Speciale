@@ -56,7 +56,11 @@ def main(cfg):
 
             dm = instantiate(trial_cfg.data)
             inference = instantiate(trial_cfg.inference)
-            callbacks = [instantiate(x) for x in trial_cfg.trainer.callbacks]
+            callback_cfg =  trial_cfg.trainer.get("callbacks")
+            if callback_cfg is not None:
+                callbacks = [instantiate(x) for x in trial_cfg.trainer.callbacks]
+            else:
+                callbacks = []
             callbacks += [instantiate(cfg.optuna_callback, trial=trial)]
 
             trainer = instantiate(trial_cfg.trainer, callbacks=callbacks)
