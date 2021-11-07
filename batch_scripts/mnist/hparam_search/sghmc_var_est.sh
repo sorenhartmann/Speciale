@@ -25,5 +25,5 @@ python scripts/hparam_search.py \
     optuna/search_space=sghmc_var_est \
     study.study_name="mnist-sghmc-var-est" \
     ++trainer.max_epochs=1600 \
-    ++data.num_workers=4 \
+    ++data.num_workers=2 \
     ++trainer.gpus=1

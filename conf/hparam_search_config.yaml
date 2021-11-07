@@ -24,8 +24,10 @@ study:
 
 trainer:
   progress_bar_refresh_rate: 0
+  callbacks: null
+  enable_checkpointing: false
 
 optimize_args:
-  n_trials: null
+  n_trials: 100
 
 seed : 123

@@ -24,5 +24,5 @@ python scripts/hparam_search.py \
     optuna/search_space=sgd_map \
     study.study_name="mnist-sgd-map" \
     ++trainer.max_epochs=800 \
-    ++data.num_workers=4 \
+    ++data.num_workers=2 \
     ++trainer.gpus=1
