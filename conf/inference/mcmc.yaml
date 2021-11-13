@@ -1,9 +1,8 @@
 defaults:
-  - /sampler@_group_ : sghmc
-  - /sample_container@_group_ : doubling
+  - sampler: sghmc
+  - sample_container: doubling
 
 _target_: src.inference.mcmc.MCMCInference
 model : ${model}
-sampler : ${sampler}
-sample_container : ${sample_container}
-burn_in: 0
+
+burn_in: 50

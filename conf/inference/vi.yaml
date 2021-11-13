@@ -1,8 +1,9 @@
+defaults:
+  - prior_spec: normal_mixture
+
 _target_: src.inference.vi.VariationalInference
 model : ${model}
 lr : 0.001
 n_samples : 10
-prior_spec:
-  _target_: src.inference.probabilistic.PriorSpec
-  default_prior:
-    _target_: src.inference.probabilistic.NormalMixturePrior
+kl_weighting_scheme:
+  _target_: 'src.inference.vi.ConstantKLWeight'

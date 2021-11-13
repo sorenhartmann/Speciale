@@ -2,17 +2,8 @@
 
 defaults:
   - override /inference : mcmc
-  - override /sampler : sghmc_with_grad_est
-  - override /variance_estimator: interbatch
-
-sampler:
-  lr : 2.0e-06
-
-inference:
-  burn_in: 50
-
-sample_container:
-  max_items: 10
+  - override /inference/sampler : sghmc_with_grad_est
+  - override /inference/sampler/variance_estimator: interbatch
 
 model:
   activation_func:

@@ -27,6 +27,7 @@ class MCMCInference(InferenceModule):
         sample_container: SampleContainer = None,
         burn_in=0,
         steps_per_sample=None,
+        prior_spec=None,
     ):
 
         super().__init__()
@@ -39,7 +40,7 @@ class MCMCInference(InferenceModule):
 
         self.automatic_optimization = False
 
-        self.model = as_probabilistic_model(model)
+        self.model = as_probabilistic_model(model, prior_spec=prior_spec)
         self.posterior = ParameterPosterior(self.model)
         self.sampler = sampler
 

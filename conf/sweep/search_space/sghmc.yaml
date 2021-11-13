@@ -1,9 +1,9 @@
-sampler.lr: 
+inference.sampler.lr: 
   type: float
   low: 1.e-07
   high: 1.e-05
   log: true
-sampler.alpha: 
+inference.sampler.alpha: 
   type: float
   low: 0.01
   high: 0.2

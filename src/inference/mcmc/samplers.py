@@ -237,7 +237,7 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         self.register_buffer("base_lr", torch.tensor(lr))
 
         if type(variance_estimator) is float:
-            self.variance_estimator = ConstantEstimator(float)
+            self.variance_estimator = ConstantEstimator(variance_estimator)
         else:
             self.variance_estimator = variance_estimator
 

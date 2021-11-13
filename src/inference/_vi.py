@@ -1,8 +1,9 @@
 import torch
-from typing import Callable, Optional
+from typing import Callable, Optional, OrderedDict
 from pytorch_lightning import Trainer
+from torch import distributions
 from torch.distributions import Normal
-
+from collections import OrderedDict
 from src.data.mnist import MNISTDataModule
 from src.inference.base import InferenceModule
 from src.inference.probabilistic import (
@@ -26,6 +27,7 @@ def bufferize_parameters_(module):
 class KLWeightingScheme(Callable):
     ...
 
+
 class ConstantKLWeight(KLWeightingScheme):
     @staticmethod
     def __call__(batch_idx, M):
@@ -39,6 +41,10 @@ class ExponentialKLWeight(KLWeightingScheme):
         if weight < 1e-8:
             weight = 0.0
         return weight
+
+
+from torch.nn import ModuleDict, Module
+
 
 class VariationalInference(InferenceModule):
 
@@ -68,17 +74,14 @@ class VariationalInference(InferenceModule):
             prior_spec = PriorSpec(NormalMixturePrior())
 
         self.model = as_probabilistic_model(model, prior_spec)
-        parameter_names = [n for n, _ in self.model.named_parameters()]
-        for module in self.model.modules():
-            bufferize_parameters_(module)
 
-        self.view = ParameterView(self.model, buffers=parameter_names)
-        self.register_parameter(
-            "rho", torch.nn.Parameter(initial_rho * torch.ones(self.view.n_params))
-        )
-        self.register_parameter(
-            "mu", torch.nn.Parameter(torch.zeros(self.view.n_params))
-        )
+        self.v_params = ModuleDict()
+        for name, parameter in self.model.named_parameters():
+            v_name = name.replace(".", "/")
+            shape = parameter.shape
+            self.v_params[v_name] = Module()
+            self.v_params[v_name].register_parameter("mu", torch.zeros(shape))
+            self.v_params[v_name].register_parameter("rho", initial_rho + torch.zeros(shape))
 
         self.train_metrics = torch.nn.ModuleDict(self.model.get_metrics())
         self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
@@ -87,28 +90,18 @@ class VariationalInference(InferenceModule):
 
         x, y = batch
 
-        sigma = torch.log(1 + self.rho.exp())
-        eps = torch.randn_like(self.mu)
-        w = self.mu + sigma * eps
+        sample = self.get_parameter_sample(cache=True)
+        self.model.load_state_dict(sample, strict=False)
 
-        w.requires_grad_(True)
-        w.retain_grad()
-
-        self.view[:] = w
-
-        kl = Normal(self.mu, sigma).log_prob(w).sum() - self.model.log_prior()
+        kl = sum(v_param.log_prob_ for v_param in self.v_params.children())
+        kl -= self.model.log_prior()
 
         output = self.model(x)
         obs_model = self.model.observation_model_gvn_output(output)
         log_lik = obs_model.log_prob(y).sum()
 
-        kl_w = self.kl_weighting_scheme(batch_idx, len(self.trainer.train_dataloader))
-        batch_elbo = log_lik - kl * kl_w
-
-        # Save references for grad
-        self._eps = eps
-        self._w = w
-        self._kl_w = kl_w
+        self.kl_w_ = self.kl_weighting_scheme(batch_idx, len(self.trainer.train_dataloader))
+        batch_elbo = log_lik - kl * self.kl_w_
 
         self.log("elbo/train", batch_elbo, on_step=False, on_epoch=True)
         self.log("kl/train", kl)
@@ -118,29 +111,66 @@ class VariationalInference(InferenceModule):
 
         return -batch_elbo
 
+    def normal_log_prob_partial_derivatives(self, mu, rho, parameter_value):
+
+        param_mu = torch.nn.Parameter(mu)
+        param_rho = torch.nn.Parameter(rho)
+        distribution = Normal(param_mu, torch.log1p(param_rho.exp()))
+        distribution.log_prob(parameter_value).sum().backward()
+        return param_mu.grad, param_rho.grad
+
     def on_after_backward(self) -> None:
 
-        with torch.no_grad():
+        for (name, parameter), (v_param) in zip(
+            self.model.named_parameters(), self.v_params.children()
+        ):
+
+            partial_mu, partial_rho = self.normal_log_prob_partial_derivatives(
+                v_param.mu, v_param.rho, parameter.detach()
+            )
+
+            v_param.mu.grad = parameter.grad
+            v_param.rho.grad = parameter.grad
+
+
+
             self.mu.grad.add_(self._w.grad)
-            self.rho.grad.add_(self._w.grad * (self._eps / (1 + torch.exp(-self.rho))))
+            self.rho.grad.add_(
+                self._w.grad * (self._eps / torch.log1p(torch.exp(-self.rho)))
+            )
 
         del self._w
         del self._eps
-        del self._kl_w
+
+    def get_parameter_sample(self, cache=False):
+
+        sample = {}
+        for (name, parameter), (v_param) in zip(
+            self.model.named_parameters(), self.v_params.children()
+        ):
+            eps = torch.randn(parameter.shape)
+            sigma = torch.log1p(v_param.rho.exp())
+            sample[name] = v_param.mu + eps * sigma
+
+            if cache:
+                v_param.eps_ = eps
+                v_param.sigma_ = sigma
+                v_param.log_prob_ = (
+                    Normal(v_param.mu, sigma).log_prob(sample[name]).sum()
+                )
+
+        return sample
 
     def on_validation_epoch_start(self) -> None:
-
-        self.w_samples = torch.randn((self.n_samples,) + self.mu.shape, device=self.device)
-        self.w_samples.mul_(torch.log(1 + self.rho.exp()))
-        self.w_samples.add_(self.mu)
+        self.samples_ = [self.get_parameter_sample() for i in range(self.n_samples)]
 
     def validation_step(self, batch, batch_idx):
 
         x, y = batch
 
         prediction = 0
-        for w in self.w_samples:
-            self.view[:] = w
+        for sample in self.samples_:
+            self.model.load_state_dict(sample, strict=False)
             prediction += self.model.predict(x)
 
         prediction /= self.n_samples
@@ -149,9 +179,9 @@ class VariationalInference(InferenceModule):
             self.log(f"{name}/val", metric(prediction, y), prog_bar=True)
 
     def on_validation_epoch_end(self) -> None:
-        del self.w_samples
+        del self.samples_
 
     def configure_optimizers(self):
 
-        optimizer = torch.optim.SGD((self.mu, self.rho), lr=self.lr)
+        optimizer = torch.optim.SGD(self.v_params.buffers(), lr=self.lr)
         return optimizer

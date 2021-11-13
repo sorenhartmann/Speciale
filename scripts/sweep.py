@@ -33,7 +33,7 @@ class TrainingError(Exception):
     ...
 
 
-@hydra.main("../conf", "hparam_search_config")
+@hydra.main("../conf", "sweep_config")
 def main(cfg):
 
     def objective(trial: optuna.Trial):
@@ -44,7 +44,7 @@ def main(cfg):
         with set_directory(work_dir):
 
             trial_cfg = cfg.copy()
-            suggestions = get_suggestions(trial, cfg.optuna.search_space)
+            suggestions = get_suggestions(trial, cfg.sweep.search_space)
             for key, suggestion in suggestions.items():
                 OmegaConf.update(trial_cfg, key, suggestion)
 
@@ -75,11 +75,11 @@ def main(cfg):
         if trainer.interrupted:
             raise KeyboardInterrupt
 
-        return trainer.logged_metrics.get(cfg.monitor)
+        return trainer.logged_metrics.get(cfg.sweep.monitor)
 
-    storage = f"sqlite:///{get_original_cwd()}/{cfg.study_storage_file_name}"
-    study = instantiate(cfg.study, storage=storage)
-    study.optimize(objective, catch=(TrainingError,), **cfg.optimize_args)
+    storage = f"sqlite:///{get_original_cwd()}/{cfg.sweep.study_storage_file_name}"
+    study = instantiate(cfg.sweep.study, storage=storage)
+    study.optimize(objective, catch=(TrainingError,), **cfg.sweep.optimize_args)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,36 @@
+defaults:
+  - model: "???"
+  - inference: "???"
+  - data: "???"
+  - trainer: no_checkpoints
+  - hydra: sweep
+  - sweep/search_space: "???"
+  - _self_
+
+test: ${..experiment}
+
+sweep:
+
+  study_storage_file_name: optuna.db
+  study_name: "???"
+
+  study:
+    _target_: optuna.create_study
+    study_name: ${sweep.study_name}
+    load_if_exists: true
+    pruner:
+      _target_: optuna.pruners.NopPruner
+
+  monitor: "err/val"
+
+  optimize_args:
+    n_trials: 100
+
+optuna_callback:
+  _target_: optuna.integration.PyTorchLightningPruningCallback
+  monitor: ${sweep.monitor}
+
+trainer:
+  progress_bar_refresh_rate: 0
+
+seed : 123

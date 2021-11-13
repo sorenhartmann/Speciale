@@ -1,2 +1,0 @@
-validation_curves:
-  _target_: src.visualization.model_performance.validation_curves

@@ -1,0 +1,2 @@
+_target_: src.inference.mcmc.sample_containers.DoublingSampleContainer
+max_items: 10

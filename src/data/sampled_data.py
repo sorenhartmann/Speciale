@@ -9,16 +9,15 @@ from src.models.polynomial import PolynomialModel
 
 class SampledData(LightningDataModule, NoBatchMixin):
 
-    seed = 123
-
     def __init__(
         self,
         model : Model,
         covariate_model: Distribution,
         batch_size: int = 8,
-        train_obs=50,
-        val_obs=20,
-        test_obs=20,
+        seed=123,
+        train_obs=500,
+        val_obs=200,
+        test_obs=200,
     ):
 
         super().__init__()
@@ -26,6 +25,7 @@ class SampledData(LightningDataModule, NoBatchMixin):
         self.batch_size = batch_size
         self.model = model
         self.covariate_model = covariate_model
+        self.seed = seed
 
         self.num_workers = 0
 
@@ -45,7 +45,7 @@ class SampledData(LightningDataModule, NoBatchMixin):
 
     def generate_data(self, n):
 
-        xx = self.covariate_model.sample((n, 1))
+        xx = self.covariate_model.sample((n,))
         yy = self.model.observation_model(xx).sample()
         return torch.utils.data.TensorDataset(xx, yy)
 

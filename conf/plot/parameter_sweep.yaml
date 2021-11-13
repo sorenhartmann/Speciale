@@ -1,5 +1,0 @@
-parameter_sweep:
-  _target_: src.visualization.model_performance.parameter_sweep
-  parameters : "???"
-  tag: "err/val"
-

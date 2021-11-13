@@ -3,6 +3,8 @@ import pytorch_lightning as pl
 
 class InferenceModule(pl.LightningModule):
     ...
+
+
     
 #     # Burde nok gøres med tb
 #     def save_hyperparameters(self, path=None):
