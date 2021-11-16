@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod, abstractproperty
 from contextlib import contextmanager
 
 import torch
-
-from src.inference.probabilistic import ProbabilisticModel
+from src.bayesian.modules import BayesianModule
+from src.models.base import Model
 from src.utils import ParameterView
 
 
@@ -27,11 +27,27 @@ class Samplable(ABC):
         return self.state.shape
 
 
+def iter_bayesian_modules(module):
+    for child in module.children():
+        if isinstance(child, BayesianModule):
+            yield child
+        else:
+            yield from iter_bayesian_modules(child)
+
+def log_prior(model: Model):
+    """Returns p(theta)"""
+    return sum(x.log_prior() for x in iter_bayesian_modules(model))
+
+def log_likelihood(model: Model, x, y):
+    """Returns log p(y | x, theta)"""
+    return model.observation_model(x).log_prob(y)
+
+
 class ParameterPosterior(Samplable):
     
     """Posterior of model parameters given observations"""
 
-    def __init__(self, model : ProbabilisticModel):
+    def __init__(self, model : Model):
 
         super().__init__()
 
@@ -44,8 +60,8 @@ class ParameterPosterior(Samplable):
 
     def prop_log_p(self) -> torch.Tensor:
         return (
-            self.model.log_prior()
-            + self.model.log_likelihood(x=self._x, y=self._y).sum()
+            log_prior(self.model)
+            + log_likelihood(self.model, x=self._x, y=self._y).sum()
             / self._sampling_fraction
         )
 

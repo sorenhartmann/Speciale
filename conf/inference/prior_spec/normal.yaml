@@ -1,5 +1,0 @@
-_target_: src.inference.probabilistic.PriorSpec
-default_prior:
-  _target_: src.inference.probabilistic.KnownPrecisionNormalPrior
-  precision: 1.0
-  mean: 0.0

@@ -13,6 +13,9 @@ class Model(nn.Module):
         """Returns p(y | x, theta) given the model output, f(x)"""
         raise NotImplementedError
 
+    def predict_gvn_output(self, output):
+        raise NotImplementedError
+
     def observation_model(self, input: Tensor):
         """Returns p(y | x, theta) given observation x"""
         return self.observation_model_gvn_output(self.forward(input))
@@ -26,7 +29,9 @@ class Model(nn.Module):
         return {}
 
     def predict(self, x):
-        return self.forward(x)
+        return self.predict_gvn_output(self.forward(x))
+
+
 
 class ErrorRate(torchmetrics.Accuracy):
 
@@ -41,8 +46,8 @@ class ClassifierMixin:
     def loss(self, output: torch.FloatTensor, target: torch.FloatTensor):
         return F.cross_entropy(output, target)
     
-    def predict(self, input):
-        return self.forward(input).softmax(-1)
+    def predict_gvn_output(self, output):
+        return output.softmax(-1)
 
     def get_metrics(self):        
         return {"err" : ErrorRate()}

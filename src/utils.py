@@ -11,6 +11,32 @@ def pairwise(iterable):
     next(b, None)
     return zip(a, b)
 
+class ModuleAttributeHelper:
+    """Helper for getting/setting module attributes"""
+
+    def __init__(self, module):
+        self.module = module
+
+    def keyed_children(self):
+
+        if isinstance(self.module, nn.Sequential):
+            return enumerate(self.module)
+        else:
+            return self.module.named_children()
+
+    def __getitem__(self, key):
+
+        if isinstance(self.module, nn.Sequential):
+            return self.module[key]
+        else:
+            return getattr(self.module)
+
+    def __setitem__(self, key, value):
+
+        if isinstance(self.module, nn.Sequential):
+            self.module[key] = value
+        else:
+            setattr(self.module, key, value)
 
 class SequentialBuilder:
 

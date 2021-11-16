@@ -1,9 +1,9 @@
 defaults:
-  - prior_spec: normal_mixture
+  - prior_config: scale_mixture
 
 _target_: src.inference.vi.VariationalInference
 model : ${model}
 lr : 0.001
-n_samples : 10
+n_particles : 10
 kl_weighting_scheme:
   _target_: 'src.inference.vi.ConstantKLWeight'

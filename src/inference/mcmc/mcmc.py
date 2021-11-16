@@ -2,20 +2,21 @@ import logging
 
 import torch
 from torch.distributions import Gamma
+from src.bayesian.modules import BayesianModule
+from src.bayesian.priors import NormalPrior
 
 from src.inference.base import InferenceModule
-from src.inference.mcmc.samplable import ParameterPosterior
-from src.inference.mcmc.sample_containers import CompleteSampleContainer, FIFOSampleContainer, SampleContainer
+from src.inference.mcmc.samplable import ParameterPosterior, iter_bayesian_modules
+from src.inference.mcmc.sample_containers import (
+    CompleteSampleContainer,
+    FIFOSampleContainer,
+    SampleContainer,
+)
 from src.inference.mcmc.samplers import SGHMC
 from src.inference.mcmc.variance_estimators import NextEpochException, NoStepException
-from src.inference.probabilistic import (
-    KnownPrecisionNormalPrior,
-    ModuleWithPrior,
-    as_probabilistic_model,
-)
 from src.models.mlp import MLPClassifier
 from src.utils import ParameterView
-
+from src.bayesian.core import to_bayesian_model
 log = logging.getLogger(__name__)
 
 
@@ -27,7 +28,7 @@ class MCMCInference(InferenceModule):
         sample_container: SampleContainer = None,
         burn_in=0,
         steps_per_sample=None,
-        prior_spec=None,
+        prior_config=None,
     ):
 
         super().__init__()
@@ -40,7 +41,7 @@ class MCMCInference(InferenceModule):
 
         self.automatic_optimization = False
 
-        self.model = as_probabilistic_model(model, prior_spec=prior_spec)
+        self.model = to_bayesian_model(model, prior_config)
         self.posterior = ParameterPosterior(self.model)
         self.sampler = sampler
 
@@ -116,17 +117,15 @@ class MCMCInference(InferenceModule):
 
     def _precision_gibbs_step(self):
 
-        for module in self.model.modules():
-
-            if not isinstance(module, ModuleWithPrior):
-                continue
+        
+        for module in iter_bayesian_modules(self.model):
 
             for name, prior in module.priors.items():
 
-                if not isinstance(prior, KnownPrecisionNormalPrior):
+                if not isinstance(prior, NormalPrior):
                     continue
 
-                parameter = getattr(module.module, name)
+                parameter = getattr(module, name)
                 alpha = 1.0 + parameter.numel() / 2
                 beta = 1.0 + parameter.square().sum() / 2
                 new_precision = Gamma(alpha, beta).sample()
@@ -167,4 +166,3 @@ class MCMCInference(InferenceModule):
         delete_keys = set(self.val_preds) - set(self.sample_container.samples)
         for key in delete_keys:
             del self.val_preds[key]
-

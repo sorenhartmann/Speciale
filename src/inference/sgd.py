@@ -14,12 +14,12 @@ class SGDInference(InferenceModule):
         model: Model,
         lr: float = 1e-3,
         use_map=False,
-        prior_spec=None
+        prior_config=None
     ):
 
         super().__init__()
 
-        self.model = as_probabilistic_model(model, prior_spec)
+        self.model = as_probabilistic_model(model, prior_config)
         self.lr = lr
         self.use_map = use_map
 
