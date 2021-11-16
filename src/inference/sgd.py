@@ -3,7 +3,7 @@ from torch import nn
 from src.models.base import Model
 
 from .base import InferenceModule
-from .probabilistic import as_probabilistic_model
+from src.bayesian.core import to_bayesian_model, log_prior
 
 from copy import deepcopy
 
@@ -19,9 +19,12 @@ class SGDInference(InferenceModule):
 
         super().__init__()
 
-        self.model = as_probabilistic_model(model, prior_config)
         self.lr = lr
         self.use_map = use_map
+        if self.use_map:
+            model = to_bayesian_model(model, prior_config)
+
+        self.model = model
 
         self.train_metrics = nn.ModuleDict(self.model.get_metrics())
         self.val_metrics = nn.ModuleDict(self.model.get_metrics())
@@ -35,7 +38,7 @@ class SGDInference(InferenceModule):
 
         loss = self.model.loss(output, y)
         if self.use_map:
-            loss -= self.model.log_prior() / N
+            loss -= log_prior(self.model) / N
 
         self.log("loss/train", loss)
         for name, metric in self.train_metrics.items():

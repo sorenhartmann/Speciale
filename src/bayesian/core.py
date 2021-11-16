@@ -63,3 +63,18 @@ def to_bayesian_model(model: Model, conversion_config: BayesianConversionConfig 
     replace_submodules_(model)
 
     return model
+
+def iter_bayesian_modules(module):
+    for child in module.children():
+        if isinstance(child, BayesianModule):
+            yield child
+        else:
+            yield from iter_bayesian_modules(child)
+
+def log_prior(model: Model):
+    """Returns p(theta)"""
+    return sum(x.log_prior() for x in iter_bayesian_modules(model))
+
+def log_likelihood(model: Model, x, y):
+    """Returns log p(y | x, theta)"""
+    return model.observation_model(x).log_prob(y)
