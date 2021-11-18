@@ -1,5 +1,5 @@
 defaults:
-  - prior_config: scale_mixture
+  - prior_config: mixture
 
 _target_: src.inference.vi.VariationalInference
 model : ${model}

@@ -1,0 +1,14 @@
+# @package _global_
+
+defaults:
+  - override /inference : vi
+
+data:
+  batch_size: 128
+
+inference:
+  n_particles: 4
+  lr: 0.001
+
+tag: vi
+

@@ -1,10 +1,16 @@
 from dataclasses import dataclass
 from typing import Dict, Type, Union
 from copy import deepcopy
-from .modules import BayesianLinear, BayesianModule
+from .modules import (
+    BayesianConv2d,
+    BayesianLinear,
+    BayesianModule,
+    BayesianNop,
+    BayesianScaleShift,
+)
 from .priors import NormalPrior, ScaleMixturePrior, Prior
 
-from torch.nn import Linear, Module, Sequential
+from torch.nn import Linear, Module, Sequential, BatchNorm2d, Conv2d
 from src.models.base import Model
 from src.utils import ModuleAttributeHelper
 
@@ -17,28 +23,45 @@ class BayesianModuleConfig:
     def get_prior(self):
         return deepcopy(self.priors)
 
-
 @dataclass
 class BayesianConversionConfig:
     modules_to_replace: Dict[Type[Module], BayesianModuleConfig]
 
 
-_IMPLEMENTED_BAYESIAN_MODULES = [
-    {"module": Linear, "bayesian": BayesianLinear, "parameters": ("weight", "bias")}
+def from_flat_conversion_config(flat_config):
+    return BayesianConversionConfig({x["module"] : x["config"] for x in flat_config})
+
+_flat_default = [
+    {
+        "module": Linear,
+        "config": BayesianModuleConfig(
+            module=BayesianLinear,
+            priors={
+                "weight": NormalPrior(),
+                "bias": NormalPrior(),
+            },
+        ),
+    },
+    {
+        "module": Conv2d,
+        "config": BayesianModuleConfig(
+            module=BayesianConv2d,
+            priors={
+                "weight": NormalPrior(),
+                "bias": NormalPrior(),
+            },
+        ),
+    },
+    {
+        "module": BatchNorm2d,
+        "config": BayesianModuleConfig(
+            module=BayesianNop,
+            priors={},
+        ),
+    },
 ]
 
-def from_default_prior(prior):
-    modules_to_replace = {}
-    for implementation in _IMPLEMENTED_BAYESIAN_MODULES:
-        module = implementation["module"]
-        bayesian = implementation["bayesian"]
-        parameters = implementation["parameters"]
-
-        priors = {name: deepcopy(prior) for name in parameters}
-        modules_to_replace[module] = BayesianModuleConfig(bayesian, priors)
-    return BayesianConversionConfig(modules_to_replace)
-
-_DEFAULT_PRIORS = from_default_prior(NormalPrior())
+_DEFAULT_PRIORS = from_flat_conversion_config(_flat_default)
 
 def to_bayesian_model(model: Model, conversion_config: BayesianConversionConfig = None):
     """Replaces submodules with bayesian modules"""
@@ -64,6 +87,7 @@ def to_bayesian_model(model: Model, conversion_config: BayesianConversionConfig 
 
     return model
 
+
 def iter_bayesian_modules(module):
     for child in module.children():
         if isinstance(child, BayesianModule):
@@ -71,9 +95,11 @@ def iter_bayesian_modules(module):
         else:
             yield from iter_bayesian_modules(child)
 
+
 def log_prior(model: Model):
     """Returns p(theta)"""
     return sum(x.log_prior() for x in iter_bayesian_modules(model))
+
 
 def log_likelihood(model: Model, x, y):
     """Returns log p(y | x, theta)"""

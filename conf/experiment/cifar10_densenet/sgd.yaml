@@ -1,0 +1,12 @@
+# @package _global_
+
+defaults:
+  - override /inference : sgd
+  
+data:
+  batch_size: 128
+
+inference:
+  lr: 0.001
+
+tag: sgd

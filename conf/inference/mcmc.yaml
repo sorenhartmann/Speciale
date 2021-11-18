@@ -5,4 +5,5 @@ defaults:
 _target_: src.inference.mcmc.MCMCInference
 model : ${model}
 
+
 burn_in: 50

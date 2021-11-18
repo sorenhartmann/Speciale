@@ -1,0 +1,6 @@
+_target_: src.bayesian.prior_sets.get_mixture
+mean_1: 0.0
+mean_2: 0.0
+log_sigma_1: -1
+log_sigma_2: -7
+mixture_ratio: 0.5

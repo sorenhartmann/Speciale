@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod, abstractproperty
 from contextlib import contextmanager
 
 import torch
-from src.bayesian.core import log_likelihood, log_prior
+from src.bayesian.core import log_likelihood, log_prior, iter_bayesian_modules
 from src.bayesian.modules import BayesianModule
 from src.models.base import Model
 from src.utils import ParameterView
