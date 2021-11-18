@@ -18,11 +18,11 @@ module load cudnn/v7.0-prod-cuda8
 cd ~/Documents/Speciale
 source .venv/bin/activate
 
-python scripts/hparam_search.py \
+python scripts/sweep.py \
     +experiment=mnist \
     experiment/mnist=vi \
-    optuna/search_space=vi \
-    study.study_name="mnist-vi" \
+    sweep/search_space=vi \
+    sweep.study_name="mnist-vi" \
     ++trainer.max_epochs=800 \
-    ++data.num_workers=4 \
+    ++data.num_workers=3 \
     ++trainer.gpus=1
