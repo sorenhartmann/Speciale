@@ -5,7 +5,7 @@ import torch
 from torch.distributions import Normal
 
 from src.inference.mcmc.samplable import Samplable
-from src.inference.mcmc.variance_estimators import (ConstantEstimator,
+from src.inference.mcmc.variance_estimators import (ConstantEstimator, InterBatchEstimator,
                                                VarianceEstimator)
 
 
@@ -159,8 +159,7 @@ class SGHMC(Sampler, HamiltonianMixin):
         alpha: float = 1e-2,
         beta: float = 0.0,
         lr: float = 0.2e-5,
-        n_steps: int = 1,
-        resample_momentum: bool = False,
+        resample_momentum_every: int = 0,
     ):
         super().__init__()
 
@@ -170,8 +169,12 @@ class SGHMC(Sampler, HamiltonianMixin):
 
         self.err_std = torch.sqrt(2 * (self.alpha - self.beta) * self.lr)
 
-        self.n_steps = n_steps
-        self.resample_momentum = resample_momentum
+        self.resample_momentum_every = resample_momentum_every
+
+        if self.resample_momentum_every:
+            self.steps_until_momentum_resample = self.resample_momentum_every
+        else:
+            self.steps_until_momentum_resample = -1
 
     def setup(self, samplable: Samplable):
 
@@ -186,7 +189,8 @@ class SGHMC(Sampler, HamiltonianMixin):
 
     def resample_nu(self):
 
-        self.nu.normal_(0, self.lr.sqrt())
+        self.nu.normal_()
+        self.nu.mul_(self.lr.sqrt())
 
     def step_nu(self):
 
@@ -198,12 +202,15 @@ class SGHMC(Sampler, HamiltonianMixin):
 
     def next_sample(self, return_sample: bool = True):
 
-        if self.resample_momentum:
-            self.resample_nu()
+        if self.resample_momentum_every:
+            self.steps_until_momentum_resample -= 1
 
-        for i in range(self.n_steps):
-            self.step_nu()
-            self.step_parameters()
+        if self.steps_until_momentum_resample == 0:
+            self.resample_nu()
+            self.steps_until_momentum_resample = self.resample_momentum_every
+
+        self.step_nu()
+        self.step_parameters()
 
         if return_sample:
             return self.samplable.state.clone()
@@ -225,9 +232,8 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         self,
         alpha: float = 1e-2,
         lr: float = 2e-6,
-        variance_estimator: Union[float, VarianceEstimator] = 0.0,
-        n_steps: int = 1,
-        resample_momentum: bool = False,
+        variance_estimator: Union[float, VarianceEstimator] = None,
+        resample_momentum_every: int = 0,
         estimation_margin=10
     ):
 
@@ -236,15 +242,21 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         self.register_buffer("alpha", torch.tensor(alpha))
         self.register_buffer("base_lr", torch.tensor(lr))
 
-        if type(variance_estimator) is float:
-            self.variance_estimator = ConstantEstimator(variance_estimator)
-        else:
-            self.variance_estimator = variance_estimator
-
-        self.n_steps = n_steps
-        self.resample_momentum = resample_momentum
+        if variance_estimator is None:
+            variance_estimator = InterBatchEstimator()
+        elif type(variance_estimator) is float:
+            variance_estimator = ConstantEstimator(variance_estimator)
+        
+        self.variance_estimator = variance_estimator
 
         self.estimation_margin = estimation_margin
+        
+        self.resample_momentum_every = resample_momentum_every
+
+        if self.resample_momentum_every:
+            self.steps_until_momentum_resample = self.resample_momentum_every
+        else:
+            self.steps_until_momentum_resample = -1
 
     def set_lr_beta(self):
 
@@ -256,7 +268,6 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
 
         self.beta = beta_0 / mass_scaling
         self.lr = self.base_lr / mass_scaling
-
 
     @property
     def err_std(self):

@@ -3,7 +3,11 @@ from itertools import accumulate, tee
 
 import torch
 import torch.nn as nn
+import importlib 
 
+def import_from(module, name):
+    module = importlib.import_module(module)
+    return getattr(module, name)
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
@@ -29,7 +33,7 @@ class ModuleAttributeHelper:
         if isinstance(self.module, nn.Sequential):
             return self.module[key]
         else:
-            return getattr(self.module)
+            return getattr(self.module, key)
 
     def __setitem__(self, key, value):
 

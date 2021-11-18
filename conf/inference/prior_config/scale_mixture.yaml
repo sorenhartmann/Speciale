@@ -1,6 +1,0 @@
-_target_: src.bayesian.core.from_default_prior
-prior:
-  _target_: src.bayesian.priors.ScaleMixturePrior
-  mixture_ratio: 0.25
-  log_sigma_1: -2
-  log_sigma_2: -6

@@ -2,6 +2,7 @@ defaults:
   - /inference/sampler/variance_estimator@_group_: interbatch
 
 _target_: src.inference.mcmc.samplers.SGHMCWithVarianceEstimator
-lr: 0.2e-5
+lr: 2.e-6
 alpha: 0.01
 estimation_margin: 10
+resample_momentum_every: 25

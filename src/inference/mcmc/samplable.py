@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod, abstractproperty
 from contextlib import contextmanager
 
 import torch
+from src.bayesian.core import log_likelihood, log_prior, iter_bayesian_modules
 from src.bayesian.modules import BayesianModule
 from src.models.base import Model
 from src.utils import ParameterView
@@ -25,22 +26,6 @@ class Samplable(ABC):
     @property
     def shape(self):
         return self.state.shape
-
-
-def iter_bayesian_modules(module):
-    for child in module.children():
-        if isinstance(child, BayesianModule):
-            yield child
-        else:
-            yield from iter_bayesian_modules(child)
-
-def log_prior(model: Model):
-    """Returns p(theta)"""
-    return sum(x.log_prior() for x in iter_bayesian_modules(model))
-
-def log_likelihood(model: Model, x, y):
-    """Returns log p(y | x, theta)"""
-    return model.observation_model(x).log_prob(y)
 
 
 class ParameterPosterior(Samplable):

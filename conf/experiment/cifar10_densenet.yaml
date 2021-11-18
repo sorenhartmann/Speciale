@@ -1,0 +1,17 @@
+# @package _global_
+defaults:
+  - /experiment/cifar10_densenet : ???
+  - override /data : cifar
+  - override /model : densenet_classifier
+  - _self_
+  
+out_dir : cifar10_densenet
+
+data:
+  batch_size: 128
+
+# hydra:
+#   sweeper:
+#     study_name: ${hydra.job.name}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+#     storage: sqlite:///optuna.db
+

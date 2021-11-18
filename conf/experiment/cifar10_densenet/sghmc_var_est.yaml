@@ -1,0 +1,9 @@
+# @package _global_
+
+defaults:
+  - override /inference : mcmc
+  - override /inference/sampler : sghmc_with_grad_est
+  - override /inference/sampler/variance_estimator: interbatch
+    
+tag: sghmc_var_est
+

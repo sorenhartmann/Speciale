@@ -1,5 +1,1 @@
-_target_: src.bayesian.core.from_default_prior
-prior:
-  _target_: src.inference.probabilistic.NormalPrior
-  precision: 1.0
-  mean: 0.0
+_target_: src.bayesian.prior_sets.get_normal

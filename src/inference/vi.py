@@ -7,8 +7,12 @@ from src.models.base import Model
 from src.utils import ModuleAttributeHelper
 
 
-from src.bayesian.core import from_default_prior, to_bayesian_model
-from src.bayesian.modules import BayesianModule
+from src.bayesian.core import (
+    to_bayesian_model,
+    BayesianConversionConfig,
+    BayesianModuleConfig,
+)
+from src.bayesian.modules import BayesianModule, BayesianNop, BayesianLinear
 from src.bayesian.priors import ScaleMixturePrior
 
 
@@ -17,10 +21,31 @@ import torch
 from torch.distributions import Normal
 
 _INITIAL_RHO = -5
-_DEFAULT_VI_PRIORS = from_default_prior(ScaleMixturePrior())
+_DEFAULT_VI_PRIORS = BayesianConversionConfig(
+    {
+        nn.Linear: BayesianModuleConfig(
+            module=BayesianLinear,
+            priors={
+                "weight": ScaleMixturePrior(),
+                "bias": ScaleMixturePrior(),
+            },
+        ),
+        nn.Conv2d: BayesianModuleConfig(
+            module=ScaleMixturePrior,
+            priors={
+                "weight": ScaleMixturePrior(),
+                "bias": ScaleMixturePrior(),
+            },
+        ),
+        nn.BatchNorm2d: BayesianModuleConfig(
+            module=BayesianNop,
+            priors={},
+        ),
+    }
+)
+
 
 class VariationalModule(nn.Module):
-
     def __init__(self, bayesian_module: BayesianModule):
 
         super().__init__()
@@ -46,13 +71,13 @@ class VariationalModule(nn.Module):
     def sample_parameters(self, n_particles=1):
 
         self.log_v_post_ = 0
+        self.sampled_parameters_ = {}
         for name, v_param in self.variational_parameters.items():
 
             expanded_shape = (n_particles,) + v_param.mu.shape
             sigma = v_param.rho.exp().log1p()
             eps = torch.rand(expanded_shape, device=sigma.device)
             sampled_parameters = eps * sigma + v_param.mu
-
 
             # sampled_parameters.requires_grad_()
             # sampled_parameters.retain_grad()
@@ -66,13 +91,16 @@ class VariationalModule(nn.Module):
                 Normal(v_param.mu, sigma).log_prob(sampled_parameters).sum(_sum_dims)
             )
 
-            setattr(self.bayesian_module, name, sampled_parameters)
+            self.sampled_parameters_[name] = sampled_parameters
+
+        self.particle_idx = 0
 
     def forward(self, x):
 
-        n_particles = x.shape[0]
-        self.sample_parameters(n_particles)
-        return self.bayesian_module.forward(x)
+        for name, sampled_parameter in self.sampled_parameters_.items():
+            setattr(self.bayesian_module, name, sampled_parameter[self.particle_idx])
+        self.particle_idx += 1
+        return self.bayesian_module(x)
 
     # @torch.no_grad()
     # def update_gradients_(self):
@@ -90,24 +118,26 @@ class VariationalModule(nn.Module):
 
         log_prior = 0
         for name in self.variational_parameters:
-            sampled_parameter = getattr(self.bayesian_module, name)
-            _sum_dims = tuple(range(1, sampled_parameter.dim()))
+            _sum_dims = tuple(range(1, self.sampled_parameters_[name].dim()))
             log_prior += (
                 self.bayesian_module.priors[name]
-                .log_prob(sampled_parameter)
+                .log_prob(self.sampled_parameters_[name])
                 .sum(_sum_dims)
             )
         return log_prior
 
+
 from src.utils import ModuleAttributeHelper
 
-def to_variational_model_(model):
 
+def to_variational_model_(model):
     def replace_submodules_(module: nn.Module):
 
         helper = ModuleAttributeHelper(module)
         for key, child in helper.keyed_children():
-            if isinstance(child, BayesianModule):
+            if isinstance(child, BayesianNop):
+                pass
+            elif isinstance(child, BayesianModule):
                 new_module = VariationalModule(child)
                 helper[key] = new_module
             else:
@@ -116,8 +146,10 @@ def to_variational_model_(model):
     replace_submodules_(model)
     return model
 
+
 class KLWeightingScheme(Callable):
     ...
+
 
 class ConstantKLWeight(KLWeightingScheme):
     @staticmethod
@@ -133,6 +165,7 @@ class ExponentialKLWeight(KLWeightingScheme):
             weight = 0.0
         return weight
 
+
 class VariationalInference(InferenceModule):
 
     # TODO: specifiy prior
@@ -140,10 +173,9 @@ class VariationalInference(InferenceModule):
         self,
         model: Model,
         lr: float = 1e-3,
-        n_particles=10,
+        n_particles=2,
         prior_config=None,
         kl_weighting_scheme: Optional[KLWeightingScheme] = None,
-        batch_particles=True,
     ):
 
         super().__init__()
@@ -166,13 +198,24 @@ class VariationalInference(InferenceModule):
         self.train_metrics = torch.nn.ModuleDict(self.model.get_metrics())
         self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
 
-        self.batch_particles = batch_particles
+    def sample_parameters(self, n_particles):
+        for module in self.variational_modules():
+            module.sample_parameters(n_particles)
+
+    def forward_particles(self, x):
+
+        self.sample_parameters(self.n_particles)
+        outputs = []
+        for i in range(self.n_particles):
+            outputs.append(self.model(x))
+
+        return outputs
 
     def training_step(self, batch, batch_idx):
 
         x, y = batch
-        x_expanded = x.unsqueeze(0).expand((self.n_particles, *x.shape))
-        output = self.model(x_expanded)
+
+        output = torch.stack(self.forward_particles(x))
 
         obs_model = self.model.observation_model_gvn_output(output)
         log_lik = obs_model.log_prob(y).sum(-1)
@@ -193,8 +236,7 @@ class VariationalInference(InferenceModule):
     def validation_step(self, batch, batch_idx):
 
         x, y = batch
-        x_expanded = x.unsqueeze(0).expand((self.n_particles, *x.shape))
-        preds = self.model.predict(x_expanded).mean(0)
+        preds = torch.stack(self.forward_particles(x)).softmax(-1).mean(0)
         for name, metric in self.val_metrics.items():
             self.log(f"{name}/val", metric(preds, y), prog_bar=True)
 
@@ -213,4 +255,3 @@ class VariationalInference(InferenceModule):
 
     def log_v_post(self):
         return sum(module.log_v_post() for module in self.variational_modules())
-

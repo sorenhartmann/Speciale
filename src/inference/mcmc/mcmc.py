@@ -2,21 +2,18 @@ import logging
 
 import torch
 from torch.distributions import Gamma
-from src.bayesian.modules import BayesianModule
 from src.bayesian.priors import NormalPrior
 
 from src.inference.base import InferenceModule
-from src.inference.mcmc.samplable import ParameterPosterior, iter_bayesian_modules
+from src.inference.mcmc.samplable import ParameterPosterior
 from src.inference.mcmc.sample_containers import (
     CompleteSampleContainer,
-    FIFOSampleContainer,
     SampleContainer,
 )
 from src.inference.mcmc.samplers import SGHMC
 from src.inference.mcmc.variance_estimators import NextEpochException, NoStepException
-from src.models.mlp import MLPClassifier
-from src.utils import ParameterView
-from src.bayesian.core import to_bayesian_model
+from src.bayesian.core import iter_bayesian_modules, to_bayesian_model
+
 log = logging.getLogger(__name__)
 
 
@@ -117,7 +114,6 @@ class MCMCInference(InferenceModule):
 
     def _precision_gibbs_step(self):
 
-        
         for module in iter_bayesian_modules(self.model):
 
             for name, prior in module.priors.items():

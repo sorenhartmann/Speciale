@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 from torch.distributions import Categorical, MixtureSameFamily, Normal
 
-
 class Prior(nn.Module):
     def log_prob(self, parameter):
         raise NotImplementedError
