@@ -48,6 +48,7 @@ class MCMCInference(InferenceModule):
         self.steps_per_sample = steps_per_sample
 
         self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
+        self._precision_gibbs_step()
 
     def configure_optimizers(self):
         pass
