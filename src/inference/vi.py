@@ -76,7 +76,7 @@ class VariationalModule(nn.Module):
 
             expanded_shape = (n_particles,) + v_param.mu.shape
             sigma = v_param.rho.exp().log1p()
-            eps = torch.rand(expanded_shape)
+            eps = torch.rand(expanded_shape, device=sigma.device)
             sampled_parameters = eps * sigma + v_param.mu
 
             # sampled_parameters.requires_grad_()

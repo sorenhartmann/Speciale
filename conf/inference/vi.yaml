@@ -4,6 +4,6 @@ defaults:
 _target_: src.inference.vi.VariationalInference
 model : ${model}
 lr : 0.001
-n_particles : 10
+n_particles : 2
 kl_weighting_scheme:
   _target_: 'src.inference.vi.ConstantKLWeight'
