@@ -6,7 +6,10 @@ defaults:
 data:
   batch_size: 128
 
+model:
+  dropout: 0.5
+
 inference:
-  lr: 0.001
+  lr: 0.0001
 
 tag: sgd

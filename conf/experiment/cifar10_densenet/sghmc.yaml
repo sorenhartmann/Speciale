@@ -3,4 +3,9 @@
 defaults:
   - override /inference : mcmc
 
+inference:
+  sampler:
+    lr: 5e-6
+
+
 tag: sghmc

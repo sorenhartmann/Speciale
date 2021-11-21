@@ -13,11 +13,12 @@ class CIFARDataModule(pl.LightningDataModule):
 
     data_dir = ROOT_DIR / "data" / "raw"
 
-    def __init__(self, batch_size=32):
+    def __init__(self, batch_size=32, num_workers=0):
 
         super().__init__()
 
         self.batch_size = batch_size
+        self.num_workers = num_workers
         self.dims = (3, 32, 32)
 
     def prepare_data(self):
@@ -50,11 +51,11 @@ class CIFARDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(
-            self.cifar_train, batch_size=self.batch_size, num_workers=0, shuffle=True
+            self.cifar_train, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=True
         )
 
     def val_dataloader(self):
-        return DataLoader(self.cifar_val, batch_size=self.batch_size, num_workers=0)
+        return DataLoader(self.cifar_val, batch_size=self.batch_size, num_workers=self.num_workers)
 
     def test_dataloader(self):
-        return DataLoader(self.cifar_test, batch_size=self.batch_size, num_workers=0)
+        return DataLoader(self.cifar_test, batch_size=self.batch_size, num_workers=self.num_workers)

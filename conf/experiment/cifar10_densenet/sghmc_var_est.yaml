@@ -5,5 +5,9 @@ defaults:
   - override /inference/sampler : sghmc_with_grad_est
   - override /inference/sampler/variance_estimator: interbatch
     
+inference:
+  sampler:
+    lr: 5e-6
+
 tag: sghmc_var_est
 
