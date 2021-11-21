@@ -1,0 +1,23 @@
+# @package _global_
+
+defaults:
+  - /inference/prior_config: mixture
+  - override /inference: mcmc
+  - override /inference/sampler: sghmc
+  - override /inference/sample_container: all
+
+inference:
+  sampler:
+    lr: 0.01
+    alpha: 0.01
+    beta: 0
+
+  burn_in: 500
+  steps_per_sample: 10
+  use_gibbs_step: false
+
+extra_callbacks:
+  - _target_: src.callbacks.mcmc.SaveSamples
+
+data:
+  batch_size: ${batch_size}

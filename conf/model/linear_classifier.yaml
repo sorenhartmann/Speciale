@@ -1,0 +1,5 @@
+_target_: src.models.linear.LinearClassifier
+in_features: "???"
+out_features: "???"
+bias: "???"
+

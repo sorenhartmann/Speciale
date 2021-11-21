@@ -179,6 +179,7 @@ def silence_warnings():
     warnings.filterwarnings("ignore", "`LightningModule.configure_optimizers` returned `None`")
     warnings.filterwarnings("ignore", ".+does not have many workers which may be a bottleneck.")
     warnings.filterwarnings("ignore", "The given NumPy array is not writeable,")
+    warnings.filterwarnings("ignore", "The number of training samples")
 
 from pytorch_lightning import Callback
 

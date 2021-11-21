@@ -1,6 +1,6 @@
 defaults:
   - hydra : default
-  - sampler: "???"
+  - inference/sampler: "???"
   - distribution: "???"
   - _self_
 

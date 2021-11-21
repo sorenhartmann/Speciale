@@ -1,0 +1,6 @@
+_target_: src.data.data_module.DataModule
+dataset_cls:
+  _target_: src.utils.import_from
+  module: src.data.iris
+  name: IrisDataset
+split_lengths: [100, 50]

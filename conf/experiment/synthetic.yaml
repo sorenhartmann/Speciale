@@ -1,14 +1,10 @@
 # @package _global_
 
 defaults:
-  - group: sghmc
+  - /experiment/synthetic: "???"
   - override /distribution: example
   - _self_
 
 out_dir : synthetic
-
-sampler:
-  step_size: 0.1
-  n_steps: 50
 
 n_samples: 80000

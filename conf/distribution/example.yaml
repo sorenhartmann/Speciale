@@ -1,1 +1,1 @@
-_target_: src.experiments.synthetic.Example
+_target_: src.inference.mcmc.example_distribution.Example
