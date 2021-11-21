@@ -6,5 +6,8 @@ defaults:
 model:
   activation_func:
     _target_: torch.nn.Sigmoid
+
+data:
+  batch_size: 500
     
 tag: sghmc

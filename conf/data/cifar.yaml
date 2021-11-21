@@ -1,2 +1,14 @@
-_target_ : src.data.cifar.CIFARDataModule
+_target_: src.data.data_module.DataModule
+dataset_cls:
+  _target_: src.utils.import_from
+  module: src.data.cifar
+  name: CIFAR10Dataset
+split_lengths: [40000, 10000]
 batch_size: 128
+transform:
+  _target_: torchvision.transforms.Compose
+  transforms:
+    - _target_: torchvision.transforms.ToTensor
+    - _target_: torchvision.transforms.Normalize
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
