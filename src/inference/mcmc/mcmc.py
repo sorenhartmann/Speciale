@@ -25,6 +25,7 @@ class MCMCInference(InferenceModule):
         sample_container: SampleContainer = None,
         burn_in=0,
         steps_per_sample=None,
+        use_gibbs_step=True,
         prior_config=None,
     ):
 
@@ -47,6 +48,8 @@ class MCMCInference(InferenceModule):
         self.burn_in = burn_in
         self.steps_per_sample = steps_per_sample
 
+        self.use_gibbs_step = use_gibbs_step
+
         self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
         self._precision_gibbs_step()
 
@@ -56,9 +59,6 @@ class MCMCInference(InferenceModule):
     def setup(self, stage) -> None:
 
         self.sampler.setup(self.posterior)
-        if not self.sampler.is_batched:
-            self.trainer.datamodule.batch_size = None
-
         self.val_preds = {}
 
     def on_train_start(self) -> None:
@@ -99,7 +99,8 @@ class MCMCInference(InferenceModule):
         else:
             self.step_until_next_sample = self.steps_per_sample
 
-        self._precision_gibbs_step()
+        if self.use_gibbs_step:
+            self._precision_gibbs_step()
 
         # Burn in
         burn_in = self.burn_in_remaining > 0

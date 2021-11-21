@@ -1,7 +1,7 @@
 # @package _global_
 
 defaults:
-  - override /sampler: hmc_no_mh
+  - override /inference/sampler: hmc_no_mh
   - _self_
 
 distribution:

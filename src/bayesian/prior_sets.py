@@ -4,21 +4,24 @@ from src.bayesian.priors import NormalPrior, ScaleMixturePrior
 from src.bayesian.core import BayesianModuleConfig, BayesianConversionConfig
 
 
-def get_normal():
+def get_normal(
+    mean=0.,
+    precision=1.
+):
     return BayesianConversionConfig(
         modules_to_replace={
             Linear: BayesianModuleConfig(
                 module=BayesianLinear,
                 priors={
-                    "weight": NormalPrior(),
-                    "bias": NormalPrior(),
+                    "weight": NormalPrior(precision=precision, mean=mean),
+                    "bias": NormalPrior(precision=precision, mean=mean),
                 },
             ),
             Conv2d: BayesianModuleConfig(
                 module=BayesianConv2d,
                 priors={
-                    "weight": NormalPrior(),
-                    "bias": NormalPrior(),
+                    "weight": NormalPrior(precision=precision, mean=mean),
+                    "bias": NormalPrior(precision=precision, mean=mean),
                 },
             ),
             BatchNorm2d: BayesianModuleConfig(

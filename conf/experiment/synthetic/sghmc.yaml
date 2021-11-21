@@ -1,13 +1,14 @@
 # @package _global_
 
 defaults:
-  - override /sampler: sghmc_original_param
+  - override /inference/sampler: sghmc_original_param
   - _self_
 
-sampler:
-  B : 0.2
-  M : 1
-  C : 3
+inference:
+  sampler:
+    B : 0.2
+    M : 1
+    C : 3
 
 distribution:
   grad_noise : 2.

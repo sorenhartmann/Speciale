@@ -1,0 +1,32 @@
+# @package _global_
+defaults:
+  - /experiment/iris: "???"
+  - override /data : iris
+  - override /model : linear_classifier
+  - _self_
+  
+out_dir : iris
+
+model:
+  in_features: 2
+  out_features: 3
+  bias: true
+
+inference:
+  prior_config:
+    mean_1: 0.0
+    mean_2: 0.0
+    log_sigma_1: 2
+    log_sigma_2: 0
+    mixture_ratio: 0.5
+
+data:
+  batch_size: "???"
+  split_lengths: [50, 100]
+  n_dims: 2
+
+trainer:
+  max_steps: 105000
+ 
+batch_size:
+  5

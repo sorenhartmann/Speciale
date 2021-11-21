@@ -45,7 +45,8 @@ class BayesianLinear(BayesianModule):
         self.priors = ModuleDict()
 
         self.priors["weight"] = priors.get("weight", _default_prior)
-        self.priors["bias"] = priors.get("bias", _default_prior)
+        if bias:
+            self.priors["bias"] = priors.get("bias", _default_prior)
 
         self.weight = Parameter(torch.empty((out_features, in_features)))
 

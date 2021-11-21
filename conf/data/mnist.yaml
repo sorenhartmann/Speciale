@@ -1,2 +1,9 @@
-_target_ : src.data.mnist.MNISTDataModule
-batch_size: 500
+_target_: src.data.data_module.DataModule
+dataset_cls:
+  _target_: src.utils.import_from
+  module: src.data.mnist
+  name: MNISTDataset
+split_lengths: [50000, 10000]
+batch_size: 128
+transform:
+  _target_: torchvision.transforms.ToTensor

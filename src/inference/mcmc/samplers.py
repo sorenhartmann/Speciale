@@ -11,8 +11,6 @@ from src.inference.mcmc.variance_estimators import (ConstantEstimator, InterBatc
 
 class Sampler(torch.nn.Module):
 
-    is_batched: bool
-
     def on_train_epoch_start(self, inference_module):
         """Only called in case of inference sampling"""
 
@@ -23,8 +21,6 @@ class Sampler(torch.nn.Module):
         raise NotImplementedError
 
 class MetropolisHastings(Sampler):
-
-    is_batched = False
 
     def __init__(self, step_size=0.01):
 
@@ -78,8 +74,6 @@ class HMC(Sampler, HamiltonianMixin):
     M = I for now...
     """
 
-    is_batched = False
-
     def __init__(self, step_size=0.01, n_steps=1) -> None:
 
         super().__init__()
@@ -105,9 +99,10 @@ class HMC(Sampler, HamiltonianMixin):
         )
 
     def step_parameters(self):
+
         self.samplable.state = self.samplable.state + self.step_size * self.momentum
 
-    def next_sample(self):
+    def next_sample(self, return_sample: bool=True):
 
         self.resample_momentum()
 
@@ -124,15 +119,18 @@ class HMC(Sampler, HamiltonianMixin):
 
         if log_acceptance >= 0 or log_acceptance.exp() > torch.rand(1):
             # Accepted
-            return self.samplable.state.clone()
+            if return_sample:
+                return self.samplable.state.clone()
 
         else:
             # Rejected
             self.samplable.state = initial_state
-            return initial_state
+            if return_sample:
+                return initial_state
 
 
 class HMCNoMH(HMC):
+
     def next_sample(self):
 
         self.resample_momentum()
@@ -149,8 +147,6 @@ import torch.nn as nn
 
 
 class SGHMC(Sampler, HamiltonianMixin):
-
-    is_batched = True
 
     _before_next_sample_hook = None
 
