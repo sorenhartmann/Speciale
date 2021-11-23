@@ -1,15 +1,15 @@
 # @package _global_
 
 defaults:
-  - /inference/prior_config: mixture
+  - /inference/prior_config: normal
   - override /inference: mcmc
   - override /inference/sampler: hmc
   - override /inference/sample_container: all
 
 inference:
   sampler:
-    step_size: 0.1
-    n_steps: 10
+    step_size: 0.01
+    n_steps: 50
   burn_in: 500
   steps_per_sample: 1
   use_gibbs_step: false
@@ -17,6 +17,5 @@ inference:
 extra_callbacks:
   - _target_: src.callbacks.mcmc.SaveSamples
 
-
 data:
-  batch_size: ${batch_size}
+  batch_size: ${data.dataset.n_samples}

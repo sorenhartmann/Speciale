@@ -1,0 +1,22 @@
+# @package _global_
+defaults:
+  - _self_
+  - /experiment/simulated: "???"
+  - override /model : linear_regressor
+  - override /data: simulated
+  
+out_dir : simulated
+
+model:
+  in_features: 4
+  sigma: 1
+
+inference:
+  prior_config:
+    mean: 0.
+    precision: 1.
+ 
+trainer:
+  max_steps: 80500
+
+batch_size: 5

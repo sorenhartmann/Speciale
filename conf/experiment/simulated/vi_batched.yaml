@@ -2,11 +2,11 @@
 
 defaults:
   - override /inference: vi
-  - override /inference/prior_config: mixture
+  - override /inference/prior_config: normal
 
 inference:
   lr: 0.01
-  n_particles: 20
+  n_particles: 10
 
 data:
   batch_size: ${batch_size}

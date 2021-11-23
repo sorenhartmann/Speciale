@@ -1,0 +1,13 @@
+# @package _global_
+
+defaults:
+  - override /inference: vi
+  - override /inference/prior_config: normal
+
+inference:
+  lr: 0.01
+  n_particles: 10
+
+data:
+  batch_size: ${data.dataset.n_samples}
+

@@ -1,7 +1,7 @@
 from pytorch_lightning import LightningDataModule
 import torch
 from torch.utils.data import random_split, DataLoader, Dataset
-from typing import Type
+from typing import Optional, Type
 
 
 class DataModule(LightningDataModule):
@@ -12,7 +12,7 @@ class DataModule(LightningDataModule):
         split_seed: int = 123,
         batch_size: int = 8,  # If -1 return all for each batch
         num_workers: int = 0,
-        **data_kwargs
+        **data_kwargs,
     ):
 
         super().__init__()
@@ -26,8 +26,12 @@ class DataModule(LightningDataModule):
 
     def prepare_data(self):
 
-        # download
-        self.dataset_cls(download=True, train=True, **self.data_kwargs)
+        # try and download each datasetdownload
+        try:
+            self.dataset_cls(download=True, train=True, **self.data_kwargs)
+        except Exception:
+            pass
+
         try:
             self.dataset_cls(download=True, train=False, **self.data_kwargs)
         except Exception:

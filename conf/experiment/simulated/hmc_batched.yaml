@@ -1,19 +1,17 @@
 # @package _global_
 
 defaults:
-  - /inference/prior_config: mixture
+  - /inference/prior_config: normal
   - override /inference: mcmc
-  - override /inference/sampler: sghmc
+  - override /inference/sampler: hmc
   - override /inference/sample_container: all
 
 inference:
   sampler:
-    lr: 0.01
-    alpha: 0.01
-    beta: 0
-
+    step_size: 0.01
+    n_steps: 50
   burn_in: 500
-  steps_per_sample: 10
+  steps_per_sample: 1
   use_gibbs_step: false
 
 extra_callbacks:

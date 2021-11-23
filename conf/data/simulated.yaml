@@ -1,0 +1,9 @@
+  _target_: torch.utils.data.DataLoader
+  dataset:
+    _target_: src.data.simulated.SimulatedDataset
+    coeffs: [0, -1, 0.5, 0.333]
+    sigma: 1.
+    n_samples: 15
+    seed: 123
+  batch_size: "???"
+  
