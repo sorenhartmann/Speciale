@@ -5,8 +5,12 @@ defaults:
   - override /inference/prior_config: normal
 
 inference:
-  lr: 0.01
+  lr: 1e-4
   n_particles: 10
+  initial_rho: 0
 
 data:
   batch_size: ${batch_size}
+
+trainer:
+  max_steps: 30000

@@ -20,7 +20,6 @@ from torch import nn
 import torch
 from torch.distributions import Normal
 
-_INITIAL_RHO = -5
 _DEFAULT_VI_PRIORS = BayesianConversionConfig(
     {
         nn.Linear: BayesianModuleConfig(
@@ -46,7 +45,7 @@ _DEFAULT_VI_PRIORS = BayesianConversionConfig(
 
 
 class VariationalModule(nn.Module):
-    def __init__(self, bayesian_module: BayesianModule):
+    def __init__(self, bayesian_module: BayesianModule, initial_rho=-5):
 
         super().__init__()
 
@@ -65,7 +64,7 @@ class VariationalModule(nn.Module):
             self.variational_parameters[name] = nn.Module()
             self.variational_parameters[name].mu = nn.Parameter(data)
             self.variational_parameters[name].rho = nn.Parameter(
-                torch.zeros_like(data) + _INITIAL_RHO
+                torch.zeros_like(data) + initial_rho
             )
 
     def sample_parameters(self, n_particles=1):
@@ -79,6 +78,7 @@ class VariationalModule(nn.Module):
             eps = torch.rand(expanded_shape, device=sigma.device)
             sampled_parameters = eps * sigma + v_param.mu
 
+            # UNSURE IF NEEDED
             # sampled_parameters.requires_grad_()
             # sampled_parameters.retain_grad()
             # # Save for backward pass
@@ -102,12 +102,13 @@ class VariationalModule(nn.Module):
         self.particle_idx += 1
         return self.bayesian_module(x)
 
+    # UNSURE IF NEEDED
     # @torch.no_grad()
     # def update_gradients_(self):
 
     #     # Should be called after backward
     #     for name, v_param in self.variational_parameters.items():
-    #         sampled_param = getattr(self.bayesian_module, name)
+    #         sampled_param = self.sampled_parameters_[name]
     #         v_param.mu.grad += sampled_param.grad.sum(0)
     #         v_param.rho.grad += (v_param.rho_gradient_mult_ * sampled_param.grad).sum(0)
 
@@ -130,7 +131,7 @@ class VariationalModule(nn.Module):
 from src.utils import ModuleAttributeHelper
 
 
-def to_variational_model_(model):
+def to_variational_model_(model, initial_rho=-5):
     def replace_submodules_(module: nn.Module):
 
         helper = ModuleAttributeHelper(module)
@@ -138,7 +139,7 @@ def to_variational_model_(model):
             if isinstance(child, BayesianNop):
                 pass
             elif isinstance(child, BayesianModule):
-                new_module = VariationalModule(child)
+                new_module = VariationalModule(child, initial_rho=initial_rho)
                 helper[key] = new_module
             else:
                 replace_submodules_(child)
@@ -176,6 +177,7 @@ class VariationalInference(InferenceModule):
         n_particles=2,
         prior_config=None,
         kl_weighting_scheme: Optional[KLWeightingScheme] = None,
+        initial_rho=-5,
     ):
 
         super().__init__()
@@ -193,7 +195,7 @@ class VariationalInference(InferenceModule):
             prior_config = _DEFAULT_VI_PRIORS
 
         model = to_bayesian_model(model, prior_config)
-        self.model = to_variational_model_(model)
+        self.model = to_variational_model_(model, initial_rho=initial_rho)
 
         self.train_metrics = torch.nn.ModuleDict(self.model.get_metrics())
         self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
@@ -218,11 +220,10 @@ class VariationalInference(InferenceModule):
         output = torch.stack(self.forward_particles(x))
 
         obs_model = self.model.observation_model_gvn_output(output)
-        log_lik = obs_model.log_prob(y).sum(-1)
+        log_lik = obs_model.log_prob(y).squeeze().sum(-1)
         kl = self.log_v_post() - self.log_prior()
         kl_w = self.kl_weighting_scheme(batch_idx, len(self.trainer.train_dataloader))
         batch_elbo = (log_lik - kl * kl_w).mean(0)
-        batch_elbo = batch_elbo
 
         preds = self.model.predict_gvn_output(output).mean(0)
         self.log("elbo/train", batch_elbo, on_step=False, on_epoch=True)
@@ -239,6 +240,11 @@ class VariationalInference(InferenceModule):
         preds = torch.stack(self.forward_particles(x)).softmax(-1).mean(0)
         for name, metric in self.val_metrics.items():
             self.log(f"{name}/val", metric(preds, y), prog_bar=True)
+
+    # UNSURE IF NEEDED
+    # def on_after_backward(self) -> None:
+    #     for module in self.variational_modules():
+    #         module.update_gradients_()
 
     def configure_optimizers(self):
         return torch.optim.SGD(self.variational_parameters(), lr=self.lr)
