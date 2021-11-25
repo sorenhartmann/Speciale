@@ -7,7 +7,7 @@ class Densenet(Model):
         super().__init__()
         self.num_classes = num_classes
         self.net = torch.hub.load(
-            "pytorch/vision:v0.10.0", "densenet121", pretrained=load, dropout=dropout
+            "pytorch/vision:v0.10.0", "densenet121", pretrained=load, drop_rate=dropout
         )
         self.prepare_net()
 

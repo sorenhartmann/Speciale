@@ -13,4 +13,4 @@ data:
   batch_size: ${batch_size}
 
 trainer:
-  max_steps: 30000
+  max_steps: 80000

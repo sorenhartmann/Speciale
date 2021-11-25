@@ -3,7 +3,7 @@
 #BSUB -gpu "num=1:mode=exclusive_process"
 #BSUB -J cifar10_densenet_sghmc
 #BSUB -n 4
-#BSUB -W 8:00
+#BSUB -W 24:00
 #BSUB -B
 #BSUB -N
 #BSUB -R span[hosts=1]

@@ -6,4 +6,5 @@
     n_samples: 15
     seed: 123
   batch_size: "???"
+  shuffle: true
   

@@ -1,4 +1,4 @@
 _target_: src.inference.mcmc.samplers.SGHMC
 lr: 2.e-6
 alpha: 0.01
-resample_momentum_every: 25
+resample_momentum_every: 10
