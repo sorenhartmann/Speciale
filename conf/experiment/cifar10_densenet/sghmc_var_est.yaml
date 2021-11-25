@@ -7,7 +7,7 @@ defaults:
     
 inference:
   sampler:
-    lr: 5.e-5
+    lr: 5.e-7
 
 tag: sghmc_var_est
 

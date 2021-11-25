@@ -5,4 +5,4 @@ _target_: src.inference.mcmc.samplers.SGHMCWithVarianceEstimator
 lr: 2.e-6
 alpha: 0.01
 estimation_margin: 100
-resample_momentum_every: 10
+resample_momentum_every: 50
