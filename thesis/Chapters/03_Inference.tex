@@ -3,11 +3,40 @@
 Data is $\mathcal{D} = (\bm{X}, \bm{Y})$, where $\bm{X} = (x_1,\dots,x_N)$ are covariates and $\bm{Y} = (y_1, \dots, y_N)$ are attributes we want to model.
 Given new data $x^\ast$, find the predictive distribution $p(y^\ast | x^\ast)$ 
 
+\begin{figure}[htbp]
+    \centering
+    \begin{tikzpicture}
+    
+        % Define nodes
+        \node[latent] (theta) {$\theta$};
+        \node[obs, right=of theta] (targets) {$y_i$};
+        \node[obs, right=of targets] (covariates) {$x_i$};
+        
+        % Connect the nodes
+        \edge {theta} {targets}
+        \edge {covariates} {targets}
+    
+        % \edge {eta, covariates} {targets};
+        
+        % Plates
+        % \plate {parameters} {(eta)} {$I\times J$};
+        % \plate {layers} {(lambda)(parameters)} {$K$};
+        \plate {observations} {(targets)(covariates)} {$|\mathcal{D}|$};
+    
+    \end{tikzpicture}
+    \caption{PGM of the BNN model.}
+\end{figure}
+
+The model yields the following factorization:
+\begin{align*}
+    p(\theta, \bm X, \bm Y) = p(\theta) p(\bm X) p(\bm Y | \bm X, \theta)
+\end{align*}
 Marginalize out the parameters of the model, $\theta$.
 \begin{align*}
     p(y^\ast | x^\ast) &= E_{p(\theta|\mathcal{D})} p(y^\ast | x^\ast, \theta) \\
                        &= \int_{\theta} p(y^\ast | x^\ast, \theta)  p(\theta|\mathcal{D}) d\theta
 \end{align*}
+As
 In practice, at least in the case of deep learning models, the integral of the expectation feasable to evalutate exactly. 
 We therefore resort to approximate methods, such as the Monte Carlo estimate:
 \begin{align*}
@@ -16,13 +45,16 @@ We therefore resort to approximate methods, such as the Monte Carlo estimate:
 Where $\theta^{(i)}$ are samples from the posterior distribution:
 \begin{align*}
     p(\theta | \mathcal{D}) 
-    &= p(\theta | \bm{X}, \bm{Y}) \\
-    &= \frac{p(\bm{Y} |\theta, \bm{X}) p(\theta|\bm{X})}{p(\bm{Y}) } \\
-    &= \frac
-    {\left(\prod_{i=1}^N p(y_i |\theta, x_i)\right) p(\theta)}
-    {p(\bm{Y}) }  
+    &= \frac{p(\bm Y , \bm X, \theta)}{p(\bm{X}, \bm{Y})}\\
+    &= \frac{p(\theta) p(\bm X) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})p(\bm{X})} \\
+    &= \frac{p(\theta) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})}
 \end{align*}
-The unconditional  observation model, $p(y)$, is also not easily evalutated. 
+
+\begin{align}
+    p(\bm{X}, \bm{Y}, \theta) = p(\bm{Y} | \bm{X}, \theta) p(\bm{X}, \theta) \\
+    p(\bm{X}, \bm{Y}, \theta) = p(\bm{X}, \bm{Y} | \theta) p(\theta) 
+\end{align}
+The unconditional observation model, $p(Y|X)$, . 
 In the following, we will discuss two different strategies to get around this. 
 The first is to use sampling methods that only requires the sampling distribution $f(\theta)$ up to a constant factor $\hat{f}(\theta)\propto f(\theta)$. 
 This is useful since 
@@ -303,26 +335,28 @@ Since we are resampling the momentum immediately after each integration step, an
 \algnewcommand{\IfThenElse}[3]{% \IfThenElse{<if>}{<then>}{<else>}
   \State \algorithmicif\ #1\ \algorithmicthen\ #2\ \algorithmicelse\ #3}
 \algnewcommand{\LineComment}[1]{\State \(\triangleright\) \textit{#1}}
-\begin{figure}[htbp]
-    \centering
-    \begin{minipage}{.7\linewidth}
-      \begin{algorithm}[H]
-        \caption{Hamiltonian Monte Carlo} \label{alg:hmc}
-        \begin{algorithmic}
-            \Require $n \geq 0$
-            \While{sampling}
-            \State resample momentum $r \sim \mathcal{N}(0, M^{-1})$
-            \State $r \gets r - \epsilon \nabla E(x)/2$ \Comment{Leapfrog integrator}
-            \For{$i=1,\dots,T$} 
-                \State $x\gets x + \epsilon r M^{-1} $ 
-                \IfThenElse{$i < N$}{$r\gets r - \epsilon \nabla E(x)$}{$r\gets r - \epsilon \nabla E(x)/2$}
-            \EndFor
-            \State MH-STEP
-            \EndWhile
-            \end{algorithmic}
-      \end{algorithm}
-    \end{minipage}
-  \end{figure}
+
+\begin{algorithm}[H]
+\caption{Hamiltonian Monte Carlo} \label{alg:hmc}
+\begin{algorithmic}
+    \Require $n \geq 0$
+    \For{$n=1,2,\dots$}
+    \State resample momentum $r \sim \mathcal{N}(0, M^{-1})$
+    \State $x \gets x_{t-1}$
+    \State $r \gets r - \epsilon \nabla E(x)/2$ \Comment{Leapfrog integrator}
+    \For{$i=1,\dots,T$} 
+        \State $x\gets x + \epsilon r M^{-1} $ 
+        \IfThenElse{$i < N$}{$r\gets r - \epsilon \nabla E(x)$}{$r\gets r - \epsilon \nabla E(x)/2$}
+    \EndFor
+    \State sample $u \sim \mathcal{U}(0, 1)$
+    \If{$u \leq \exp[-E(x_t) + E(x)]$}
+        \State $x_{t} \gets x$
+    \Else
+        \State $x_{t} \gets x_{t-1}$
+    \EndIf
+    \EndFor
+    \end{algorithmic}
+\end{algorithm}
 
 
 % \begin{align}
@@ -352,51 +386,45 @@ We may consider a similar scheme, approximating the $E$ gradient as:
 \end{align*}
 
 In \cite{chen_stochastic_2014}, they model the behavior of this approach with:
-\begin{align*}
+\begin{align} \label{eq:sghmc-model}
     \nabla\tilde{E}(\theta) \approx \nabla{E}(\theta) + e
-\end{align*}
+\end{align}
 where $e \sim \mathcal{N}(0, \sigma^2(\theta))$ is the noise introduced through the approximation. This has some ramification for the Hamiltonian system described in the previous section. 
 The discrete time step updates performed by the algorithm no longer corresponds to the deterministic Hamiltonian system because of the introduced noise. 
-\todo{Synthetic experiment with added noise to U instead of gradU ? for MH step }
+
 While we may try to use the HMC algorithm anyway, we could also attempt to modify the dynamics of the system with this noise term in mind.
 If we for some step size $\epsilon$ consider the discretizated system as
 \begin{align}
     \Delta \theta &=  \epsilon M^{-1} r\\
     \Delta r &=  -\epsilon\nabla{\tilde{E}}(\theta) = -\epsilon\nabla{E}(\theta)  + \epsilon e
 \end{align}
-
-These updates can be interpreted as discrete steps with size $\epsilon$ from the continuous stochastic dynamical system
+These updates can be interpreted as discrete steps with size $\epsilon$ from the continuous stochastic system:
 \begin{align*}
     \dd{\theta} &= M^{-1} r\dd{t} \\
-    \dd{r} &= -\nabla{E}(\theta)\dd{t}  + \sqrt{\epsilon}\sigma(\theta) \dd{e_t} 
+    \dd{r} &= -\nabla{E}(\theta)\dd{t}  + \sqrt{\epsilon}\sigma(\theta) \dd{W_t} 
 \end{align*}
-Or alternatively using vector notation
+Where $W_t$ is a $k$ dimensional Weiner process. Alternatively, we can express the dynamics as a $2k$-dimensional system using vector notation:
 \begin{align} \label{eq:stoch-hmc-naive}
     \dd{\begin{bmatrix}\theta \\ r \end{bmatrix}} &= 
     \begin{bmatrix}
-        r \\ -\nabla{E}(\theta) 
+        M^{-1}r \\ -\nabla{E}(\theta) 
     \end{bmatrix} \dd{t} + \begin{bmatrix}
         0 & 0 \\ 
         0 & \sqrt{\epsilon}\sigma(\theta)
-    \end{bmatrix} \dd{e_t}
+    \end{bmatrix} \dd{W_t}
 \end{align}
-
-Where the heuristic interpretation is 
-\todo{Find en god heuristic med kilde...}
-\todo{Kommenter at der bliver argumenteret for at den ikke er stationær ift p}
-
-The main idea presented in \cite{chen_stochastic_2014} is to introduce a friction term in \cref{eq:stoch-hmc-naive}:
-
-\begin{align*}
+\question{$\sigma^2(\theta)$ vs $\sigma(\theta)$}
+As argued in \cite{chen_stochastic_2014}, the target distribution $p(\theta, r)$ is indeed no longer stationary with respect to the now stochastic dynamics of \cref{eq:stoch-hmc-naive}. Thus, unlike the original Hamiltonian dynamics, where we only had to correct for the discretization error, in this case not even the underlying dynamics are stationary with respect to $p(\theta, r)$. Assuming we know the noise model $\sigma^2(\theta)$, the solution proposed in \cite{chen_stochastic_2014} is to instead introduce a friction term in \cref{eq:stoch-hmc-naive}:
+\begin{align} \label{eq:stoch-hmc-w-friction}
     \dd{\begin{bmatrix}\theta \\ r \end{bmatrix}} &= 
     \begin{bmatrix}
-        M^{-1}r \\ -\nabla{E}(\theta) - \frac{1}{2}\epsilon\sigma^2(\theta)M^{-1}r
+        M^{-1}r \\ -\nabla{E}(\theta)-\frac{1}{2}\epsilon\sigma^2(\theta)M^{-1}r
     \end{bmatrix} \dd{t} + \begin{bmatrix}
         0 & 0 \\ 
         0 & \sqrt{\epsilon}\sigma(\theta)
-    \end{bmatrix} \dd{e_t}
-\end{align*}
-
+    \end{bmatrix} \dd{W_t}
+\end{align}
+We may rewrite the system  as:
 \begin{align*}
     \dd{\begin{bmatrix}\theta \\ r \end{bmatrix}} &= 
     -\begin{bmatrix}
@@ -407,63 +435,204 @@ The main idea presented in \cite{chen_stochastic_2014} is to introduce a frictio
     \end{bmatrix}\dd{t} + \begin{bmatrix}
         0 & 0 \\ 
         0 & \sqrt{\epsilon}\sigma(\theta)
-    \end{bmatrix} \dd{e_t} \\
-    &= 
-    -\begin{bmatrix}
-        0 & -1 \\ 
-        1 & \frac{1}{2}\epsilon\sigma^2(\theta)
-    \end{bmatrix} \nabla H(\theta, r)\dd{t} + \begin{bmatrix}
-        0 & 0 \\ 
-        0 & \sqrt{\epsilon}\sigma(\theta)
-    \end{bmatrix} \dd{e_t} \\
-    &=  - (D + G) \nabla H(\theta, r)\dd{t} + B \dd{e_t} 
+    \end{bmatrix} \dd{W_t} 
 \end{align*}
-With
-\begin{align*}
+Introducing the matrices
+\begin{align} \label{eq:stoch-hmc-matrix-defs}
     G=\begin{bmatrix}0 & -1 \\ 1 & 0 \end{bmatrix}, ~D = BB^T= \begin{bmatrix}
         0 & 0 \\ 
-        0 & \epsilon\sigma^2(\theta)
-    \end{bmatrix}
-\end{align*}
-
+        0 & \frac{1}{2}\epsilon\sigma^2(\theta)
+    \end{bmatrix},
+\end{align}
+and identifying the gradient of the Hamiltonian, we can rewrite the system further as 
+\begin{align}
+    \dd{\begin{bmatrix}\theta \\ r\end{bmatrix}}= - (D+G) \nabla H(\theta, r)\dd{t} + \sqrt{2}B \dd{W_t}.
+\end{align}
+We can then make use of the Fokker-Planck equations \cite{ottinger_stochastic_1996}, to describe the evolution of our target distribution $p(\theta, r)=p(z)$ under these dynamics. According the FP equation, for the stochastic system:
+\begin{align}
+    \dd{X_t} =A(t, X_t) + S(t, X_t)\dd{W_t}
+\end{align}
+with $V=SS^T$, we then have
 \begin{align*}
     \pdv{t} p(t, z) &= - \sum_{i} \pdv{z_i} A_i(t, z) p(t, z) 
-        + \frac{1}{2}\sum_{i,j}\pdv{z_i}\pdv{z_j}D_{i,j}(t, z)p(t, z) \\
+        + \frac{1}{2}\sum_{i}\sum_{j}\pdv{}{z_i}{z_j}V_{i,j}(t, z)p(t, z). 
 \end{align*}
+In our case $A = -(D+G)\nabla H(\theta, r)$, and $S = \sqrt{2}B$. Inserting into the equation with $p_t(z) = \exp[-H(z)]$above, we find that
+\begin{align} \label{eq:stoch-hmc-fp}
+    \pdv{t} p_t(z) &= - \sum_{i} \pdv{z_i} [ -(D+G)\nabla H(\theta, r)]_i p_t(z) 
+        + \frac{1}{2}\sum_{i}\sum_{j}\pdv{}{z_i}{z_j}[2D]_{i,j}p_t(z). 
+\end{align}
+From \cref{eq:stoch-hmc-matrix-defs}, we see that $D(\theta)$ only depends on $z = (r, \theta)$, in the lower right quadrant, where the terms depends on $\theta$. Since the partial derivatives are only taken with respect to the momentum varibles, $r$ in this quadrant, we can reduce the second term:
+\begin{align*}
+    \frac{1}{2}\sum_{i}\sum_{j}\pdv{}{z_i}{z_j}[2D]_{i,j}p_t(z)
+    &= \frac{1}{2}\sum_{i}\pdv{z_i}\sum_{j}\pdv{z_j}\underbrace{[2D]_{i,j}}_{\text{Const. wrt. $z_j$}}p_t(z) \\
+    &= \frac{1}{2}\sum_{i}\pdv{z_i}\sum_{j}[2D]_{i,j}\pdv{z_j}p_t(z)\\
+    &= \frac{1}{2}\sum_{i}\pdv{z_i}[2D \nabla p_t(z)]_{i}
+\end{align*}
+We can then insert into the expression in \cref{eq:stoch-hmc-fp}:
+\begin{align*} 
+    \pdv{t} p_t(z) &= - \sum_{i} \pdv{z_i} [ -(D+G)\nabla H(z)]_i p_t(z) 
+        + \frac{1}{2}\sum_{i}\sum_{j}\pdv{}{z_i}{z_j}[2D]_{i,j}p_t(z). \\
+    &=  \sum_{i} \pdv{z_i} [ (D+G)\nabla H(z)p_t(z)]_i 
+        + \frac{1}{2}\sum_{i}\pdv{z_i}[2D \nabla p_t(z)]_{i} \\
+    &=  \sum_{i} \pdv{z_i} \left([ (D+G)\nabla H(z)p_t(z)]_i 
+        + \frac{1}{2}[2D \nabla p_t(z)]_{i}\right) \\
+    &=  \sum_{i} \pdv{z_i} \left([ (D+G)\nabla H(z)p_t(z) 
+        + D \nabla p_t(z)]_{i}\right) \\
+    &=  \sum_{i} \pdv{z_i} \left([ (D+G)\nabla H(z)p_t(z) 
+        - D \nabla H(z) p_t(z)]_{i}\right) \\
+    &=  \sum_{i} \pdv{z_i} \left([ G\nabla H(z)p_t(z)]_i \right) 
+\end{align*}
+Where we have used that $\nabla p_t(z) = \nabla \exp[-H(z)]= -\nabla H(z) \exp[-H(z)] =  -\nabla H(z) p_t(z)$. 
+\begin{align}
+    \pdv{t} p_t(z) &= \sum_{i} \pdv{z_i} [ G\nabla H(z)p_t(z)]_i \\
+                &= \sum_{i} \pdv{z_i} [ -G\nabla p_t(z)]_i \\
+                &= \sum_{\theta_i} \pdv{\theta_i} [ -G\nabla p_t(z)]_{\theta_i}
+                + \sum_{r_i} \pdv{r_i} [ -G\nabla p_t(z)]_{r_i} \\
+                % &= \sum_{\theta_i} \pdv{\theta_i} [ -G\nabla p_t(z)]_{\theta_i}
+                % + \sum_{r_i} \pdv{r_i} [ -G\nabla p_t(z)]_{r_i} \\
+    % \pdv{t} p_t(z) &= 
+    % \sum_{\theta_i} \pdv{\theta_i} \left([ G\nabla H(z)p_t(z)]_i \right) +
+    % \sum_{r_i} \pdv{r_i} \left([ G\nabla H(z)p_t(z)]_i \right)
+\end{align}
+Next, since 
+\begin{align*}
+    -G\nabla p_t(z) = \begin{bmatrix}0 & 1 \\ -1 & 0 \end{bmatrix}
+    \begin{bmatrix}
+        \nabla_\theta p_t(z) \\ 
+        \nabla_r p_t(z)
+    \end{bmatrix} = \begin{bmatrix}
+        \nabla_r p_t(z) \\
+        -\nabla_\theta p_t(z) 
+    \end{bmatrix}
+\end{align*}
+We can conclude that $[-G\nabla p_t(z)]_{\theta_i} = [\nabla p_t(z)]_{r_i} = \pdv*{p_t(z)}{r_i}$, and likewise $[-G\nabla p_t(z)]_{r_i} = [-\nabla p_t(z)]_{\theta_i} =-\pdv*{p_t(z)}{\theta_i}$. We can thus simplify further
+\begin{align*}
+    \pdv{t} p_t(z) 
+    &= \sum_{\theta_i} \pdv{\theta_i} [ -G\nabla p_t(z)]_{\theta_i}
+        + \sum_{r_i} \pdv{r_i} [ -G\nabla p_t(z)]_{r_i} \\
+    &= \sum_{\theta_i} \pdv{\theta_i} \pdv{r_i} p_t(z)
+        - \sum_{r_i} \pdv{r_i} \pdv{\theta_i} p_t(z)\\
+    &= 0
+\end{align*}
+Summarizing, we see that the time derivative of the distribution $p_t(z)=\exp[-H(z)]$ is zero, and the distribution thus remains the same under the dynamics of the stochastic system in \cref{eq:stoch-hmc-w-friction}. 
+There is still some considerations when it comes to implementing this approach in practice. 
 
+First, the noise model $\sigma$ is only approximately normal, and is generally not known.
+We instead use an estimate $\hat{B}$ for the dispersion matrix, which also introduces error into the sampling procedure. 
+Approximating the noise normal is more reasonable for larger batch sizes with reference to the central limit theorem.
+In order to alleviate the estimation error somewhat, we instead using an upper bound $C \succeq 2D$ of the system noise. We then sample
 
+\begin{align}
+    \Delta \theta &=  \epsilon M^{-1} r\\
+    \Delta r &=  -\epsilon\nabla\tilde{E}(\theta) - \epsilon CM^{-1}r  + \tau
+\end{align}
 
+Where $\tau\sim  \mathcal{N}(0, C - 2\hat{D})$. In effect, we are simulating the dynamics of a noisier system by injecting additional noise, however now we atleast know some terms of the noise model. With $C$ much larger than $D$, the relative impact of the estimation noise becomes smaller. 
+In \cite{chen_stochastic_2014}, they simply set $\hat{D} = 0$, and relies on this upper bound to appromite the dynamics sufficiently.  
 
-% what are the dynamics of the corresponding continuous system as $\epsilon \to 0$? Consider $w \sim \mathcal{N}(0, \epsilon)$, the increment can then be reparameterized as:
-% \begin{align*}
-%     \Delta r  = -\epsilon\nabla{E}(\theta)  + \sqrt{\epsilon} A(\theta) w.
-% \end{align*}
-% Where $A(\theta)A(\theta)^T = V(\theta)$.
-% From the parameterization above, we can consider the continuous system
-% \begin{align*}
-%     \dd r  = -\nabla{E}(\theta) \dd t  + \sqrt{\epsilon} A(\theta) \dd w.
-% \end{align*}
-% Letting (some of?) $\epsilon $....
+Secondly, we are still stuck with approximating the continuous dynamics using discrete time steps. Unlike the HMC algorithm, we do not have any way of correcting for the discretization error. 
+We are therefore still only approximately sampling from the target distrubion, and will have to rely on the step size $\epsilon$ to be small for the approximation to be good. We do not, however, need to resample the momentum, since ergodity is simply provided through the stochastic nature of the algorithm.
 
-% With $B(\theta) = \frac{1}{2}\epsilon V(\theta)$
+Finally in \cite{chen_stochastic_2014} they argue for an alternative parameterization. With $v = \epsilon M^{-1} r$ Then
+\begin{align}
+    \Delta \theta &=  v \\
+    \Delta v &=  -\epsilon^2 M^{-1} \nabla\tilde{E}(\theta) - \epsilon CM^{-1}v  + \epsilon M^{-1}\tau \\
+    \Delta v &=  -\epsilon^2 M^{-1} \nabla\tilde{E}(\theta) - \epsilon CM^{-1}v  + \epsilon M^{-1}\tau
+\end{align}
+where $\epsilon M^{-1}\tau\sim Noget andet$? Using $\eta = \epsilon^2M^{-1}$, $\beta = \epsilon M^{-1} D$ and $\alpha = \epsilon M^{-1}C$, we can parameterize the algorithm with
+\begin{align}
+    \Delta \theta &=  v \\
+    \Delta v &=  -\eta \nabla\tilde{E}(\theta) - \alpha v  + \mathcal{N}(2(\alpha-\hat{\beta})\eta)
+\end{align}
+We have thus factored the mass matrix $M$ out of the specification of the algorithm, but now specify it in conjuction with the step size $\epsilon$. 
+This is useful, since we now don't need to specify the algorithm in terms of parameters with questionable interpretations such as the mass matrix, but the actual behavior of the algorithm.
+This parameterization can be seen in \cref{alg:sghmc}
 
-% We get 
+Comparing the algorithm with stocastic gradient descent with momentum, we see that  $\eta$ corresponds to learning rate while $\alpha$ corresponds to momentum decay. 
+When is comes to choosing parameters for the methods, we can therefore to some extend draw on experience and/or conventional wisdom.
 
-
-% \begin{align*}
-%     d\begin{bmatrix}
-%         \theta \\
-%         r
-%     \end{bmatrix} = - \begin{bmatrix}
-%         0 & -1 \\ 
-%         1 &  B 
-%     \end{bmatrix}
-% \end{align*}
-
+\begin{algorithm}[H]
+    \caption{Stochastic Gradient Hamiltonian Monte Carlo} \label{alg:sghmc}
+    \begin{algorithmic}
+        \For{$n=1,2,\dots$}
+        \For{$i=1,\dots,T$} 
+            \State sample $\tau \sim \mathcal{N}(\text{whateverthefuck})$
+            \State $x\gets x + v $ 
+            \State $v\gets v - \eta \nabla E(x) - \alpha v + \tau$
+        \EndFor
+        \State $x_{t} \gets x$
+        \EndFor
+        \end{algorithmic}
+    \end{algorithm}
 
 \section{Variational Inference}
 
+Suppose we want to sample from some posterior distribution $p(\theta | \mathcal{D})$. 
+Variational methods aims to approximate this posterior distribution using a so called variational distribution $q_\psi (\theta)$ parameterized by some parameters $\psi$.  
+We then seek to to find a value of these variational parameters, such that the variational distribution is as close to the posterior as possible. 
+As a quantifying measure of difference between the two distributions, we use the Kullback-Liebler divergence:
+\begin{align}
+    \text{KL}(q_\psi\parallel p) 
+    = \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\mathcal{D})}} \dd{\theta} 
+    = E_{q_\psi}\left[\log{\frac{q_\psi(\theta)}{p(\theta|\mathcal{D})}}\right]
+\end{align}
+that is, the inference problem turns into an optimization problem 
+\begin{align}
+    \psi^\ast=\arg\min_{\psi}{\text{KL}(q_\psi\parallel p)}.
+\end{align}
+Inserting the parameter posterior from REF into the expression
+\begin{align}
+    \text{KL}(q_\psi\parallel p) 
+    &= \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\mathcal{D})}} \dd{\theta} \\
+    &= \int_{\Omega} q_\psi(\theta)\log{\frac{p(\bm{Y}|\bm{X})q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} \\
+    &= \int_{\Omega} q_\psi(\theta)\log{p(\bm Y|\bm{X})} + q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} \\
+    &= E_{q_{\psi}} [\log{p(\bm{Y}|\bm{X})}] + \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} 
+\end{align}
+While we don't know the value of marginalized likelihood $\log{p(\bm{Y}|\bm{X})}$, since the parameters are marginalized, we can ignore the term for the purposes of the minimization problem.
+We therefore seek to minimize:
+\begin{align}
+    \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta|\bm{X})}} \dd{\theta} 
+    &= \int_{\Omega} q_\psi(\theta) \log{\frac{q_\psi(\theta)}{p(\theta|\bm{X})}} -q_\psi(\theta)\log{p(\bm{Y} |\theta, \bm{X})} \dd{\theta}\\
+    &= \text{KL}(q_\psi(\theta) \parallel p(\theta))  - E_{q_\psi}\left[ \log{p(\bm{Y} |\theta, \bm{X})}  \right] 
+\end{align}
+We can therefore see than finding the optimal variational parameters is equivalent to finding the variational parameters maximumizing the expected likelihood while regularized such that it stays close to the prior distribution. 
 
+
+How may we find derivatives of distributions:
+\begin{align*}
+    \pdv{\psi} E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right]
+\end{align*}
+This can be solved by using the reparameterization trick. That is, introducing a parameterless random variable $\epsilon$ following some distribution distribution $s(\epsilon)$, and use a deterministic function $t(\epsilon, \psi)$ such that $t(\epsilon, \psi) \sim q_\psi(\theta)$. Then the expectation 
+$ E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] =E_{s(e)}\left[ f(\psi, t(\epsilon, \psi)) \right]$ and 
+\begin{align*}
+    \pdv{\psi} E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] 
+    &= \pdv{\psi} \int_\theta q_\psi(\theta) f(\psi, \theta)\dd{\theta}\\
+    &= \pdv{\psi} \int_\epsilon s(\epsilon) f(\psi, t(\epsilon, \psi))\dd{e}\\
+    &= \int_\epsilon \pdv{\psi} s(\epsilon) f(\psi, t(\epsilon, \psi))\dd{e}\\
+    &= \int_\epsilon s(\epsilon) \pdv{\psi} f(\psi, t(\epsilon, \psi)) \dd{e}
+\end{align*}
+Since $s(\epsilon)$ does not depend on the variational parameters $\psi$, we need only find the partial derivative of $f(\psi, t(\epsilon, \psi))$ using the chain rule:
+\begin{align*}
+    \pdv{\psi} f(\psi, t(\epsilon, \psi)) 
+    &= \pdv{f(\psi, \theta)}{\psi}
+    + \pdv{f(\psi, \theta)}{\theta}\pdv{t(\epsilon, \psi)}{\psi} 
+\end{align*}
+and so 
+\begin{align*}
+    \pdv{\psi} E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] 
+    &= \int_\epsilon s(\epsilon) \left(\pdv{f(\psi, \theta)}{\psi}
+    + \pdv{f(\psi, \theta)}{\theta}\pdv{t(\epsilon, \psi)}{\psi} \right) \dd{e} \\
+    &= E_{s(\epsilon)} \left[\pdv{f(\psi, \theta)}{\psi} 
+    + \pdv{f(\psi, \theta)}{\theta}\pdv{t(\epsilon, \psi)}{\psi} \right]
+\end{align*}
+How may we estimate this gradient?  Using 
+
+\begin{align*}
+    \frac{1}{N} \sum_{i=1}^N \pdv{f(\psi, \theta_i)}{\psi} 
+    + \pdv{f(\psi, \theta)}{\theta}\pdv{t(\epsilon_i, \psi)}{\psi} 
+\end{align*}
+    
 
 
 
