@@ -1,0 +1,2 @@
+_target_: src.inference.mcmc.variance_estimators.ExpWeightedEstimator
+alpha: 0.1

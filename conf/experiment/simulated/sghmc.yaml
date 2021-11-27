@@ -13,12 +13,12 @@ inference:
     alpha: 0.01
     beta: 0
     resample_momentum_every: 10
-  burn_in: 500
+  burn_in: 1000
   steps_per_sample: 10
   use_gibbs_step: false
 
 trainer:
-  max_steps: 805000
+  max_steps: 810000
 
 extra_callbacks:
   - _target_: src.callbacks.mcmc.SaveSamples

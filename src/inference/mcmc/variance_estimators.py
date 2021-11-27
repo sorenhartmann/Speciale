@@ -5,7 +5,6 @@ from src.inference.mcmc.samplable import ParameterPosterior
 
 
 class VarianceEstimator(nn.Module):
-    
     def setup(self, sampler, inference_module=None):
         pass
 
@@ -26,7 +25,7 @@ class ConstantEstimator(VarianceEstimator):
     def __init__(self, value=0.0):
 
         super().__init__()
-        self.register_buffer("value",torch.tensor(value))
+        self.register_buffer("value", torch.tensor(value))
 
     def estimate(self):
         return self.value
@@ -74,8 +73,25 @@ class AdamEstimator(VarianceEstimator):
         return var_bias_corrected
 
 
-class WelfordEstimator(nn.Module):
+class ExpWeightedEstimator(VarianceEstimator):
+    def __init__(self, alpha=0.1):
+        super().__init__()
+        self.alpha = alpha
 
+    def setup(self, sampler, inference_module=None):
+        self.register_buffer("mean", torch.zeros(sampler.samplable.shape))
+        self.register_buffer("variance", torch.ones(sampler.samplable.shape))
+
+    def on_after_grad(self, grad: torch.Tensor):
+        diff = grad - self.mean
+        incr = self.alpha * diff
+        self.mean = self.mean + incr
+        self.variance = (1 - self.alpha) * (self.variance + diff * incr)
+
+    def estimate(self) -> torch.Tensor:
+        return self.variance
+
+class WelfordEstimator(nn.Module):
     def __init__(self, shape):
         super().__init__()
         self.n = 0
@@ -106,11 +122,12 @@ class WelfordEstimator(nn.Module):
 class NoStepException(Exception):
     ...
 
+
 class NextEpochException(Exception):
     ...
 
-class InterBatchEstimator(VarianceEstimator):
 
+class InterBatchEstimator(VarianceEstimator):
     def __init__(self, n_estimation_steps=10):
 
         super().__init__()
@@ -134,7 +151,7 @@ class InterBatchEstimator(VarianceEstimator):
             sampler.grad_U()
             raise NoStepException
 
-    def on_after_grad(self, grad): 
+    def on_after_grad(self, grad):
 
         if not self.is_estimating:
             return
@@ -143,7 +160,7 @@ class InterBatchEstimator(VarianceEstimator):
 
         if self.wf_estimator.n == self.n_estimation_steps:
             raise NextEpochException
-            
+
     def estimate(self) -> torch.Tensor:
 
         # return torch.tensor(0.0)
@@ -158,7 +175,9 @@ class InterBatchEstimator(VarianceEstimator):
 
 
 class DummyVarianceEstimator(VarianceEstimator):
-    def __init__(self, variance_estimator: VarianceEstimator, use_estimate, constant=0.0):
+    def __init__(
+        self, variance_estimator: VarianceEstimator, use_estimate, constant=0.0
+    ):
 
         super().__init__()
         self.use_estimate = use_estimate

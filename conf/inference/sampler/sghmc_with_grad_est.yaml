@@ -1,5 +1,5 @@
 defaults:
-  - /inference/sampler/variance_estimator@_group_: interbatch
+  - /inference/sampler/variance_estimator@_group_: exp_weighted
 
 _target_: src.inference.mcmc.samplers.SGHMCWithVarianceEstimator
 lr: 2.e-6

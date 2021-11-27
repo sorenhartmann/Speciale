@@ -8,14 +8,14 @@ defaults:
 
 inference:
   sampler:
-    step_size: 0.01
-    n_steps: 50
-  burn_in: 500
+    step_size: 0.02
+    n_steps: 10
+  burn_in: 1000
   steps_per_sample: 1
   use_gibbs_step: false
 
 trainer:
-  max_steps: 80500
+  max_steps: 81000
 
 extra_callbacks:
   - _target_: src.callbacks.mcmc.SaveSamples

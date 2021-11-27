@@ -3,22 +3,25 @@
 defaults:
   - /inference/prior_config: normal
   - override /inference: mcmc
-  - override /inference/sampler: hmc
+  - override /inference/sampler: sghmc_with_grad_est
   - override /inference/sample_container: all
+  - _self_
 
 inference:
   sampler:
-    step_size: 0.02
-    n_steps: 10
-  burn_in: 500
-  steps_per_sample: 1
+    lr: 1e-4
+    alpha: 0.01
+    resample_momentum_every: 10
+    estimation_margin: 5.
+  burn_in: 1000
+  steps_per_sample: 10
   use_gibbs_step: false
 
 trainer:
-  max_steps: 81000
+  max_steps: 810000
 
 extra_callbacks:
   - _target_: src.callbacks.mcmc.SaveSamples
 
 data:
-  batch_size: ${data.dataset.n_samples}
+  batch_size: ${batch_size}
