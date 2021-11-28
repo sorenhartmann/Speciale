@@ -10,7 +10,7 @@ defaults:
 inference:
   sampler:
     lr: 1e-4
-    alpha: 0.1
+    alpha: 0.01
     beta: 0
     resample_momentum_every: 25
   burn_in: 1000
