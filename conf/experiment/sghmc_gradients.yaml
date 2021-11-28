@@ -1,29 +1,38 @@
 # @package _global_
 defaults:
-  - /variance_estimator: interbatch
-  - override /model : mlp_classifier
+  - /inference/prior_config: normal
+  - override /inference/sampler/variance_estimator: "???"
+  - override /model : linear_regressor
+  - override /data : simulated
   - override /inference : mcmc
-  - override /sampler : sghmc_with_grad_est
-  - override /sample_container : all
-  - override /data : mnist
+  - override /inference/sampler : sghmc_with_grad_est
+  - override /inference/sample_container : all
   - _self_
 
 out_dir : sghmc_gradients
 
 inference:
-  burn_in: 0
   sampler:
-    variance_estimator:
-      _target_: src.experiments.sghmc_gradients.VarianceEstimatorWrapper
-      variance_estimator: ${variance_estimator}
-      use_estimate: False
-      constant: 0.
+    lr: 1e-4
+    alpha: 0.01
+    resample_momentum_every: 100
+    estimation_margin: 5
+  burn_in: 1000
+  steps_per_sample: 10
+  use_gibbs_step: false
 
 trainer:
-  max_epochs: 50
+  max_steps: 810000
   progress_bar_refresh_rate: 0
-  callbacks:
-    - _target_: pytorch_lightning.callbacks.ModelCheckpoint
-      dirpath: "./checkpoints"
-    - _target_: src.experiments.sghmc_gradients.LogVarianceEstimates
-    - _target_: src.utils.SilenceWarnings
+
+model:
+  in_features: 4
+  sigma: 1
+
+data:
+  batch_size: 5
+
+extra_callbacks:
+
+  - _target_: src.callbacks.mcmc.SGHMCLogGradientVariance
+  - _target_: src.callbacks.mcmc.SaveSamples

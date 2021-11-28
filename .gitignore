@@ -98,3 +98,6 @@ _old
 /logs
 /plots
 altairdata
+.Rproj.user
+.RData
+.RHistory

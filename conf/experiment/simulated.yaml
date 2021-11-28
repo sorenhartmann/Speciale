@@ -17,6 +17,6 @@ inference:
     precision: 1.
  
 trainer:
-  max_steps: 80500
+  max_steps: 81000
 
 batch_size: 5
