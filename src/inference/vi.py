@@ -247,7 +247,7 @@ class VariationalInference(InferenceModule):
     #         module.update_gradients_()
 
     def configure_optimizers(self):
-        return torch.optim.SGD(self.variational_parameters(), lr=self.lr)
+        return torch.optim.Adam(self.variational_parameters(), lr=self.lr)
 
     def variational_modules(self):
         yield from filter(lambda x: isinstance(x, VariationalModule), self.modules())

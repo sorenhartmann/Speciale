@@ -5,7 +5,9 @@ defaults:
 
 inference:
   sampler:
-    lr: 5.e-7
+    lr: 2.e-7
+  sample_container:
+    max_items: 100
 
 
 tag: sghmc
