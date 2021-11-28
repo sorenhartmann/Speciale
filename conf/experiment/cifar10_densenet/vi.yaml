@@ -10,9 +10,6 @@ inference:
   n_particles: 4
   lr: 5.e-5
 
-trainer:
-  gradient_clip_val: 10 
-  gradient_clip_algorithm: "value"
 
 tag: vi
 

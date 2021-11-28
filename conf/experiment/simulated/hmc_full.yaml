@@ -10,7 +10,7 @@ inference:
   sampler:
     step_size: 0.02
     n_steps: 10
-  burn_in: 500
+  burn_in: 1000
   steps_per_sample: 1
   use_gibbs_step: false
 
