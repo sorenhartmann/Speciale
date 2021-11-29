@@ -1,0 +1,38 @@
+# @package _global_
+defaults:
+  - /inference/prior_config: normal
+  - override /inference/sampler/variance_estimator: "???"
+  - override /model : linear_regressor
+  - override /data : simulated
+  - override /inference : mcmc
+  - override /inference/sampler : sghmc_with_grad_est
+  - override /inference/sample_container : all
+  - _self_
+
+out_dir : sghmc_variance_estimators
+
+inference:
+  sampler:
+    lr: 1e-4
+    alpha: 0.01
+    resample_momentum_every: 10
+    estimation_margin: 5
+  burn_in: 1000
+  steps_per_sample: 10
+  use_gibbs_step: false
+
+trainer:
+  max_steps: 810000
+  progress_bar_refresh_rate: 0
+
+model:
+  in_features: 4
+  sigma: 1
+
+data:
+  batch_size: 5
+
+extra_callbacks:
+
+  - _target_: src.callbacks.mcmc.SGHMCLogGradientVariance
+  - _target_: src.callbacks.mcmc.SaveSamples

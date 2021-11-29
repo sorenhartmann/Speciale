@@ -1,7 +1,7 @@
 from functools import cache
 from pathlib import Path
 from typing import Union
-from pytorch_lightning import Callback
+from pytorch_lightning import Callback, callbacks
 import torch
 from src.inference.mcmc.variance_estimators import WelfordEstimator
 
@@ -82,3 +82,43 @@ class SGHMCLogGradientVariance(Callback):
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
         torch.save({"log_idx": self.log_idx, "estimates": self.estimates}, self.path)
+
+
+class SGHMCLogTemperature(Callback):
+    def __init__(
+        self, steps_per_log: int = 50, path: Union[str, Path] = "temperature_samples.pt"
+    ):
+
+        self.path = path
+        self.temperature_samples = {}
+        self.steps_per_log = steps_per_log
+
+    def on_train_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs,
+        batch,
+        batch_idx: int,
+        dataloader_idx: int,
+    ) -> None:
+
+        if trainer.global_step % self.steps_per_log != 0:
+            return
+
+        M_diag = pl_module.sampler.mass_factor
+        step_size = torch.sqrt(pl_module.sampler.lr_0)
+        nu = pl_module.sampler.nu
+        r = nu / step_size * M_diag
+        norm_squares = (1 / M_diag) * r * r
+        unflattened = pl_module.posterior.view._unflatten(norm_squares)
+        for k, v in unflattened.items():
+            self.temperature_samples[trainer.global_step, k] = {
+                "temperature_sum": v.sum().item(),
+                "n_params": v.numel(),
+            }
+
+    def on_fit_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        torch.save(self.temperature_samples, self.path)

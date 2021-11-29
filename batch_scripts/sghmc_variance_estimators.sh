@@ -16,6 +16,6 @@ cd ~/Documents/Speciale
 source .venv/bin/activate
 
 python scripts/inference.py -m hydra/launcher=joblib \
-    +experiment=sghmc_gradients \
+    +experiment=sghmc_variance_estimators \
     inference/sampler/variance_estimator="glob(*)" \
     ++trainer.progress_bar_refresh_rate=0

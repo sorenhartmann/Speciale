@@ -9,13 +9,13 @@ defaults:
   - override /inference/sample_container : all
   - _self_
 
-out_dir : sghmc_gradients
+out_dir : sghmc_stats
 
 inference:
   sampler:
-    lr: 1e-4
+    lr: 4e-5
     alpha: 0.01
-    resample_momentum_every: 10
+    resample_momentum_every: 1000
     estimation_margin: 5
   burn_in: 1000
   steps_per_sample: 10
@@ -34,5 +34,6 @@ data:
 
 extra_callbacks:
 
-  - _target_: src.callbacks.mcmc.SGHMCLogGradientVariance
+  - _target_: src.callbacks.mcmc.SGHMCLogTemperature
+    steps_per_log: 50
   - _target_: src.callbacks.mcmc.SaveSamples
