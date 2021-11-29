@@ -11,7 +11,7 @@ inference:
   sampler:
     lr: 1e-4
     alpha: 0.01
-    resample_momentum_every: 100
+    resample_momentum_every: 10
     estimation_margin: 5
   burn_in: 1000
   steps_per_sample: 10
