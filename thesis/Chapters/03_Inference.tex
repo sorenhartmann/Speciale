@@ -1,8 +1,9 @@
 \chapter{Inference}
 
-Data is $\mathcal{D} = (\bm{X}, \bm{Y})$, where $\bm{X} = (x_1,\dots,x_N)$ are covariates and $\bm{Y} = (y_1, \dots, y_N)$ are attributes we want to model.
-Given new data $x^\ast$, find the predictive distribution $p(y^\ast | x^\ast)$ 
-
+In this section, we briefly discuss the problem in inference, which serves to summarize the modelling assumptions and introduce some notations for use in the rest of the thesis. 
+In general, we can consider the problem of inference as follows. We have some data points, denoted $\D = (\bm{X}, \bm{Y})$, where $\bm{X} = (x_1,\dots,x_N)$ are covariates and $\bm{Y} = (y_1, \dots, y_N)$ are attributes we want to model. 
+We assume some parameterization of the probability density of each observation $y_i$ conditioned on the covariates $p(y_i|x_i,\theta)$.
+The corresponding graphical model can be seen in \cref{fig:pgm}. 
 \begin{figure}[htbp]
     \centering
     \begin{tikzpicture}
@@ -16,94 +17,77 @@ Given new data $x^\ast$, find the predictive distribution $p(y^\ast | x^\ast)$
         \edge {theta} {targets}
         \edge {covariates} {targets}
     
-        % \edge {eta, covariates} {targets};
-        
         % Plates
-        % \plate {parameters} {(eta)} {$I\times J$};
-        % \plate {layers} {(lambda)(parameters)} {$K$};
-        \plate {observations} {(targets)(covariates)} {$|\mathcal{D}|$};
+        \plate {observations} {(targets)(covariates)} {$|\D|$};
     
     \end{tikzpicture}
-    \caption{PGM of the BNN model.}
+    \caption{Probabilistic graphical model of the problem of inference.}
+    \label{fig:pgm}
 \end{figure}
-
-The model yields the following factorization:
+Given some new data point, $x^\ast$, we may then want to find the predictive distribution $p(y^\ast | x^\ast, \D)$. 
+In a frequentist framework, we would usually attempt to find a suitable estimate $\hat{\theta}$ of our model parameters, and model our predictive distribution as $p(y^\ast | x^\ast, \hat{\theta})$. Depending on the model, we may even be able to give some measure of uncertainty about the estimate. Not being satisfied by point estimates, a Bayesian approach would be to instead account for any uncertainty about the model parameters (and thus estimates), by marginalizing them out. 
+This can be achieved by using using the posterior distribution of the parameters conditioned on the data $p(\theta|\D)$.
+\begin{equation}\label{eq:inference}
+    \begin{aligned}
+        p(y^\ast | x^\ast, \D) &= \int_{\Omega} p(y^\ast | x^\ast, \theta, \D)  p(\theta|\D) \dd\theta \\
+        &= \int_{\Omega} p(y^\ast | x^\ast, \theta)  p(\theta|\D) \dd\theta\\
+        &= \E_{p(\theta|\D)} [p(y^\ast | x^\ast, \theta)]  \dd\theta
+    \end{aligned}
+\end{equation}
+In practice, at least in the case of deep learning models, the above integral is not feasable to evalutate exactly. We may also not know the exact form of the posterior $p(\theta|\D)$, however by applying Bayes rule, we find that we are able to determine it up to a constant:
 \begin{align*}
-    p(\theta, \bm X, \bm Y) = p(\theta) p(\bm X) p(\bm Y | \bm X, \theta)
-\end{align*}
-Marginalize out the parameters of the model, $\theta$.
-\begin{align*}
-    p(y^\ast | x^\ast) &= E_{p(\theta|\mathcal{D})} p(y^\ast | x^\ast, \theta) \\
-                       &= \int_{\theta} p(y^\ast | x^\ast, \theta)  p(\theta|\mathcal{D}) d\theta
-\end{align*}
-As
-In practice, at least in the case of deep learning models, the integral of the expectation feasable to evalutate exactly. 
-We therefore resort to approximate methods, such as the Monte Carlo estimate:
-\begin{align*}
-    p(y^\ast | x^\ast)  \approx \frac{1}{N} \sum_{j=1}^N p(y^\ast | x^\ast, \theta^{(i)}) 
-\end{align*}
-Where $\theta^{(i)}$ are samples from the posterior distribution:
-\begin{align*}
-    p(\theta | \mathcal{D}) 
-    &= \frac{p(\bm Y , \bm X, \theta)}{p(\bm{X}, \bm{Y})}\\
+    p(\theta | \D) 
+    &= \frac{p(\bm X , \bm Y, \theta)}{p(\bm{X}, \bm{Y})}\\
     &= \frac{p(\theta) p(\bm X) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})p(\bm{X})} \\
-    &= \frac{p(\theta) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})}
+    &= \frac{p(\theta) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})} \\
+    &\propto p(\theta) p(\bm Y | \bm X, \theta)
 \end{align*}
-
-\begin{align}
-    p(\bm{X}, \bm{Y}, \theta) = p(\bm{Y} | \bm{X}, \theta) p(\bm{X}, \theta) \\
-    p(\bm{X}, \bm{Y}, \theta) = p(\bm{X}, \bm{Y} | \theta) p(\theta) 
-\end{align}
-The unconditional observation model, $p(Y|X)$, . 
-In the following, we will discuss two different strategies to get around this. 
-The first is to use sampling methods that only requires the sampling distribution $f(\theta)$ up to a constant factor $\hat{f}(\theta)\propto f(\theta)$. 
-This is useful since 
+Here we use the factorization lent to us by the graphical model:
 \begin{align*}
-    p(\theta | \mathcal{D}) 
-    &= \frac
-    {\left(\prod_{i=1}^N p(y_i |\theta, x_i)\right) p(\theta)}
-    {p(\bm{Y}) }  \\
-    &\propto \left(\prod_{i=1}^N p(y_i |\theta, x_i)\right) p(\theta)
+    p(\bm X, \bm Y, \theta) = p(\theta) p(\bm X) p(\bm Y | \bm X, \theta).
 \end{align*}
-and both the likelihood, $p(y_i |\theta, x_i)$ and the prior $p(\theta)$ are specified as part of the graphical model, at least up to a constant factor. 
-The other approach is to use an approximate posterior $q(\theta)$ in place of the exact posterior. 
+It turns out that we are able to use $f(\theta) \propto p(\theta | \D)$ to generate samples from the posterior, which allows for the following Monte Carlo estimate of the predictive distribution:
+\begin{align*}
+    p(y^\ast | x^\ast, \D)  \approx \frac{1}{N} \sum_{j=1}^N p(y^\ast | x^\ast, \theta^{(i)}) 
+\end{align*}
+Where $\theta^{(i)}\sim p(\theta | \D)$.
 
-The different methods are applicable not only for sampling from a posterior $p(\theta | \mathcal{D})$, but from sampling from any random variable with a density function $p(x)$ speficied up to a constant factor.
+In the remaining chapter, we discuss two different strategies for sampling from posterior, Markov Chain Monte Carlo, and variational inference. The first approach should be able to generate samples from the exact postererior given enough time, while the latter method instead attempts to find a good approximation, turning the problem of inference into an optimization problem.
 
 \section{Markov Chain Monte Carlo}
 Suppose we want to sample from a target distribution $p(x)$, yet we only know $\tilde{p}(x) = 1/K\cdot p(x)$, where $K$ is constant in $x$.
-The Markov Chain Monte Carlo (MCMC) methods use a Markov chain with transition to generate samples sequentially from $p(x)$. 
-We achieve this by ensuring that the Markov chain with transition density $q(x^\prime | x)$ satisfies two requirements
+The Markov Chain Monte Carlo (MCMC) methods use a Markov chain with transition density $q(x^\prime | x)$ to generate samples sequentially from $p(x)$. 
+We achieve this by ensuring that the Markov chain with transition density satisfies two requirements
 
 \begin{itemize}
     \item The target distribution $p(x)$ stationary with respect to the Markov chain, that is:
     \begin{align} \label{eq:stationarity}
-        p(x^\prime) = \int_{\Omega} q(x^\prime| x) p(x) \dd{x} 
+        p(x^\prime) = \int_{\Omega} q(x^\prime| x) p(x) \dd{x}.
     \end{align}
-    \item The Markov chain eventually reaches the stationary distribution $p(x)$. This is satisfied by ensuring the markov chain is irreducible and aperiodic.
+
+    \item The chain is ergodic, meaning that any state is eventually able to be reached from any other state in a finite number of steps. This ensures that the distribution of the Markov chain eventually reaches the stationary distribution $p(x)$. T
 
 \end{itemize}
-A sufficent criteria for $p(x)$ to be stationary with respect to the Markov chain is that the transition probablities $q(x^\prime|x)$ satisfy the property of detailed balance:
+A sufficent criteria for $p(x)$ to be stationary with respect to the Markov chain is that the transition probabilities $q(x^\prime|x)$ satisfy the property of detailed balance:
 \begin{align*}
     p(x)q(x^\prime | x) = p(x^\prime)q(x| x^\prime).
 \end{align*}
 This implies stationary since
-\begin{align*}
-    \int_{\Omega} q(x^\prime | x) p(x) \dd{x} 
-    &= \int_{\Omega}  p(x^\prime)q(x| x^\prime) \dd{x} \\ 
-    &=  p(x^\prime) \int_{\Omega} q(x| x^\prime) \dd{x} \\
-    &=  p(x^\prime) \cdot 1 \\
-    &= p(x^\prime).
-\end{align*}
-
-The following chapters discusses a straigh forward method applying the property of detailed balance.
-
+\begin{equation}
+    \begin{aligned}    
+        \int_{\Omega} q(x^\prime | x) p(x) \dd{x} 
+        &= \int_{\Omega}  p(x^\prime)q(x| x^\prime) \dd{x} \\ 
+        &=  p(x^\prime) \int_{\Omega} q(x| x^\prime) \dd{x} \\
+        &=  p(x^\prime) \cdot 1 \\
+        &= p(x^\prime).
+    \end{aligned}
+\end{equation}
 \subsection{Metropolis-Hastings}
 
 Suppose at some step $t$, the Markov chain has state $x^{(t)}$. The Metropolis-Hastings algorithm uses a symmetric proposal distribution $g(x|x^{(t)})$ to generate a new sample, $x^\prime$. The sample is then \emph{accepted} with probability:
-\begin{align*}
+\begin{align}
     A(x^{\prime}, x^{(t)}) = \min\left\{1, \frac{\tilde{p}(x^\prime)}{\tilde{p}(x^{(t)})}\right\}
-\end{align*}
+\end{align}
 If the sample is accepted, $x^{(t+1)} \gets x^\prime$. Otherwise, the new state is rejected and $x^{(t+1)} \gets x^{(t)}$. This process is then repeated until we have obtained the required amount of samples $x^{(1)},\dots,x^{(N)}$. 
 
 
@@ -376,13 +360,13 @@ Since we are resampling the momentum immediately after each integration step, an
     
 \subsection{Stochastic Gradient HMC}
 
-In cases where we want to sample from the the posterior of some parameters $\theta$,  $p(\theta | \mathcal{D})$ for some dataset $\mathcal{D}$, it may be infeasable to calculate the gradient $\nabla E(\theta) = \nabla p(\theta) - \log{p(\bm{Y} | \theta, \bm{X})}$. 
+In cases where we want to sample from the the posterior of some parameters $\theta$,  $p(\theta | \D)$ for some dataset $\D$, it may be infeasable to calculate the gradient $\nabla E(\theta) = \nabla p(\theta) - \log{p(\bm{Y} | \theta, \bm{X})}$. 
 This is often the case for deep learning applications.
 Typically, in the maximum likelihood setting, this problem is handled by use of stochastic gradient descent algorithm such as ADAM. 
 These methods approximate the gradient based only on a subset of the data. 
 We may consider a similar scheme, approximating the $E$ gradient as:
 \begin{align*}
-    \nabla\tilde{E}(\theta) = -\left(\frac{|\mathcal{D}|}{|\tilde{\mathcal{D}}|}  \nabla \sum_{x_i, y_i\in \tilde{\mathcal{D}}} \log{p(y_i |\theta, x_i)}\right)  -\nabla \log{p(\theta)}
+    \nabla\tilde{E}(\theta) = -\left(\frac{|\D|}{|\tilde{\D}|}  \nabla \sum_{x_i, y_i\in \tilde{\D}} \log{p(y_i |\theta, x_i)}\right)  -\nabla \log{p(\theta)}
 \end{align*}
 
 In \cite{chen_stochastic_2014}, they model the behavior of this approach with:
@@ -546,7 +530,6 @@ where $\epsilon M^{-1}\tau\sim Noget andet$? Using $\eta = \epsilon^2M^{-1}$, $\
     \Delta v &=  -\eta \nabla\tilde{E}(\theta) - \alpha v  + \mathcal{N}(2(\alpha-\hat{\beta})\eta)
 \end{align}
 We have thus factored the mass matrix $M$ out of the specification of the algorithm, but now specify it in conjuction with the step size $\epsilon$. 
-This is useful, since we now don't need to specify the algorithm in terms of parameters with questionable interpretations such as the mass matrix, but the actual behavior of the algorithm.
 This parameterization can be seen in \cref{alg:sghmc}
 
 Comparing the algorithm with stocastic gradient descent with momentum, we see that  $\eta$ corresponds to learning rate while $\alpha$ corresponds to momentum decay. 
@@ -568,14 +551,14 @@ When is comes to choosing parameters for the methods, we can therefore to some e
 
 \section{Variational Inference}
 
-Suppose we want to sample from some posterior distribution $p(\theta | \mathcal{D})$. 
+Suppose we want to sample from some posterior distribution $p(\theta | \D)$. 
 Variational methods aims to approximate this posterior distribution using a so called variational distribution $q_\psi (\theta)$ parameterized by some parameters $\psi$.  
 We then seek to to find a value of these variational parameters, such that the variational distribution is as close to the posterior as possible. 
 As a quantifying measure of difference between the two distributions, we use the Kullback-Liebler divergence:
 \begin{align}
     \text{KL}(q_\psi\parallel p) 
-    = \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\mathcal{D})}} \dd{\theta} 
-    = E_{q_\psi}\left[\log{\frac{q_\psi(\theta)}{p(\theta|\mathcal{D})}}\right]
+    = \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\D)}} \dd{\theta} 
+    = E_{q_\psi}\left[\log{\frac{q_\psi(\theta)}{p(\theta|\D)}}\right]
 \end{align}
 that is, the inference problem turns into an optimization problem 
 \begin{align}
@@ -584,7 +567,7 @@ that is, the inference problem turns into an optimization problem
 Inserting the parameter posterior from REF into the expression
 \begin{align}
     \text{KL}(q_\psi\parallel p) 
-    &= \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\mathcal{D})}} \dd{\theta} \\
+    &= \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\D)}} \dd{\theta} \\
     &= \int_{\Omega} q_\psi(\theta)\log{\frac{p(\bm{Y}|\bm{X})q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} \\
     &= \int_{\Omega} q_\psi(\theta)\log{p(\bm Y|\bm{X})} + q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} \\
     &= E_{q_{\psi}} [\log{p(\bm{Y}|\bm{X})}] + \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} 
@@ -669,7 +652,7 @@ How may we estimate this gradient?  Using
 % \section{Variational Methods}
 
 % \begin{align*}
-%     \hat V_{x\in \mathcal D}[\nabla U(\theta)_{i,i} ] = \frac{1}{|\tilde{\mathcal{D}}|-1} \sum_{x\in \tilde{\mathcal{D}}} (\nabla U_x(\theta)_{i,i} - \hat{E}[\nabla U(\theta)_{i,i}])^2
+%     \hat V_{x\in \mathcal D}[\nabla U(\theta)_{i,i} ] = \frac{1}{|\tilde{\D}|-1} \sum_{x\in \tilde{\D}} (\nabla U_x(\theta)_{i,i} - \hat{E}[\nabla U(\theta)_{i,i}])^2
 % \end{align*}
 
 % \begin{align*}

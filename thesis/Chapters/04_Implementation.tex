@@ -6,19 +6,19 @@ The following chapter details a range of different experiments carried out to in
 \section{Technical Details}
 
 The implementation this project can be found at the GitHub repository...\question{GitHub link?} 
-The inference inference methods are primarily implemented using the PyTorch deep learning framework. In addtion, the training framework PyTorch Lightning is used. This provides a bunch of features, eg. handling of different computational deviced such as GPU, as well 
-
+The inference inference methods are primarily implemented using the PyTorch deep learning framework. In addtion, the training framework PyTorch Lightning is used. This provides a bunch of features, such as handling of different computational devices such as GPU, handling the different train, validation and test data splits, an extensive callback API and more. 
 
 In order to effectively compare different methods of inference across different models and data, the implementation is broken into separable components:
 
 The model definitions are defined in the \texttt{src/models} directory. These are implemented as PyTorch modules with some additional methods that are used by the other components. 
 At a high level, they define some amount of trainable parameters $\theta$, as well as a mapping from input $x$ to output $y=f_\theta(x)$. 
-They also define an observation model through $p(y|x, \theta)$ using the distributions objects provided by PyTorch. 
+They also define an observation model through $p(y|x, \theta)$ using the distribution objects provided by PyTorch. 
 
 Data, $(x_i, y_i)$ is represented by PyTorch datasets, each defining a way to extract indiviual observations. These are combined with the  
 
-Finally, the different inference methods are implemented as LightningModules.
-This includes def observation model, performance metrics and 
+Finally, the different inference methods are implemented as LightningModules. There are three different inference methods defined. The 
+
+The 
 
 
 \todo[inline]{Implemeting a common interface is important to demonstrating potential of mcmc/vi as plugin replacements for standard inference method. Every experiment can be carried out using configurations of the same script.}
@@ -78,4 +78,5 @@ More specifically, three sampling strategies are considered, regular HMC conditi
 \end{figure}
 We find that the also with this approach to the naive SGHMC the batched HMC doesnt, with the sampled posterior having 
 
-with not even the marginal densities being anywhere close to the actual parameter posterior. Notably, the SGHMC seems to provide a more resonable estimate, however still overdispersing slightly. 
+with not even the marginal densities being anywhere close to the actual parameter posterior. Notably, the SGHMC seems to provide a more resonable estimate, however still with some overdispersion. In the following section, a possible improvement upon this algorithm is discussed.
+
