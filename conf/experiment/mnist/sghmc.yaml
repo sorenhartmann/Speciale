@@ -3,10 +3,6 @@
 defaults:
   - override /inference : mcmc
 
-model:
-  activation_func:
-    _target_: torch.nn.ReLu
-
 data:
   batch_size: 500
     
