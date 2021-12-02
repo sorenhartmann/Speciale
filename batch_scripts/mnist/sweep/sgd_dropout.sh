@@ -21,8 +21,9 @@ source .venv/bin/activate
 python scripts/hparam_search.py \
     +experiment=mnist \
     experiment/mnist=sgd_dropout \
-    optuna/search_space=sgd_dropout \
-    study.study_name="mnist-sgd-dropout" \
+    sweep/search_space=sgd_dropout \
+    sweep/sampler=grid \
+    sweep.study_name="mnist-sgd-dropout" \
     ++trainer.max_epochs=800 \
-    ++data.num_workers=2 \
+    ++data.num_workers=3 \
     ++trainer.gpus=1

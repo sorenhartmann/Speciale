@@ -1,3 +1,6 @@
+defaults:
+  - prior_config: mixture
+
 _target_ : src.inference.sgd.SGDInference
 model : ${model}
 lr: 0.001

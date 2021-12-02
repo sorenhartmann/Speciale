@@ -22,6 +22,7 @@ python scripts/sweep.py \
     +experiment=mnist \
     experiment/mnist=vi \
     sweep/search_space=vi \
+    sweep/sampler=grid \
     sweep.study_name="mnist-vi" \
     ++trainer.max_epochs=800 \
     ++data.num_workers=3 \

@@ -3,11 +3,11 @@
 defaults:
   - override /inference : mcmc
   - override /inference/sampler : sghmc_with_grad_est
-  - override /inference/sampler/variance_estimator: interbatch
+  - override /inference/sampler/variance_estimator: exp_weighted
 
 model:
   activation_func:
-    _target_: torch.nn.Sigmoid
+    _target_: torch.nn.ReLU
 
 data:
   batch_size: 500

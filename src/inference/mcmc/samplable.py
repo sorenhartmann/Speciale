@@ -1,4 +1,3 @@
-
 from abc import ABC, abstractmethod, abstractproperty
 from contextlib import contextmanager
 
@@ -10,7 +9,6 @@ from src.utils import ParameterView
 
 
 class Samplable(ABC):
-
     @abstractproperty
     def state(self) -> torch.Tensor:
         pass
@@ -29,26 +27,30 @@ class Samplable(ABC):
 
 
 class ParameterPosterior(Samplable):
-    
+
     """Posterior of model parameters given observations"""
 
-    def __init__(self, model : Model):
+    def __init__(self, model: Model, temperature: float = 1.):
 
         super().__init__()
 
         self.model = model
         self.view = ParameterView(model)
+        self.temperature = temperature
 
         self._x = None
         self._y = None
         self._sampling_fraction = 1.0
 
     def prop_log_p(self) -> torch.Tensor:
-        return (
+        prop_log_p =  (
             log_prior(self.model)
             + log_likelihood(self.model, x=self._x, y=self._y).sum()
             / self._sampling_fraction
         )
+        # TODO: Add temperature?
+
+        return prop_log_p
 
     def grad_prop_log_p(self):
         self.model.zero_grad()

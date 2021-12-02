@@ -18,6 +18,10 @@ def set_directory(path: Path):
     finally:
         os.chdir(origin)
 
+def get_search_grid(search_space):
+    return {k : v["_grid_options_"] for k,v in search_space.items()}
+
+OmegaConf.register_new_resolver("get_search_grid", get_search_grid)
 
 def get_suggestions(trial, search_space_cfg):
 
@@ -26,6 +30,8 @@ def get_suggestions(trial, search_space_cfg):
         config = dict(config)
         suggest_method_name = f"suggest_{config.pop('type')}"
         suggest_method = getattr(trial, suggest_method_name)
+        if "_grid_options_" in config:
+            del config["_grid_options_"]
         suggestions[name] = suggest_method(name=name, **config)
     return suggestions
 
@@ -70,7 +76,7 @@ def main(cfg):
             except ValueError:
                 raise TrainingError
             except:
-                raise 
+                raise
 
         if trainer.interrupted:
             raise KeyboardInterrupt
@@ -78,7 +84,9 @@ def main(cfg):
         return trainer.logged_metrics.get(cfg.sweep.monitor)
 
     storage = f"sqlite:///{get_original_cwd()}/{cfg.sweep.study_storage_file_name}"
-    study = instantiate(cfg.sweep.study, storage=storage)
+    sampler = instantiate(cfg.sweep.sampler)
+    study = instantiate(cfg.sweep.study, storage=storage, sampler=sampler)
+    
     study.optimize(objective, catch=(TrainingError,), **cfg.sweep.optimize_args)
 
 

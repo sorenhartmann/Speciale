@@ -3,13 +3,10 @@ inference.sampler.lr:
   low: 1.e-07
   high: 1.e-05
   log: true
+  _grid_options_: [1.e-07, 4.e-07, 1.e-06, 4.e-06, 1.e-05]
 inference.sampler.alpha: 
   type: float
   low: 0.01
   high: 0.2
   log: true
-model.activation_func._target_:
-  type: "categorical"
-  choices:
-    - torch.nn.ReLU
-    - torch.nn.Sigmoid
+  _grid_options_: [0.01, 0.05, 0.1, 0.2]

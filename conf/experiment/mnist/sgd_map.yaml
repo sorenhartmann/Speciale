@@ -2,6 +2,7 @@
 
 defaults:
   - override /inference : sgd
+  - override /inference/prior_config : mixture
 
 inference:
   use_map : True

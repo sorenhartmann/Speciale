@@ -67,7 +67,7 @@ class VariationalModule(nn.Module):
                 torch.zeros_like(data) + initial_rho
             )
 
-    def sample_parameters(self, n_particles=1):
+    def sample_parameters(self, n_particles=1, _save_for_backward=False):
 
         self.log_v_post_ = 0
         self.sampled_parameters_ = {}
@@ -75,15 +75,16 @@ class VariationalModule(nn.Module):
 
             expanded_shape = (n_particles,) + v_param.mu.shape
             sigma = v_param.rho.exp().log1p()
-            eps = torch.rand(expanded_shape, device=sigma.device)
+            eps = torch.randn(expanded_shape, device=sigma.device)
             sampled_parameters = eps * sigma + v_param.mu
 
             # UNSURE IF NEEDED
-            # sampled_parameters.requires_grad_()
-            # sampled_parameters.retain_grad()
-            # # Save for backward pass
-            # with torch.no_grad():
-            #     v_param.rho_gradient_mult_ = eps / (1 + torch.exp(-v_param.rho))
+            if _save_for_backward:
+                sampled_parameters.requires_grad_()
+                sampled_parameters.retain_grad()
+                # Save for backward pass
+                with torch.no_grad():
+                    v_param.rho_gradient_mult_ = eps / (1 + torch.exp(-v_param.rho))
 
             # Save varitational log prob
             _sum_dims = tuple(range(1, len(expanded_shape)))
@@ -103,14 +104,14 @@ class VariationalModule(nn.Module):
         return self.bayesian_module(x)
 
     # UNSURE IF NEEDED
-    # @torch.no_grad()
-    # def update_gradients_(self):
+    @torch.no_grad()
+    def update_gradients_(self):
 
-    #     # Should be called after backward
-    #     for name, v_param in self.variational_parameters.items():
-    #         sampled_param = self.sampled_parameters_[name]
-    #         v_param.mu.grad += sampled_param.grad.sum(0)
-    #         v_param.rho.grad += (v_param.rho_gradient_mult_ * sampled_param.grad).sum(0)
+        # Should be called after backward
+        for name, v_param in self.variational_parameters.items():
+            sampled_param = self.sampled_parameters_[name]
+            v_param.mu.grad += sampled_param.grad.sum(0)
+            v_param.rho.grad += (v_param.rho_gradient_mult_ * sampled_param.grad).sum(0)
 
     def log_v_post(self):
         return self.log_v_post_
@@ -178,6 +179,7 @@ class VariationalInference(InferenceModule):
         prior_config=None,
         kl_weighting_scheme: Optional[KLWeightingScheme] = None,
         initial_rho=-5,
+        _adjust_gradients=False
     ):
 
         super().__init__()
@@ -200,9 +202,11 @@ class VariationalInference(InferenceModule):
         self.train_metrics = torch.nn.ModuleDict(self.model.get_metrics())
         self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
 
+        self._adjust_gradients = _adjust_gradients
+
     def sample_parameters(self, n_particles):
         for module in self.variational_modules():
-            module.sample_parameters(n_particles)
+            module.sample_parameters(n_particles, _save_for_backward=self._adjust_gradients)
 
     def forward_particles(self, x):
 
@@ -241,10 +245,10 @@ class VariationalInference(InferenceModule):
         for name, metric in self.val_metrics.items():
             self.log(f"{name}/val", metric(preds, y), prog_bar=True)
 
-    # UNSURE IF NEEDED
-    # def on_after_backward(self) -> None:
-    #     for module in self.variational_modules():
-    #         module.update_gradients_()
+    def on_after_backward(self) -> None:
+        if self._adjust_gradients:
+            for module in self.variational_modules():
+                module.update_gradients_()
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.variational_parameters(), lr=self.lr)

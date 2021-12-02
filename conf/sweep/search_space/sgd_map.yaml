@@ -3,15 +3,19 @@ inference.lr:
   high: 1.e-03 
   low: 1.e-05
   log: True
-inference.prior_config.prior.log_sigma_1:
+  _grid_options_: [1.e-05, 4.e-05, 1.e-04, 4.e-04, 1.e-05]
+inference.prior_config.log_sigma_1:
   type: "int"
   low: -2
   high: 0
-inference.prior_config.prior.log_sigma_2: 
+  _grid_options_: [0, -2]
+inference.prior_config.log_sigma_2: 
   type: "int"
   low: -8
   high: -6
-inference.prior_config.prior.mixture_ratio: 
+  _grid_options_: [-8, -6]
+inference.prior_config.mixture_ratio: 
   type: "float"
-  low: 0.2
-  high: 0.7
+  low: 0.25
+  high: 0.75
+  _grid_options_: [0.25, 0.5, 0.75]

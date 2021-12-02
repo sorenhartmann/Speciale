@@ -5,6 +5,7 @@ defaults:
   - trainer: no_checkpoints
   - hydra: sweep
   - sweep/search_space: "???"
+  - sweep/sampler: tpe
   - _self_
 
 test: ${..experiment}

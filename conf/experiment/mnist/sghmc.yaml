@@ -5,7 +5,7 @@ defaults:
 
 model:
   activation_func:
-    _target_: torch.nn.Sigmoid
+    _target_: torch.nn.ReLu
 
 data:
   batch_size: 500

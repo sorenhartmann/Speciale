@@ -20,10 +20,10 @@ source .venv/bin/activate
 
 python scripts/hparam_search.py \
     +experiment=mnist \
-    variance_estimator="interbatch" \
     experiment/mnist=sghmc_var_est \
-    optuna/search_space=sghmc_var_est \
-    study.study_name="mnist-sghmc-var-est" \
-    ++trainer.max_epochs=1600 \
-    ++data.num_workers=2 \
+    sweep/search_space=sghmc_var_est \
+    sweep/sampler=grid \
+    sweep.study_name="mnist-sghmc-var-est" \
+    ++trainer.max_epochs=800 \
+    ++data.num_workers=3 \
     ++trainer.gpus=1
