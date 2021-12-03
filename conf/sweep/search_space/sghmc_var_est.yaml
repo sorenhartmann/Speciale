@@ -14,4 +14,4 @@ inference.sampler.estimation_margin:
   type: float
   high: 50
   low: 1.5
-  _grid_options_: [1.5, 5, 10]
+  _grid_options_: [1.5, 5, 50]

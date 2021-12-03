@@ -83,7 +83,7 @@ def main(cfg):
 
         return trainer.logged_metrics.get(cfg.sweep.monitor)
 
-    storage = f"sqlite:///{get_original_cwd()}/{cfg.sweep.study_storage_file_name}"
+    storage = f"sqlite:///{get_original_cwd()}/optuna_storages/{cfg.sweep.study_name}.db"
     sampler = instantiate(cfg.sweep.sampler)
     study = instantiate(cfg.sweep.study, storage=storage, sampler=sampler)
     

@@ -6,9 +6,6 @@ defaults:
 data:
   batch_size: 128
 
-trainer:
-  gradient_clip_val: 10
-  gradient_clip_algorithm: value
 
 tag: vi
 

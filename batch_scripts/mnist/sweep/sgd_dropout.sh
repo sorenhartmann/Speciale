@@ -18,11 +18,10 @@ module load cudnn/v7.0-prod-cuda8
 cd ~/Documents/Speciale
 source .venv/bin/activate
 
-python scripts/hparam_search.py \
+python scripts/sweep.py \
     +experiment=mnist \
     experiment/mnist=sgd_dropout \
     sweep/search_space=sgd_dropout \
-    sweep/sampler=grid \
     sweep.study_name="mnist-sgd-dropout" \
     ++trainer.max_epochs=800 \
     ++data.num_workers=3 \

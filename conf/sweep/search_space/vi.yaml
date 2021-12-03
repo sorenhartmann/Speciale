@@ -32,4 +32,4 @@ inference.n_particles:
   type: int
   low: 1
   high: 10
-  _grid_options_: [1, 2, 5, 10]
+  _grid_options_: [1, 3, 5]
