@@ -156,7 +156,7 @@ class SGHMC(Sampler, HamiltonianMixin):
         alpha: float = 1e-2,
         beta: float = 0.0,
         lr: float = 0.2e-5,
-        resample_momentum_every: int = 0,
+        resample_momentum_every: int = 50,
     ):
         super().__init__()
 
@@ -230,9 +230,9 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
         alpha: float = 1e-2,
         lr: float = 2e-6,
         variance_estimator: Union[float, VarianceEstimator] = None,
-        resample_momentum_every: int = 0,
+        resample_momentum_every: int = 50,
         estimation_margin=10,
-        rescale_mass_every : int = 1000
+        rescale_mass_every : int = 100
     ):
 
         torch.nn.Module.__init__(self)

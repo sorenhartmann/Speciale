@@ -1,0 +1,14 @@
+# @package _global_
+
+defaults:
+  - override /inference : sgd
+  - override /inference/prior_config : mixture
+
+inference:
+  use_map : True
+  
+data:
+  batch_size: 128
+
+tag: sgd-map
+

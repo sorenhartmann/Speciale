@@ -1,0 +1,22 @@
+# @package _global_
+
+defaults:
+  - override /inference : mcmc
+  - override /inference/sampler : sghmc_with_grad_est
+  - override /inference/sampler/variance_estimator: exp_weighted
+  - override /inference/sample_container: doubling
+
+
+inference:
+  sampler:
+    lr: 2.e-7
+    estimation_margin: 2.
+  sample_container:
+    max_items: 100
+
+
+data:
+  batch_size: 500
+    
+tag: sghmc_var_est
+

@@ -1,0 +1,16 @@
+# @package _global_
+
+defaults:
+  - override /inference : sgd
+
+inference:
+  use_map: False
+  
+data:
+  batch_size: 128
+
+model:
+  dropout: 0.5
+
+
+tag: sgd-dropout
