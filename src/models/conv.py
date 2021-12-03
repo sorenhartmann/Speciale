@@ -9,7 +9,7 @@ from .base import ClassifierMixin, Model
 
 class ConvModel(Model):
     
-    def __init__(self, in_shape=(3, 32, 32), out_features=10):
+    def __init__(self, in_shape=(3, 32, 32), out_features=10, dropout=0.):
 
         super().__init__()
 
@@ -18,17 +18,31 @@ class ConvModel(Model):
         add = seq_builder.add
         out_dim = seq_builder.out_dim
 
-        add(nn.Conv2d(out_dim(0), 6, 5))
-        add(nn.ReLU(inplace=True))
-        add(nn.MaxPool2d(2, 2))
-        add(nn.Conv2d(out_dim(0), 16, 5))
-        add(nn.ReLU(inplace=True))
-        add(nn.MaxPool2d(2, 2))
+        add(nn.Conv2d(out_dim(0), 20, 5, 1, 2))
+
+        add(nn.BatchNorm2d(out_dim(0)))
+        add(nn.ReLU())
+        add(nn.Conv2d(out_dim(0), 10, 5, 1, 2))
+
+        add(nn.BatchNorm2d(out_dim(0)))
+        add(nn.ReLU())
+        add(nn.Conv2d(out_dim(0), 10, 5, 1, 2))
+
+        add(nn.BatchNorm2d(out_dim(0)))
+        add(nn.ReLU())
+        add(nn.Conv2d(out_dim(0), 5, 5, 1, 2))
+
         add(torch.nn.Flatten())
-        add(nn.Linear(out_dim(0), 120))
-        add(nn.ReLU(inplace=True))
-        add(nn.Linear(out_dim(0), 84))
-        add(nn.ReLU(inplace=True))
+        if dropout > 0.:
+            add(nn.Dropout(dropout))
+        add(nn.Linear(out_dim(0), 128))
+        add(nn.ReLU())
+        if dropout > 0.:
+            add(nn.Dropout(dropout))
+        add(nn.Linear(out_dim(0), 512))
+        add(nn.ReLU())
+        if dropout > 0.:
+            add(nn.Dropout(dropout))
         add(nn.Linear(out_dim(0), out_features))
 
         self.net = seq_builder.build()

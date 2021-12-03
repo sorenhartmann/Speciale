@@ -182,7 +182,7 @@ class BayesianConv2d(BayesianModule, torch.nn.Conv2d):
             padding=module.padding,
             dilation=module.dilation,
             groups=module.groups,
-            bias=module.bias,
+            bias=module.bias is not None,
             priors=priors
         )
         result.load_state_dict(module.state_dict(), strict=False)
