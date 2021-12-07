@@ -155,7 +155,7 @@ class SGHMC(Sampler, HamiltonianMixin):
         self,
         alpha: float = 1e-2,
         beta: float = 0.0,
-        lr: float = 0.2e-5,
+        lr: float = 2e-6,
         resample_momentum_every: int = 50,
     ):
         super().__init__()
