@@ -10,3 +10,7 @@ inference.sampler.alpha:
   high: 0.1
   log: true
   _grid_options_: [0.01, 0.05, 0.1, 0.2]
+inference.sampler.resample_momentum_every:
+  type: categorical
+  choices: [0, 100, 1000]
+  _grid_options_: [0, 100, 1000]
