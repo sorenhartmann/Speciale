@@ -6,7 +6,7 @@ inference.sampler.lr:
   _grid_options_: [1.e-07, 2.e-07, 4.e-07, 1.e-06]
 inference.sampler.alpha: 
   type: float
-  low: 0.01
+  low: 0.001
   high: 0.2
   log: true
   _grid_options_: [0.01, 0.05, 0.1]
