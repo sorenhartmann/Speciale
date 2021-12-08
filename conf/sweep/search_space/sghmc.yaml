@@ -14,3 +14,7 @@ inference.sampler.resample_momentum_every:
   type: categorical
   choices: [0, 100, 1000]
   _grid_options_: [0, 100, 1000]
+data.batch_size:
+  type: categorical
+  choices: [128, 500]
+  _grid_options_: [128, 500]
