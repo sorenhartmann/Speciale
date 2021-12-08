@@ -18,5 +18,5 @@ source .venv/bin/activate
 python scripts/inference.py -m hydra/launcher=joblib \
     +experiment=cifar10_small \
     experiment/cifar10_small="glob(*)" \
-    ++trainer.progress_bar_refresh_rate=0
+    ++trainer.progress_bar_refresh_rate=0 \
     ++trainer.max_time="00:23:55:00"
