@@ -35,10 +35,24 @@ For this project, a general \texttt{pl.LightningDatamodule} implementation, \tex
 \subsection{Inference Modules}
 The inference modules defines the different means of inference and are initialized using a model object.
 They are implemented as \texttt{pl.LightningModule}s, and are therefore meant to be used with the \texttt{pl.Trainer} object alongside a \texttt{pl.Datamodule} for model fitting. 
+There are three different inference methods implemented: regular stochastic gradient descent, variational inference and inference using Markov chain Monte Carlo inference.
 
-In order to apply Bayesian methods, 
+In order to implement probabilistic methods, we have to supply the inference methods with additional information in form prior probabilities of the parameters. 
+These are specified using a user specified Bayesian conversion configuration.
+We then substitute each module with trainable parameters with a corresponding Bayesian module, which also defines parameter priors, as well a method for calculating the prior log probability.
+The dynamical approach is chosen since it makes specifying the models simpler, allows for adjusting the priors dynamically and differently based on the methods in question, and also allows for training of models specified elsewhere like pre-trained models. 
+For comparison with the probabilistic methods, the SGD inference optionally allows for using MAP estimation also using this framework.
+
+\subsection{MCMC Inference}
+
+The regular SGD inference also allows for MAP estimation
+
+, for comparison with the other probabilistic methods.
 
 Probabilistic attributes of models such as priors are added dynamically based
+
+\subsection{Variational Inference}
+The variational inference module is implemented
 
 
 \subsection{Samplers}
@@ -66,7 +80,7 @@ The resulting sampled distributions can be seen in \cref{fig:synthetic}
     \label{fig:synthetic}
 \end{figure}
 These result seem to verify our that our implementation is correct.
-We also see that the sample distributions from both the standard HMC sampelr and the SGHMC sampler closely resembles the true distribution. 
+We also see that the sample distributions from both the standard HMC sampler and the SGHMC sampler closely resembles the true distribution. 
 The naive SGHMC sampler does seems to break down when no MH step is included, and since we also compare with regular HMC with no MH step, this demonstrates that it may not be purely down to omitting the MH step. 
 
 If we include an MH step, the naive approach also seem to work, however we are not adding any noise to $E(\cdot)$ when performing the MH step, corresponding to calculating $E(\cdot)$ across the whole data set. 
@@ -91,7 +105,7 @@ For demonstration, a plot of the sampled joint distribution of $a_1$ and $a_3$ c
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
         \includegraphics[width=\textwidth]{Figures/simulated_joint_HMC_15.pdf} 
-        \caption{HMC conditioned on all datapoints.}
+        \caption{HMC conditioned on all data points.}
     \end{subfigure}
     \begin{subfigure}[b]{0.4\textwidth}
         \centering
@@ -106,9 +120,9 @@ For demonstration, a plot of the sampled joint distribution of $a_1$ and $a_3$ c
     \caption{Joint distribution of samples for $a_1$ and $a_3$ for the polynomial regression example for HMC and SGHMC for different batch sizes, with the actual posterior density also shown.}
     \label{fig:simulated_joint_comp}
 \end{figure}
-We find that the also with this approach to the naive SGHMC the batched HMC doesnt, with the sampled posterior having 
+We find that the also with this approach to the naive SGHMC the batched HMC doesn't, with the sampled posterior having 
 
 with not even the marginal densities being anywhere close to the actual parameter posterior.
-Notably, the SGHMC seems to provide a more resonable estimate, however still with some overdispersion.
+Notably, the SGHMC seems to provide a more reasonable estimate, however still with some overdispersion.
 In the following section, a possible improvement upon this algorithm is discussed.
 

@@ -9,7 +9,7 @@ repos:
         entry: jupyter-nbconvert --ClearOutputPreprocessor.enabled=True --inplace
       - id: latex-nl
         name: latex-nl
-        files: \.tex$
+        files: ^.*Chapters\/.+tex$
         stages: [commit]
         language: system
         entry: sed -i ""  -E  's/\. +([A-Z])/.\n\1/'

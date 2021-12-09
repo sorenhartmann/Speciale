@@ -13,7 +13,7 @@ Since we parameterized the upper bound $C$ with $\alpha$, we may end up with est
 Adjusting the upper bound $C$ to accommodate this, would also require adjusting the $\alpha$ parameter accordingly.
 Since the $\alpha$ corresponds to the momentum decay of the algorithm, we may end up with very unstable behavior, especially for $\alpha > 1$. 
 \todo[inline]{Sammenhæng mellem beta/V/B/D... skal nok rettes igennem fra teoriafdelingen af...}
-Instead, we keep $\alpha=CM^{-1}$ fixed, and adjust the mass matrix $M$, implictly adjusting $C$ as well.
+Instead, we keep $\alpha=CM^{-1}$ fixed, and adjust the mass matrix $M$, implicitly adjusting $C$ as well.
 With $M = M_0 W$ were $W$ is a diagonal matrix of weights, we can then, depending on the variance estimate, rescale the mass such that the upper bound $\alpha$ is sufficiently above the estimate $\hat\beta$, eg. by some factor $m_{\text{est}}$.
 If we let the learning rate be given as $\eta_0$  for the unscaled mass matrix with $W = I$, then the learning rate for the scaled system can be found as $\eta = \epsilon^2 M^{-1} = \epsilon^2 M_0^{-1}W^{-1} = \eta_0 W^{-1}$, and
 \begin{align*}
@@ -47,8 +47,8 @@ The first approach is to run through a few training batches at the start of each
 This estimate can then be used for the remaining epoch. 
 The two other approaches instead keeps track of running statistics. 
 The first uses exponentially decaying running estimates of the first to moments, $m_t, v_t$ as in the ADAM algorithm \cite{kingma_adam_2017}.
-Since the ADAM algorithm doesnt center the second moment estimate, the squared mean is subtracted, so that the variance is estimated as $v_t - m_t^2$.
-Finally, we also try to estimate the variance as with the ADAM algorithm, however using the first momement to center the second momement estimate. 
+Since the ADAM algorithm doesn't center the second moment estimate, the squared mean is subtracted, so that the variance is estimated as $v_t - m_t^2$.
+Finally, we also try to estimate the variance as with the ADAM algorithm, however using the first moment to center the second moment estimate. 
 
 In order to test these three different approach, they are applying to the simulated example from the previous section.
 Every 10 sample, the variance of the gradient is estimated using 100 random batched from the training data set.
@@ -86,7 +86,7 @@ In \cref{fig:simualted_var_est_joint_comp}, the sampled marginal distribution of
 In this case, it does indeed seem like estimating the variance is helping the sampler.
 This may come down to the approach with estimated variance is able to adjust the step size down, lowering discretization and batch error compared to SGHMC without an estimator. 
 
-\subsection{Marginal distribution of momemtum}
+\subsection{Marginal distribution of momentum}
 
 In \cite{wenzel_how_2020}, they propose using the marginal distribution of the momentum as a test of the sampling assumptions. 
 Per the dynamical system, if the system is simulated exactly, the marginal distribution of $r$ should be $\mathcal{N}(0, M)$. 
@@ -100,7 +100,7 @@ This allows us to test the correctness of our sampler, even if we don't know the
 Applying this statistic, we can see whether the estimation of the variance helps with regard to the correctness of the simulation. 
 Returning back to our simulated polynomial example, in the previous experiment, the momentum were resampled every $10$ epochs, to make to comparison to regular HMC as clear as possible. 
 However, if we resample the momentum from the marginal distribution too often, the $\hat{T}_{0.99}$ measure would obviously be less informative with regard to the influence of discretization and batching error. 
-The momentum is therefore instead resampled every $1000$ steps, with a slighty lower learning rate of $\eta=4 \cdot 10^{-5}$.
+The momentum is therefore instead resampled every $1000$ steps, with a slightly lower learning rate of $\eta=4 \cdot 10^{-5}$.
 The lower learning rate is used since otherwise, the SGHMC sampler with $\hat{\beta}=0$ becomes unstable. 
 \begin{figure}[htb]
     \centering
@@ -120,7 +120,7 @@ The $\hat T_{0.99}$ statistic have also been calculated in \cref{tbl:temp_99}, a
 
 \todo[inline]{prøv med mindre stepsize eller kom videre? Mest for at vise om varians estimation kunne afhælpe fx dårlig lr eller beta estimat. (hvilket det kunne, til dels?)}
 
-It seem like the samplers with estimated variance are all underdispersing slighty, compared to the actual postieror. with  which would make sense if we are overestimating variance.
+It seem like the samplers with estimated variance are all underdispersing slightly, compared to the actual posterior. with  which would make sense if we are overestimating variance.
 Looking at the PLOT, the estimation margin estimates also seems relatively uniformly distributed on the log scale, which would mean that we are generally overestimating with larger magnitude. 
 Since we are overestimating the noise from batching, this would lead to us not adding sufficient noise to the system, leading to underdispersion.
 

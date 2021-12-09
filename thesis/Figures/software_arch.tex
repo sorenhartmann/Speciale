@@ -1,0 +1,36 @@
+% spellchecker: disable
+
+\usetikzlibrary{shadows,arrows.meta,positioning,backgrounds,fit} 
+\begin{tikzpicture}[
+    class/.style={rounded corners=0.3cm,minimum height=1cm,fill=blue!50,draw=black},
+    back group/.style={rounded corners, draw=black, 
+                     dashed, inner xsep=0.2cm, inner ysep=0.3cm, 
+                     anchor=west},
+    node distance = 1cm, 
+    auto
+    ]
+    \node[class,fill=brightgreen!50] (sgd-module) at (2, 4.75) {SGDInference};
+    \node[class,right=0.2cm of sgd-module.east,fill=brightgreen!50] (vi-module) {VariationalInference};
+    \node[class,right=0.2cm of vi-module.east,fill=brightgreen!50] (mcmc-module) {MCMCInference};
+    \node[class,above=1.2cm of mcmc-module] (sampler) {Sampler};
+    \begin{scope}[on background layer]
+        \node (inf-modules) [back group] [fit=(sgd-module)(vi-module)(mcmc-module),label={below right:InferenceModule}]{};
+    \end{scope}
+    \node[class, left=of inf-modules] (data-module) {DataModule};
+    \node[class, above=1cm of data-module] (dataset) {Dataset};
+    \node[class, align=center, above=2cm of inf-modules] (conv) {Bayesian-\\ConversionConfig};
+    \node[class,left=1cm of conv] (model) {Model};
+    \path (data-module) -- (mcmc-module) node[midway] (center) {};
+    \node[class, below=2.5cm of center, fill=grey] (trainer) {pl.Trainer};
+    % \node[class] (8) at (3.5, 7) {Priors};
+    \draw [->] (sampler) -- (mcmc-module);
+    \draw [->] (model) edge (mcmc-module);
+    \draw [->] (model) edge (vi-module);
+    \draw [->] (model) edge (sgd-module);
+    \draw [->] (conv) edge (mcmc-module);
+    \draw [->] (conv) edge (vi-module);
+    \draw [->] (conv) edge[dashed] (sgd-module);
+    \draw [->] (dataset) -- (data-module);
+    \draw [->] (data-module) edge[out=-90, in=90] (trainer);
+    \draw [->] (inf-modules) edge[out=-90, in=90] (trainer);
+\end{tikzpicture}
