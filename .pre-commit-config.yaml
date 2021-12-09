@@ -7,3 +7,9 @@ repos:
         stages: [commit]
         language: system
         entry: jupyter-nbconvert --ClearOutputPreprocessor.enabled=True --inplace
+      - id: latex-nl
+        name: latex-nl
+        files: \.tex$
+        stages: [commit]
+        language: system
+        entry: sed -i ""  -E  's/\.[^\S\r\n]+([A-Z])/.\n\1/'
