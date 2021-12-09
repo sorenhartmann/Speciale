@@ -9,10 +9,13 @@ In the SGHMC paper, they propose estimating the variance introduced through batc
 However, it seem to be worth investigating whether we could improve performance by providing some sort of estimate. 
 This is also mentioned in the paper, however they do not seem explore the idea any further. 
 
-Since we parameterized the upper bound $C$ with $\alpha$, we may end up with estimated noise larger than the upper bound. Adjusting the upper bound $C$ to accommodate this, would also require adjusting the $\alpha$ parameter accordingly. Since the $\alpha$ corresponds to the momentum decay of the algorithm, we may end up with very unstable behavior, especially for $\alpha > 1$. 
-\todo[inline]{Sammenhæng mellem beta/V/B/D... skal nok rettes igennem fra teoriafdelingen.}
+Since we parameterized the upper bound $C$ with $\alpha$, we may end up with estimated noise larger than the upper bound.
+Adjusting the upper bound $C$ to accommodate this, would also require adjusting the $\alpha$ parameter accordingly.
+Since the $\alpha$ corresponds to the momentum decay of the algorithm, we may end up with very unstable behavior, especially for $\alpha > 1$. 
+\todo[inline]{Sammenhæng mellem beta/V/B/D... skal nok rettes igennem fra teoriafdelingen af...}
 Instead, we keep $\alpha=CM^{-1}$ fixed, and adjust the mass matrix $M$, implictly adjusting $C$ as well.
-With $M = M_0 W$ were $W$ is a diagonal matrix of weights, we can then, depending on the variance estimate, rescale the mass such that the upper bound $\alpha$ is sufficiently above the estimate $\hat\beta$, eg. by some factor $m_{\text{est}}$. If we let the learning rate be given as $\eta_0$  for the unscaled mass matrix with $W = I$, then the learning rate for the scaled system can be found as $\eta = \epsilon^2 M^{-1} = \epsilon^2 M_0^{-1}W^{-1} = \eta_0 W^{-1}$, and
+With $M = M_0 W$ were $W$ is a diagonal matrix of weights, we can then, depending on the variance estimate, rescale the mass such that the upper bound $\alpha$ is sufficiently above the estimate $\hat\beta$, eg. by some factor $m_{\text{est}}$.
+If we let the learning rate be given as $\eta_0$  for the unscaled mass matrix with $W = I$, then the learning rate for the scaled system can be found as $\eta = \epsilon^2 M^{-1} = \epsilon^2 M_0^{-1}W^{-1} = \eta_0 W^{-1}$, and
 \begin{align*}
     m_{\text{est}} \cdot \hat{\beta}  &\leq \alpha \Leftrightarrow\\ 
     m_{\text{est}} \cdot \frac{1}{2} \hat V \eta   &\leq \alpha \Leftrightarrow\\ 
@@ -24,25 +27,33 @@ With $M = M_0 W$ were $W$ is a diagonal matrix of weights, we can then, dependin
     \end{cases}
 \end{align*}
 
-The sampler then every once in a while, eg. every 50 samples, rescales the system based on the variance estimates. If the variance estimates $\hat \beta$ happen to be greater than $\alpha$ in between the mass rescaling, the estimate is simply clamped at the upper bound $\alpha$, and no additional noise is generated.  
+The sampler then every once in a while, eg. every 50 samples, rescales the system based on the variance estimates.
+If the variance estimates $\hat \beta$ happen to be greater than $\alpha$ in between the mass rescaling, the estimate is simply clamped at the upper bound $\alpha$, and no additional noise is generated.  
 
-This method of rescaling the mass matrix is in a sense similar to the approach outlined in \cite{wenzel_how_2020}, where they also include a step calculating a preconditioning matrix, ie. $M$. They found that using the preconditioning step generally improved performance.
+This method of rescaling the mass matrix is in a sense similar to the approach outlined in \cite{wenzel_how_2020}, where they also include a step calculating a preconditioning matrix, ie.
+They found that using the preconditioning step generally improved performance.
 
-There are multiple ways to go about obtaining a variance estimate. We could try to calculate a running variance statistic using the within batch sample variance of the gradients:
+There are multiple ways to go about obtaining a variance estimate.
+We could try to calculate a running variance statistic using the within batch sample variance of the gradients:
 \begin{equation}
     \frac{1}{|\tilde{\D}|-1}\sum_{(x_i,y_i)=\tilde{\D}} (\nabla U(\theta; x_i, y_i) - \nabla \bar{U}(\theta))^2
 \end{equation}
 and then scale the variance up to the fit the batch size. 
-The main issue with this approach is that calculating the gradient for each observation individually within a batch is not really computationally sound. While it may be possible to calculate the statistic above using autograd without doing a backward pass for each observation, it is trivial to do so since autograd only allows for calculating gradients of scalars. 
+The main issue with this approach is that calculating the gradient for each observation individually within a batch is not really computationally sound.
+While it may be possible to calculate the statistic above using autograd without doing a backward pass for each observation, it is trivial to do so since autograd only allows for calculating gradients of scalars. 
 
 Instead we look at three other approaches. 
 The first approach is to run through a few training batches at the start of each epoch, calculating the gradient for each batch keeping the parameters constant. 
 This estimate can then be used for the remaining epoch. 
 The two other approaches instead keeps track of running statistics. 
-The first uses exponentially decaying running estimates of the first to moments, $m_t, v_t$ as in the ADAM algorithm \cite{kingma_adam_2017}. Since the ADAM algorithm doesnt center the second moment estimate, the squared mean is subtracted, so that the variance is estimated as $v_t - m_t^2$.
+The first uses exponentially decaying running estimates of the first to moments, $m_t, v_t$ as in the ADAM algorithm \cite{kingma_adam_2017}.
+Since the ADAM algorithm doesnt center the second moment estimate, the squared mean is subtracted, so that the variance is estimated as $v_t - m_t^2$.
 Finally, we also try to estimate the variance as with the ADAM algorithm, however using the first momement to center the second momement estimate. 
 
-In order to test these three different approach, they are applying to the simulated example from the previous section. Every 10 sample, the variance of the gradient is estimated using 100 random batched from the training data set. This estimate is then compared to the estimate. The estimation provided by the estimators compared to the observed variance can be seen in \cref{fig:est_variances_simulated}.
+In order to test these three different approach, they are applying to the simulated example from the previous section.
+Every 10 sample, the variance of the gradient is estimated using 100 random batched from the training data set.
+This estimate is then compared to the estimate.
+The estimation provided by the estimators compared to the observed variance can be seen in \cref{fig:est_variances_simulated}.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.9\textwidth]{Figures/simulated_sghmc_gradient_variance_estimations.pdf}
@@ -55,7 +66,8 @@ In order to test these three different approach, they are applying to the simula
     \caption{Relative errors for the different estimation schemes,}
 \end{table}
 Note that these values are plot using a logarithmic scale, so the estimates may seem better than they actually are, especially with when it comes to overestimating. 
-It may still be that they are better than simply setting $\hat\beta=0$ in terms of estimating the posterior correctly. In \cref{fig:simualted_var_est_joint_comp}, the sampled marginal distribution of $a_1$ and $a_3$ are shown again, now compared SGHMC with and without a variance estimator.
+It may still be that they are better than simply setting $\hat\beta=0$ in terms of estimating the posterior correctly.
+In \cref{fig:simualted_var_est_joint_comp}, the sampled marginal distribution of $a_1$ and $a_3$ are shown again, now compared SGHMC with and without a variance estimator.
 \begin{figure}[htbp]
     \centering
     \begin{subfigure}[t]{0.4\textwidth}
@@ -103,15 +115,17 @@ The lower learning rate is used since otherwise, the SGHMC sampler with $\hat{\b
     \label{tbl:temp_99}
 \end{table}
 The resulting distribution of $r^T M r$ can be seen in \cref{fig:temperature_sum_chi2_comp}, compared against the expected $\chi^2$ distribution. 
-We see that the while the samplers with estimated variance doesn't fit the distributional assumptions, they are all much closer than the for the sampler with $\hat \beta = 0$. The $\hat T_{0.99}$ statistic have also been calculated in \cref{tbl:temp_99}, alongside a confidence interval based on the binomial distribution.
+We see that the while the samplers with estimated variance doesn't fit the distributional assumptions, they are all much closer than the for the sampler with $\hat \beta = 0$.
+The $\hat T_{0.99}$ statistic have also been calculated in \cref{tbl:temp_99}, alongside a confidence interval based on the binomial distribution.
 
 \todo[inline]{prøv med mindre stepsize eller kom videre? Mest for at vise om varians estimation kunne afhælpe fx dårlig lr eller beta estimat. (hvilket det kunne, til dels?)}
 
-It seem like the samplers with estimated variance are all underdispersing slighty, compared to the actual postieror. with  which would make sense if we are overestimating variance. Looking at the PLOT, the estimation margin estimates also seems relatively uniformly distributed on the log scale, which would mean that we are generally overestimating with larger magnitude. 
+It seem like the samplers with estimated variance are all underdispersing slighty, compared to the actual postieror. with  which would make sense if we are overestimating variance.
+Looking at the PLOT, the estimation margin estimates also seems relatively uniformly distributed on the log scale, which would mean that we are generally overestimating with larger magnitude. 
 Since we are overestimating the noise from batching, this would lead to us not adding sufficient noise to the system, leading to underdispersion.
 
 \section{MNIST}
-
+In this section, we will 
 
 \section{Convolutional Neural Net}
 
