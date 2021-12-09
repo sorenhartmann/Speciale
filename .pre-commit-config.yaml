@@ -12,4 +12,4 @@ repos:
         files: \.tex$
         stages: [commit]
         language: system
-        entry: sed -i ""  -E  's/\.[^\S\r\n]+([A-Z])/.\n\1/'
+        entry: sed -i ""  -E  's/\. +([A-Z])/.\n\1/'

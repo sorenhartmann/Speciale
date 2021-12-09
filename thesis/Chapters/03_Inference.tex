@@ -242,8 +242,7 @@ Instead, we use a Metropolis-Hastings step to correct for the introduced discret
 First, we ensure that the proposal distribution is symmetric.
 This can be achieved by using an additional step $N(x, r) = (x, -r)$, negating the momentum after simulating the dynamics.
 The proposed sample then becomes $ N(\hat{\phi}_\epsilon^T(x, r))= (x^\ast, r^\ast)$.
-This is useful since by repeating the process, we end up exactly where we started, ie.
-N(\hat{\phi}_\epsilon^T(x^\ast, r^\ast)) = (x, r)$.
+This is useful since by repeating the process, we end up exactly where we started, ie. $N(\hat{\phi}_\epsilon^T(x^\ast, r^\ast)) = (x, r)$.
 In order to show this, we define some functions describing the leapfrog algorithm:
 \begin{align*}
     S \left(\begin{bmatrix} x \\ r \end{bmatrix}\right) 
