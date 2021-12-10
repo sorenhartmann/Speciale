@@ -11,10 +11,8 @@ inference.sampler.alpha:
   log: true
   _grid_options_: [0.01, 0.05, 0.1, 0.2]
 inference.sampler.resample_momentum_every:
-  type: categorical
-  choices: [0, 100, 1000]
+  type: int
+  low: 100
+  high: 100_000
+  log: true
   _grid_options_: [0, 100, 1000]
-data.batch_size:
-  type: categorical
-  choices: [128, 500]
-  _grid_options_: [128, 500]

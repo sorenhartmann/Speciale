@@ -1,7 +1,7 @@
 #!/bin/sh
 #BSUB -q gpuv100
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -J mnist_sgd_dropout
+#BSUB -J mnist_vi
 #BSUB -n 4
 #BSUB -W 24:00
 #BSUB -B
@@ -20,9 +20,9 @@ source .venv/bin/activate
 
 python scripts/sweep.py \
     +experiment=mnist \
-    experiment/mnist=sgd_dropout \
-    sweep/search_space=sgd_dropout \
-    sweep.study_name="mnist-sgd-dropout" \
+    experiment/mnist=vi_with_corr \
+    sweep/search_space=vi \
+    sweep.study_name="mnist-vi-with-corr" \
     ++trainer.max_epochs=1000 \
     ++data.num_workers=3 \
     ++trainer.gpus=1

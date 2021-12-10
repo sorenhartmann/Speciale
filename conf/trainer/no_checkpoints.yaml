@@ -3,9 +3,11 @@ _target_: pytorch_lightning.trainer.Trainer
 logger:
   _target_: src.experiments.common.FlatTensorBoardLogger
   save_dir: "./metrics"
-  default_hp_metric: False
+  default_hp_metric: false
+
 
 checkpoint_callback: false
+weights_summary: null
 
-
-
+callbacks:
+  - _target_: src.utils.SilenceWarnings

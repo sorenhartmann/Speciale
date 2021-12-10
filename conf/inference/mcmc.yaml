@@ -5,7 +5,4 @@ defaults:
 _target_: src.inference.mcmc.MCMCInference
 model : ${model}
 
-sample_container:
-  max_items: 100
-
 burn_in: 50

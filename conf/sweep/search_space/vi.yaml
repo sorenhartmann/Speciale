@@ -19,14 +19,14 @@ inference.prior_config.mixture_ratio:
   low: 0.25
   high: 0.75
   _grid_options_: [0.25, 0.5, 0.75]
-inference.kl_weighting_scheme._target_: 
-  type: categorical
-  choices: 
-    - 'src.inference.vi.ExponentialKLWeight'
-    - 'src.inference.vi.ConstantKLWeight'
-  _grid_options_:
-    - 'src.inference.vi.ExponentialKLWeight'
-    - 'src.inference.vi.ConstantKLWeight'
+# inference.kl_weighting_scheme._target_: 
+#   type: categorical
+#   choices: 
+#     - 'src.inference.vi.ExponentialKLWeight'
+#     - 'src.inference.vi.ConstantKLWeight'
+#   _grid_options_:
+#     - 'src.inference.vi.ExponentialKLWeight'
+#     - 'src.inference.vi.ConstantKLWeight'
        
 inference.n_particles:
   type: int

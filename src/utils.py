@@ -180,6 +180,7 @@ def silence_warnings():
     warnings.filterwarnings("ignore", ".+does not have many workers which may be a bottleneck.")
     warnings.filterwarnings("ignore", "The given NumPy array is not writeable,")
     warnings.filterwarnings("ignore", "The number of training samples")
+    warnings.filterwarnings("ignore", "The metric 'err/val' is not in the evaluation logs for pruning.")
 
 from pytorch_lightning import Callback
 

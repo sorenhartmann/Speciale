@@ -23,6 +23,6 @@ python scripts/sweep.py \
     experiment/mnist=sghmc \
     sweep/search_space=sghmc \
     sweep.study_name="mnist-sghmc" \
-    ++trainer.max_epochs=800 \
+    ++trainer.max_epochs=1000 \
     ++data.num_workers=3 \
     ++trainer.gpus=1

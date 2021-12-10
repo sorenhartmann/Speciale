@@ -1,12 +1,11 @@
 import os
 import hydra
 import torch
-from hydra.utils import instantiate, to_absolute_path, get_original_cwd
+from hydra.utils import instantiate, get_original_cwd
 from contextlib import contextmanager
 from pathlib import Path
 import optuna
 from omegaconf import OmegaConf
-from pytorch_lightning import Callback
 
 @contextmanager
 def set_directory(path: Path):
@@ -21,7 +20,11 @@ def set_directory(path: Path):
 def get_search_grid(search_space):
     return {k : v["_grid_options_"] for k,v in search_space.items()}
 
+def get_sqlite_storage_string(study_name):
+    return f"sqlite:///{get_original_cwd()}/optuna_storages/{study_name}.db"
+
 OmegaConf.register_new_resolver("get_search_grid", get_search_grid)
+OmegaConf.register_new_resolver("get_sqlite_storage_string", get_sqlite_storage_string)
 
 def get_suggestions(trial, search_space_cfg):
 
@@ -37,7 +40,6 @@ def get_suggestions(trial, search_space_cfg):
 
 class TrainingError(Exception):
     ...
-
 
 @hydra.main("../conf", "sweep_config")
 def main(cfg):
@@ -62,11 +64,11 @@ def main(cfg):
 
             dm = instantiate(trial_cfg.data)
             inference = instantiate(trial_cfg.inference)
-            callback_cfg =  trial_cfg.trainer.get("callbacks")
-            if callback_cfg is not None:
-                callbacks = [instantiate(x) for x in trial_cfg.trainer.callbacks]
-            else:
-                callbacks = []
+
+            # add extra callbacks
+            _callbacks = list(cfg.trainer.get("callbacks", []))
+            _callbacks += list(cfg.get("extra_callbacks", []))
+            callbacks = [instantiate(x) for x in _callbacks]
             callbacks += [instantiate(cfg.optuna_callback, trial=trial)]
 
             trainer = instantiate(trial_cfg.trainer, callbacks=callbacks)
@@ -83,9 +85,8 @@ def main(cfg):
 
         return trainer.logged_metrics.get(cfg.sweep.monitor)
 
-    storage = f"sqlite:///{get_original_cwd()}/optuna_storages/{cfg.sweep.study_name}.db"
     sampler = instantiate(cfg.sweep.sampler)
-    study = instantiate(cfg.sweep.study, storage=storage, sampler=sampler)
+    study = instantiate(cfg.sweep.study, sampler=sampler)
     
     study.optimize(objective, catch=(TrainingError,), **cfg.sweep.optimize_args)
 

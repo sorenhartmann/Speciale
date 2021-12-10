@@ -6,9 +6,9 @@ defaults:
   - hydra: sweep
   - sweep/search_space: "???"
   - sweep/sampler: tpe
+  - sweep/study/pruner: median
+  - sweep/study: sqlite
   - _self_
-
-test: ${..experiment}
 
 sweep:
 
@@ -19,18 +19,25 @@ sweep:
     _target_: optuna.create_study
     study_name: ${sweep.study_name}
     load_if_exists: true
-    pruner:
-      _target_: optuna.pruners.NopPruner
 
   monitor: "err/val"
 
   optimize_args:
-    n_trials: 100
+    n_trials: 1000
 
 optuna_callback:
   _target_: optuna.integration.PyTorchLightningPruningCallback
   monitor: ${sweep.monitor}
 
+early_stopping:
+  _target_: pytorch_lightning.callbacks.EarlyStopping
+  patience: 50
+  monitor: "err/val"
+  strict: false
+
+extra_callbacks:
+  - ${early_stopping}
+  
 trainer:
   progress_bar_refresh_rate: 0
 

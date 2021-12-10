@@ -16,5 +16,5 @@ model:
     _target_: torch.nn.ReLU
 
 trainer:
-  max_epochs: 800
+  max_epochs: 1000
   max_time: "00:02:00:00"

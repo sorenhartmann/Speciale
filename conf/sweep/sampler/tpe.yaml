@@ -1,1 +1,2 @@
 _target_: optuna.samplers.TPESampler
+multivariate: true

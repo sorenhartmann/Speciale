@@ -2,6 +2,8 @@
 
 defaults:
   - override /inference : mcmc
+  - override /inference/sampler : sghmc
+  - override /inference/sample_container: all
 
 data:
   batch_size: 500

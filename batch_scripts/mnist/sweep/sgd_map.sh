@@ -23,6 +23,6 @@ python scripts/sweep.py \
     experiment/mnist=sgd_map \
     sweep/search_space=sgd_map \
     sweep.study_name="mnist-sgd-map" \
-    ++trainer.max_epochs=800 \
+    ++trainer.max_epochs=1000 \
     ++data.num_workers=3 \
     ++trainer.gpus=1
