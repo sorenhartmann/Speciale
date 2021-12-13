@@ -1,0 +1,68 @@
+% spellchecker: disable
+
+
+\usetikzlibrary{shapes.multipart}
+\begin{tikzpicture}[
+    class/.style={rounded corners=0.3cm,minimum height=1cm,fill=blue!50,draw=black},
+    other/.style={circle,draw=black},
+    pnt/.style={anchor=center,inner sep=0},
+    node distance = 1cm, 
+    auto
+    ]
+    \node[class] (model) at (0, 0) {Model};
+    \node[fill=grey!50,other,below=1cm of model.south] (obs) {$\tilde{\D}$};
+    \node[other,right=1.5cm of model] (loss) {$\bar{\mathcal{L}}$};
+
+    \def\tsh{0.7cm}
+    \node[minimum width=0.5cm, above=\tsh of model,anchor=center,label={above:{\tiny\texttt{training\_step()}}}] (training-step) {};
+
+    \node[pnt] (start) at (training-step.west) {};
+    \node[pnt] (end) at (training-step.east) {};
+    \fill[black] (start) circle (2pt);
+    \fill[black] (end) circle (2pt);
+    \def\radius{1cm}
+
+    \draw[ 
+        thick,
+        postaction={decorate},
+        decoration={
+            markings,
+            mark=at position 0.125 with {\arrow {latex}},
+            mark=at position 0.375 with {\arrow {latex}},
+            mark=at position 0.625 with {\arrow {latex}},
+            mark=at position 0.875 with {\arrow {latex}}
+        }
+    ]
+    (start)
+    arc (90:180:\radius) node (tmp1) {}
+    --
+    ($(tmp1)!2.0!(tmp1 |- model)$) node[midway,anchor=center,label={left:sample $n$}] (sample-n) {}
+    arc (180:270:\radius) node (tmp2) {}
+    -- (tmp2 -| end) node[midway,anchor=center] (get-obs) {}
+    arc (270:360:\radius) node (tmp3) {}
+    -- ($(tmp3)!2.0!(tmp3 |- model)$) node[midway,anchor=center] (get-loss) {}
+    arc (0:90:\radius) {}
+    ;
+    \def\radcirc{0.7}
+    \draw[thick,postaction={decorate},
+        decoration={markings,
+        mark=at position 0.27 with {\arrow {latex}},
+        mark=at position 0.52 with {\arrow {latex}},
+        mark=at position 0.77 with {\arrow {latex}}
+    }]
+    (get-obs.center) 
+    arc (90:0:\radcirc) 
+    arc (360:90:\radcirc) node[pos=0.333,anchor=north] (label) {repeat $n$ times}
+    ;
+    
+    \fill[black] (sample-n) circle (2pt);
+    \fill[black] (get-obs) circle (2pt);
+    \fill[black] (get-loss) circle (2pt);
+    
+    \draw [->] (obs) edge (model);
+    \draw [->] (model) edge (loss);
+    \draw [->] (sample-n.center) -- (model);
+    
+
+
+    \end{tikzpicture}

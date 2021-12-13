@@ -1,0 +1,67 @@
+% spellchecker: disable
+
+\begin{tikzpicture}[
+    class/.style={rounded corners=0.3cm,minimum height=1cm,fill=blue!50,draw=black},
+    other/.style={circle,draw=black},
+    back group/.style={rounded corners, draw=black, 
+                     dashed, inner xsep=0.2cm, inner ysep=0.3cm, 
+                     anchor=west},
+    pnt/.style={anchor=center,inner sep=0},
+    node distance = 1cm,
+    auto
+    ]
+    \node[class,fill=blue!50] (model) at (0, 0) {Model};
+    \node[class,align=center,fill=blue!50, right=of model] (post) {Parameter-\\Posterior};
+    \node[class,fill=blue!50, below=of post] (sampler) {Sampler};
+    \node[other,fill=grey!50, right=3.2cm of post.center] (obs) {$\tilde{\D}$};
+    \node[other,fill=red!50, right=3.2cm of sampler.center] (state) {$\theta^\ast$};
+    \draw [->] (model) -- (post);
+    \draw [->] (post) -- (sampler);
+    \draw [->] (obs) -- (post);
+    \draw [->] (sampler) -- (state);
+
+    
+    \def\yoffset{1cm}
+
+    \node[minimum width=0, label={above:{\tiny\texttt{training\_step()}}}] 
+    (start) at ($(obs)+(-0.9cm,\yoffset)$)
+    {}
+    ;
+    
+    \draw[
+        thick,
+        postaction={decorate},
+        decoration = {
+            markings,
+            mark=at position 0.15 with {\arrow {latex}},
+            mark=at position 0.50 with {\arrow {latex}},
+            mark=at position 0.9 with {\arrow {latex}}
+        }
+    ] (start.center) 
+    -- (obs -| start) node[inner sep=0, label={above left:{\tiny\texttt{observe()}}}] (observe) {}
+    -- (state -| start) node[inner sep=0, label={above left:{\tiny\texttt{next\_sample()}}}] (next-sample) {}
+    -- ($(state -| start)+(0,-\yoffset)$) node (end) {};
+    ;
+%     \draw[thick]
+%         (start)
+%         arc (90:180:\radius) node (tmp1) {}
+%         -- ($(tmp1)!2.0!(tmp1 |- mid)$)
+%         arc (180:270:\radius) node (tmp2) {}
+%         -- (tmp2 -| end) 
+%         arc (270:360:\radius) 
+%         % -- ($tmp1!2.0!((obs -| tmp1)!0.5!(state -| tmp1))$)
+%         ;
+    % \path[name path=flow] ($(obs)+(-0.8cm,1cm)$)--($(state)+(-0.8cm,-1cm)$); 
+    % \path[name path=observe] (obs)--(post); 
+    % \path[name path=next] (sampler)--(state); 
+    % \fill [black, name intersections={of=flow and observe}] (intersection-1) circle (2pt);
+    % \fill [black, name intersections={of=flow and next}] (intersection-1) circle (2pt);
+    % \path ($(obs)+(0.8cm,1cm)$) edge[draw=none] node[sloped, anchor=north] {\tiny\texttt{training\_step()}} ($(state)+(0.8cm,-1cm)$);
+    % \node (a) at ($(obs)+(-0.8cm,1cm)$) {};
+    % \node (b) at ($(state)+(-0.8cm,-1cm)$) {};
+    \fill[black] (start) circle (2pt);
+    \fill[black] (observe) circle (2pt);
+    \fill[black] (next-sample) circle (2pt);
+    \fill[black] (end) circle (2pt);
+    % \node[red,scale=3] at (intersection of  post--obs and a--b{.};
+    \end{tikzpicture}

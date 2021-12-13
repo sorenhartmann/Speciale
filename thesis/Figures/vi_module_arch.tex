@@ -1,0 +1,59 @@
+% spellchecker: disable
+
+
+\usetikzlibrary{shapes.multipart}
+\begin{tikzpicture}[
+    class/.style={rounded corners=0.3cm,minimum height=1cm,fill=blue!50,draw=black},
+    other/.style={circle,draw=black},
+    node distance = 1cm, 
+    myrect/.style={
+        draw,
+        rectangle split,
+        rectangle split parts=#1,
+        rectangle split part align=left
+        },    
+    back group/.style={rounded corners, draw=black, 
+                    dashed, inner xsep=0.2cm, inner ysep=0.2cm, 
+                    anchor=west},
+    auto
+    ]
+    \node[
+        draw, 
+        rectangle, 
+        rectangle split, 
+        rectangle split parts=7,
+        rectangle split horizontal, 
+        rectangle split part fill={
+            grey,
+            grey,
+            brightgreen,
+            white,
+            white,
+            white,
+            white
+            },
+        minimum height=1cm,
+        inner sep=2,
+        rounded corners=0.1cm
+        ] (samples) {
+            \nodepart{one}
+            \nodepart{two}
+            \nodepart{three} \texttt{i}
+            \nodepart{four}
+            \nodepart{five}
+            \nodepart{six}
+            \nodepart{seven}
+        };
+    \node[class,fill=blue!50, below=1.5cm of samples] (bayesian-module) {BayesianModule};
+    % \begin{scope}[on background layer]
+        % \end{scope}
+    \draw [->] (samples.three south) -- (bayesian-module.north -| samples.three south);
+    \draw[decorate,decoration={brace, amplitude=10pt, raise=2pt}]
+    (samples.one north) to node[black,midway,above=10pt] (samples-label) {$n$ samples} (samples.seven north);%
+    \node (inf-modules) [back group] [fit=(bayesian-module)(samples)(samples-label),label={above:VariationalModule}]{};
+    \node [other,left=of bayesian-module] (input) {$x$};
+    \node [other,right=of bayesian-module] (output) {$x^\prime$};
+    \draw [->,thick] (input) -- (bayesian-module);
+    \draw [->,thick] (bayesian-module) -- (output);
+    \draw [->,thick](bayesian-module.east) to[out=0,in=330, edge node={node [sloped,above] {\tiny \texttt{i++}}}] (samples.south east);
+    \end{tikzpicture}
