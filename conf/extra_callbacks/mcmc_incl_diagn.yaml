@@ -1,3 +1,0 @@
-- _target_: src.callbacks.mcmc.SGHMCLogTemperature
-  steps_per_log: 50
-- _target_: src.callbacks.mcmc.SaveSamples
