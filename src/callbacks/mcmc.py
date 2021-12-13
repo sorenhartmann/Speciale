@@ -4,7 +4,7 @@ from typing import Union
 from pytorch_lightning import Callback, callbacks
 import torch
 from src.inference.mcmc.variance_estimators import WelfordEstimator
-
+from src.inference.mcmc.samplers import SGHMCWithVarianceEstimator
 
 class SaveSamples(Callback):
     def __init__(self, unflatten=False):
@@ -106,11 +106,18 @@ class SGHMCLogTemperature(Callback):
         if trainer.global_step % self.steps_per_log != 0:
             return
 
-        M_diag = pl_module.sampler.mass_factor
-        step_size = torch.sqrt(pl_module.sampler.lr_0)
-        nu = pl_module.sampler.nu
-        r = nu / step_size * M_diag
-        norm_squares = (1 / M_diag) * r * r
+        if isinstance(pl_module.sampler, SGHMCWithVarianceEstimator):
+            M_diag = pl_module.sampler.mass_factor
+            step_size = torch.sqrt(pl_module.sampler.lr_0)
+            nu = pl_module.sampler.nu
+            r = nu / step_size * M_diag
+            norm_squares = (1 / M_diag) * r * r
+        else:
+            step_size = torch.sqrt(pl_module.sampler.lr)
+            nu = pl_module.sampler.nu
+            r = nu / step_size
+            norm_squares = r * r
+        
         unflattened = pl_module.posterior.view._unflatten(norm_squares)
         for k, v in unflattened.items():
             self.temperature_samples[trainer.global_step, k] = {
