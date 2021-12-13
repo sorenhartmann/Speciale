@@ -1,4 +1,4 @@
 _target_: optuna.pruners.MedianPruner
 n_startup_trials: 5
-n_warmup_steps: 50
+n_warmup_steps: 100
 n_min_trials: 5
