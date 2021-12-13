@@ -7,5 +7,12 @@ defaults:
 
 data:
   batch_size: 500
+
+inference:
+  sampler:
+    lr: 2.e-6
+    resample_momentum_every: 200
+    alpha: 0.02
+    
     
 tag: sghmc

@@ -9,5 +9,12 @@ defaults:
 data:
   batch_size: 500
     
+inference:
+  sampler:
+    lr: 2.e-7
+    resample_momentum_every: 10000
+    alpha: 0.005
+    estimation_margin: 30
+  
 tag: sghmc_var_est
 
