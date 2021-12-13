@@ -76,7 +76,7 @@ def main(cfg):
             try:
                 trainer.fit(inference, dm)
             except ValueError:
-                raise TrainingError
+                raise optuna.TrialPruned
             except:
                 raise
 
@@ -88,7 +88,7 @@ def main(cfg):
     sampler = instantiate(cfg.sweep.sampler)
     study = instantiate(cfg.sweep.study, sampler=sampler)
     
-    study.optimize(objective, catch=(TrainingError,), **cfg.sweep.optimize_args)
+    study.optimize(objective, **cfg.sweep.optimize_args)
 
 
 if __name__ == "__main__":
