@@ -101,3 +101,4 @@ altairdata
 .Rproj.user
 .RData
 .RHistory
+optuna_storages/
