@@ -1,24 +1,15 @@
 % spellchecker: disable
 
-\begin{tikzpicture}[
-    class/.style={rounded corners=0.3cm,minimum height=1cm,fill=blue!50,draw=black},
-    other/.style={circle,draw=black},
-    back group/.style={rounded corners, draw=black, 
-                     dashed, inner xsep=0.2cm, inner ysep=0.3cm, 
-                     anchor=west},
-    pnt/.style={anchor=center,inner sep=0},
-    node distance = 1cm,
-    auto
-    ]
+\begin{tikzpicture}
     \node[class,fill=blue!50] (model) at (0, 0) {Model};
     \node[class,align=center,fill=blue!50, right=of model] (post) {Parameter-\\Posterior};
     \node[class,fill=blue!50, below=of post] (sampler) {Sampler};
     \node[other,fill=grey!50, right=3.2cm of post.center] (obs) {$\tilde{\D}$};
     \node[other,fill=red!50, right=3.2cm of sampler.center] (state) {$\theta^\ast$};
-    \draw [->] (model) -- (post);
-    \draw [->] (post) -- (sampler);
-    \draw [->] (obs) -- (post);
-    \draw [->] (sampler) -- (state);
+    \draw [depends] (model) -- (post);
+    \draw [depends] (post) -- (sampler);
+    \draw [depends] (obs) -- (post);
+    \draw [depends] (sampler) -- (state);
 
     
     \def\yoffset{1cm}

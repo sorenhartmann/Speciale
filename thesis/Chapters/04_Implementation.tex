@@ -39,7 +39,7 @@ There are three different inference methods implemented: regular stochastic grad
 
 In order to implement probabilistic methods, we have to supply the inference methods with additional information in form prior probabilities of the parameters. 
 These are specified using a user specified Bayesian conversion configuration.
-We then substitute each module with trainable parameters with a corresponding Bayesian module, which also defines parameter priors, as well a method for calculating the prior log probability.
+We then substitute each module with trainable parameters with a corresponding \texttt{BayesianModule}, that defines parameter priors as well a method for calculating the prior log probability.
 The dynamical approach is chosen since it makes specifying the models simpler, allows for adjusting the priors dynamically and differently based on the methods in question, and also allows for training of models specified elsewhere like pre-trained models. 
 For comparison with the probabilistic methods, the SGD inference optionally allows for using MAP estimation also using this framework.
 
@@ -50,24 +50,37 @@ For SGD inference it is therefore as simple as calculating the loss and passing 
 For the two other methods the implementation is a bit more involved.
 
 \subsection{Variational Inference}
+Variational inference is primarily implemented through the use of yet another wrapper module, \texttt{VariationalModule}.
+These modules wraps the Bayesian modules, and upon initialization, deletes their parameters.
+For each parameter deleted, they define a pair of variational parameters, $\mu$ and $\rho$, defining the variational distribution. 
+In order to make a \texttt{forward()} pass, they must sample one or more sets of new parameters with a \texttt{sample\_parameters()} method.
+This method draws a given number of samples from the variational distribution, and stores them in an instance variable.
+
+A forward pass can then be accomplished by setting the appropriate attributes of the Bayesian module to instead reference one of the sets of samples. 
+The Bayesian module can then be used for the forward pass as usual, and a counter in the variational module is incremented afterwards to use the next sample for the next forward pass.
 \begin{figure}[htbp]
     \centering
-    \begin{subfigure}[c]{0.48\linewidth}
+    \begin{subfigure}[b]{0.48\linewidth}
         \centering
+        \caption{Basic structure of \texttt{VariationalModule}}
         \input{Figures/vi_module_arch}
     \end{subfigure}
-    \hfill{}
-    \begin{subfigure}[c]{0.48\linewidth}
+    \begin{subfigure}[b]{0.48\linewidth}
+        \centering
+        \caption{Implementation of \texttt{training\_step()} in \texttt{VariationalInference}.}
         \input{Figures/vi_arch}
     \end{subfigure}
-    \caption{Joint distribution of samples for $a_1$ and $a_3$ for the polynomial regression example for HMC and SGHMC for different batch sizes, with the actual posterior density also shown.}
+    \caption{Diagrams showing the implementation of variational inference.}
     \label{fig:vi-arch}
 \end{figure}
+We can then train the model averaging over $n$ gradients by getting every variational module of the model to draw $n$ samples and then doing $n$ forward passes of the model, with each variational module keeping track of their samples.
+Then, the loss is calculated for each forward pass, averaged and returned from \texttt{training\_step()}, letting Lightning handle the backward pass. 
+See \cref{fig:vi-arch} for a diagram 
 
 \subsection{MCMC Inference}
-The Markov chain Monte Carlo implementation differs a bit compared to the two other implemented methods, in that we need to do more with the gradient, than just perform an optimization step. 
+The Markov chain Monte Carlo implementation differs a bit compared to the two other implemented methods, in that we need to do more with the gradients, than just perform an optimization step. 
 It is probably possible to use PyTorch Lightning's \texttt{on\_after\_backward()} hook to implement the HMC methods in PyTorch Lightning, however with this implementation we instead opt to implement the sampling algorithms more explicitly.
-This allows for a simpler implementation of the samplers, that can be used also for eg. sampling from a density function directly.
+This allows for a simpler implementation of the samplers, that can also be used in other contexts, eg. for sampling from a density function directly.
 The different samplers are therefore implemented as  subclasses of the \texttt{Sampler} class, that each defines a \texttt{next\_sample()} method independently.
 After initializing each sampler, they are set up by registering to them an object defining what distribution should be sampled from. 
 This object, dubbed \texttt{Samplable}, should define the following properties: The current state as a PyTorch tensor, the shape of the state, the logarithmic proportional probability density at the current state, and the corresponding gradient.  
@@ -88,20 +101,22 @@ This is obviously not the most efficient sampling strategy for HMC, however allo
 Furthermore the module defines the additional hyperparameters such as how many steps should be performed per sample and a burn in period.
 The strategy of which and how many samples should be retained is defined through the use of a \texttt{SampleContainer} object.
 
-\section{Hydra}
+\section{Other frameworks}
 
 While independently defining the different components allows for great flexibility, it can make it a bit cumbersome to configure and instantiate experiments, as objects may needs other instantiated objects in order to be instantiated themselves.
 As the different inference methods also needs different types of objects and hyperparameters, parameterizing and documenting different configurations can become unmanageable and prone to errors.
 
 Determined to make experimentation as painless as possible, we instead make use of the Hydra Python framework to manage the configuration for us.  
 This allows us to specify the different configurations in terms of the \texttt{.yaml} files found in the \texttt{conf/} directory, which are then used for object instantiation based on the particular setup. 
-Since Hydra also supports nested instantiation, the aforementioned complexity is greatly alleviated,
-In fact, just about every component of the implementation are instantiated using Hydra, which makes it possible to use only a few scripts \texttt{scripts/inference.py}, \texttt{scripts/sweep.py} and \texttt{scripts/sample.py} for every experiment. 
+Since Hydra also supports nested instantiation, the aforementioned complexity is greatly alleviated.
+In fact, just about every component of the implementation are instantiated using Hydra, which makes it possible to use only a few scripts: \texttt{scripts/inference.py}, \texttt{scripts/sweep.py} and \texttt{scripts/sample.py} for every experiment. 
+With this also comes a bunch of convinient 
+
+Hydra also allows for relatively smooth integration with the hyperparameter optimization library Optuna \cite{akiba_optuna_2019}, which is used to find sensible values for the various hyperparameters of the algorithms.
+While it has built in support for using Optuna with 
 
 \section{Optuna}
 
-Each the methods have a bunch of different hyperparameters that influence the performance.
-Especially the Bayesian methods   
 
 
 \section{Simulated Experiments}

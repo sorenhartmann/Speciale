@@ -10,7 +10,6 @@
 	year = {2020},
 	note = {arXiv: 2002.08791},
 	keywords = {Computer Science - Machine Learning, Statistics - Machine Learning},
-	annote = {Comment: 30 pages, 19 figures. Updated to add new results showing Bayesian model averaging mitigates double descent},
 	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/IJJPQMYP/Wilson and Izmailov - 2020 - Bayesian Deep Learning and a Probabilistic Perspec.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/J9NWLJTI/2002.html:text/html;Wilson - Bayesian Deep Learning and a Probabilistic Perspec.pdf:/Users/soren/Zotero/storage/UFS2UV7Y/Wilson - Bayesian Deep Learning and a Probabilistic Perspec.pdf:application/pdf},
 }
 
@@ -36,7 +35,6 @@
 	year = {2015},
 	note = {arXiv: 1505.05424},
 	keywords = {Computer Science - Machine Learning, Statistics - Machine Learning},
-	annote = {Comment: In Proceedings of the 32nd International Conference on Machine Learning (ICML 2015)},
 	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/S9Q3IYGM/Blundell et al. - 2015 - Weight Uncertainty in Neural Networks.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/GV4CWHQE/1505.html:text/html},
 }
 
@@ -51,7 +49,6 @@
 	year = {2014},
 	note = {arXiv: 1402.4102},
 	keywords = {Computer Science - Machine Learning, Statistics - Machine Learning, Statistics - Methodology},
-	annote = {Comment: ICML 2014 version},
 	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/7U2F5GJ8/Chen et al. - 2014 - Stochastic Gradient Hamiltonian Monte Carlo.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/NDACLSW7/1402.html:text/html},
 }
 
@@ -66,7 +63,6 @@
 	year = {2012},
 	note = {arXiv: 1206.6380},
 	keywords = {Computer Science - Machine Learning, Statistics - Machine Learning, Statistics - Computation},
-	annote = {Comment: Appears in Proceedings of the 29th International Conference on Machine Learning (ICML 2012)},
 	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/DVRXUKCC/Ahn et al. - 2012 - Bayesian Posterior Sampling via Stochastic Gradien.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/S5GGTPJ3/1206.html:text/html},
 }
 
@@ -84,8 +80,6 @@
 	year = {2010},
 	doi = {10.1007/978-3-642-11492-2_5},
 	pages = {216--287},
-	annote = {Markov chains and stationary distributions
- },
 	file = {Li - 5 Markov Chains on Continuous State Space.pdf:/Users/soren/Zotero/storage/EMYHNL9E/Li - 5 Markov Chains on Continuous State Space.pdf:application/pdf},
 }
 
@@ -101,7 +95,6 @@
 	year = {2017},
 	note = {arXiv: 1412.6980},
 	keywords = {Computer Science - Machine Learning},
-	annote = {Comment: Published as a conference paper at the 3rd International Conference for Learning Representations, San Diego, 2015},
 	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/WR3XEIS2/Kingma and Ba - 2017 - Adam A Method for Stochastic Optimization.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/M6LD85Z9/1412.html:text/html},
 }
 
@@ -148,7 +141,6 @@
 	year = {2018},
 	note = {arXiv: 1701.02434},
 	keywords = {Statistics - Methodology},
-	annote = {Comment: 60 pages, 42 figures},
 	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/TCZJ8HSF/Betancourt - 2018 - A Conceptual Introduction to Hamiltonian Monte Car.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/9QH68S2F/1701.html:text/html},
 }
 
@@ -178,7 +170,6 @@
 	year = {2019},
 	note = {arXiv: 1907.10902},
 	keywords = {Computer Science - Machine Learning, Statistics - Machine Learning},
-	annote = {Comment: 10 pages, Accepted at KDD 2019 Applied Data Science track},
 	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/IMDZ52PX/Akiba et al. - 2019 - Optuna A Next-generation Hyperparameter Optimizat.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/WJQR88PW/1907.html:text/html},
 }
 
@@ -196,4 +187,18 @@
 	year = {2017},
 	pages = {2261--2269},
 	file = {Submitted Version:/Users/soren/Zotero/storage/HT3JC7S5/Huang et al. - 2017 - Densely Connected Convolutional Networks.pdf:application/pdf},
+}
+
+@article{wenzel_how_2020,
+	title = {How {Good} is the {Bayes} {Posterior} in {Deep} {Neural} {Networks} {Really}?},
+	url = {http://arxiv.org/abs/2002.02405},
+	abstract = {During the past five years the Bayesian deep learning community has developed increasingly accurate and efficient approximate inference procedures that allow for Bayesian inference in deep neural networks. However, despite this algorithmic progress and the promise of improved uncertainty quantification and sample efficiency there are---as of early 2020---no publicized deployments of Bayesian neural networks in industrial practice. In this work we cast doubt on the current understanding of Bayes posteriors in popular deep neural networks: we demonstrate through careful MCMC sampling that the posterior predictive induced by the Bayes posterior yields systematically worse predictions compared to simpler methods including point estimates obtained from SGD. Furthermore, we demonstrate that predictive performance is improved significantly through the use of a "cold posterior" that overcounts evidence. Such cold posteriors sharply deviate from the Bayesian paradigm but are commonly used as heuristic in Bayesian deep learning papers. We put forward several hypotheses that could explain cold posteriors and evaluate the hypotheses through experiments. Our work questions the goal of accurate posterior approximations in Bayesian deep learning: If the true Bayes posterior is poor, what is the use of more accurate approximations? Instead, we argue that it is timely to focus on understanding the origin of the improved performance of cold posteriors.},
+	urldate = {2021-11-28},
+	journal = {arXiv:2002.02405 [cs, stat]},
+	author = {Wenzel, Florian and Roth, Kevin and Veeling, Bastiaan S. and Świątkowski, Jakub and Tran, Linh and Mandt, Stephan and Snoek, Jasper and Salimans, Tim and Jenatton, Rodolphe and Nowozin, Sebastian},
+	month = jul,
+	year = {2020},
+	note = {arXiv: 2002.02405},
+	keywords = {Computer Science - Machine Learning, Statistics - Computation, Statistics - Machine Learning},
+	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/4LBWNUI7/Wenzel et al. - 2020 - How Good is the Bayes Posterior in Deep Neural Net.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/5MPTD9P5/2002.html:text/html},
 }

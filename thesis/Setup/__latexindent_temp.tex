@@ -46,8 +46,8 @@
 \usepackage{mathtools}
 \usepackage[11pt]{moresize}
 
-\usetikzlibrary{arrows.meta,positioning,
-fit,decorations.markings,calc,bayesnet,shapes.multipart} 
+\usetikzlibrary{shadows,arrows.meta,positioning,backgrounds,
+fit,decorations.markings,calc,intersections,bayesnet,shapes.multipart} 
 
 \tikzset{
     class/.style = {
@@ -68,7 +68,6 @@ fit,decorations.markings,calc,bayesnet,shapes.multipart}
         inner ysep=0.2cm
     },
     depends/.style = {->,thick},
-    flow/.style = {thick,black},
     pnt/.style={anchor=center,inner sep=0},
     node distance=1cm,
 }
@@ -76,6 +75,3 @@ fit,decorations.markings,calc,bayesnet,shapes.multipart}
 \newcommand{\question}[1]{\todo[inline,color=green!20!white]{#1}}
 \DeclareMathOperator{\E}{\mathbb{E}}
 \newcommand{\D}{\mathcal{D}}
-
-\usepackage[htt]{hyphenat}
-\usepackage{graphics}
