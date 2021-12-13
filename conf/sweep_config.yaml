@@ -6,7 +6,7 @@ defaults:
   - hydra: sweep
   - sweep/search_space: "???"
   - sweep/sampler: tpe
-  - sweep/study/pruner: median
+  - sweep/study/pruner: nop
   - sweep/study: sqlite
   - _self_
 
