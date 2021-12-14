@@ -20,6 +20,10 @@ def main(cfg):
 
     trainer = instantiate(cfg.trainer)
     trainer.fit(inference, dm)
+
+    if cfg.test:
+        trainer.test(inference, dm)
+        
     return trainer.logged_metrics.get("err/val")
     
 if __name__ == "__main__":

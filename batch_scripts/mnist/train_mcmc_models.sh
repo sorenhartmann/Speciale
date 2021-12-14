@@ -17,7 +17,8 @@ source .venv/bin/activate
 
 python scripts/inference.py -m hydra/launcher=joblib\
     +experiment=mnist \
-    experiment/mnist=glob(sghmc*) \
-    +extra_callbacks=save_samples_and_log_temp_all \
+    experiment/mnist="glob(sghmc*)" \
+    +extra_callbacks=make_sample_curve_and_log_temp \
     ++trainer.max_epochs=1000 \
-    ++data.num_workers=3
+    ++data.num_workers=0 \
+    test=true
