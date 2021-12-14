@@ -1,7 +1,10 @@
 import logging
-
+from re import S
+from typing import Dict, List, Optional
+from pytorch_lightning.utilities.types import EPOCH_OUTPUT
 import torch
 from torch.distributions import Gamma
+from torch import Tensor
 from src.bayesian.priors import NormalPrior
 
 from src.inference.base import InferenceModule
@@ -13,6 +16,7 @@ from src.inference.mcmc.sample_containers import (
 from src.inference.mcmc.samplers import SGHMC
 from src.inference.mcmc.variance_estimators import NextEpochException, NoStepException
 from src.bayesian.core import iter_bayesian_modules, to_bayesian_model
+from src.models.base import ErrorRate
 
 log = logging.getLogger(__name__)
 
@@ -27,6 +31,7 @@ class MCMCInference(InferenceModule):
         steps_per_sample=None,
         use_gibbs_step=True,
         prior_config=None,
+        filter_samples_before_test: float = 1.0,
     ):
 
         super().__init__()
@@ -53,12 +58,17 @@ class MCMCInference(InferenceModule):
         self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
         self._precision_gibbs_step()
 
+        self.filter_samples_before_test = filter_samples_before_test
+
     def configure_optimizers(self):
         pass
 
     def setup(self, stage) -> None:
 
         self.sampler.setup(self.posterior)
+
+
+    def on_fit_start(self) -> None:
         self.val_preds = {}
         self.val_logliks = {}
 
@@ -157,7 +167,7 @@ class MCMCInference(InferenceModule):
                 obs_model = self.model.observation_model_gvn_output(output)
                 pred += pred_
                 self.val_preds[i][batch_idx] = pred_
-                self.val_logliks[i][batch_idx] = obs_model.log_prob(y)
+                self.val_logliks[i][batch_idx] = obs_model.log_prob(y).sum()
                 self.sampler.samplable.state = old_state
 
         pred /= len(self.sample_container)
@@ -172,3 +182,45 @@ class MCMCInference(InferenceModule):
         for key in delete_keys:
             del self.val_preds[key]
             del self.val_logliks[key]
+
+    def on_test_epoch_start(self) -> None:
+
+        self.test_metric = ErrorRate()
+        if self.filter_samples_before_test != 1:
+            sample_logits = self.get_sample_logits()
+            
+    @torch.no_grad()
+    def test_step(self, batch, batch_idx):
+
+        x, y = batch
+
+        preds: Dict[int, Tensor] = {}
+        for i, sample in self.sample_container.items():
+            self.sampler.samplable.state = sample
+            preds[i] = self.model.predict(x)
+
+            self.log(f"err/test", self.test_metric(preds[i], y), prog_bar=True)
+
+        return {"batch_idx": batch_idx, "predictions": preds, "target": y}
+
+
+    def get_sample_logits(self):
+        return {
+            i: sum(x.sum() for x in logliks.values())
+            for i, logliks in self.val_logliks.items()
+        }
+
+def draw_n(logits: List[float], n: int) -> List[int]:
+    
+
+    if n == -1:
+        n = len(logits)
+
+    out = []
+    logits_t = torch.tensor(logits)
+    for _ in range(n):
+        i = torch.distributions.Categorical(logits=logits_t).sample().item()
+        out.append(i)
+        logits_t[i] = -float("inf")
+        
+    return out

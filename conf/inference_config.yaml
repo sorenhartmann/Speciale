@@ -8,3 +8,4 @@ defaults:
 
 out_dir : "inference"
 seed : 123
+test: false

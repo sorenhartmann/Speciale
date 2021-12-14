@@ -1,10 +1,16 @@
 from functools import cache
 from pathlib import Path
-from typing import Union
+from typing import Any, Optional, Union
 from pytorch_lightning import Callback, callbacks
+from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch
+from src.inference.mcmc.mcmc import draw_n
 from src.inference.mcmc.variance_estimators import WelfordEstimator
 from src.inference.mcmc.samplers import SGHMCWithVarianceEstimator
+from src.models.base import ErrorRate
+import pandas as pd
+import torchmetrics.functional as FM
+
 
 class SaveSamples(Callback):
     def __init__(self, unflatten=False):
@@ -117,7 +123,7 @@ class SGHMCLogTemperature(Callback):
             nu = pl_module.sampler.nu
             r = nu / step_size
             norm_squares = r * r
-        
+
         unflattened = pl_module.posterior.view._unflatten(norm_squares)
         for k, v in unflattened.items():
             self.temperature_samples[trainer.global_step, k] = {
@@ -132,7 +138,60 @@ class SGHMCLogTemperature(Callback):
 
 
 class LogSamplePredictionsWithLikelihood(Callback):
-
-    def on_fit_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+    def on_fit_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
         torch.save(pl_module.val_logliks, "val_logliks.pt")
         torch.save(pl_module.val_preds, "val_preds.pt")
+
+
+class GetSampleFilterCurve(Callback):
+    def on_fit_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        if pl_module.filter_samples_before_test != 1.0:
+            raise ValueError("Cannot create curve if downsampling")
+        self.error_rate = ErrorRate()
+
+    def on_test_epoch_start(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+
+        weight_logits = sorted(pl_module.get_sample_logits().items())
+        weight_logits = [x.item() for _, x in weight_logits]
+        self.samples_order = draw_n(weight_logits, -1)
+        self.results = []
+
+    def on_test_batch_end(
+        self,
+        trainer: "pl.Trainer",
+        pl_module: "pl.LightningModule",
+        outputs: Optional[STEP_OUTPUT],
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int,
+    ) -> None:
+
+        pred = 0
+        for i, sample_idx in enumerate(self.samples_order):
+            pred += outputs["predictions"][sample_idx]
+            error_rate = 1 - FM.accuracy(pred, outputs["target"])
+            self.results.append(
+                {
+                    "batch_idx": batch_idx,
+                    "with_n_samples": i + 1,
+                    "error_rate": error_rate.item(),
+                }
+            )
+
+    def on_test_epoch_end(
+        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
+    ) -> None:
+        stats : pd.DataFrame =  (
+            pd.DataFrame(self.results)
+            .set_index("batch_idx")
+            .groupby("with_n_samples")
+            .mean("error_rate")
+        )
+        stats.to_json("sample_resampling_curve.json")
+        
