@@ -60,6 +60,7 @@ class MCMCInference(InferenceModule):
 
         self.sampler.setup(self.posterior)
         self.val_preds = {}
+        self.val_logliks = {}
 
     def on_train_start(self) -> None:
 
@@ -143,15 +144,21 @@ class MCMCInference(InferenceModule):
 
             if i not in self.val_preds:
                 self.val_preds[i] = {}
+                self.val_logliks[i] = {}
 
             if batch_idx in self.val_preds[i]:
                 pred += self.val_preds[i][batch_idx]
 
             else:
+                old_state = self.sampler.samplable.state
                 self.sampler.samplable.state = sample
-                pred_ = self.model.predict(x)
+                output = self.model(x)
+                pred_ = self.model.predict_gvn_output(output)
+                obs_model = self.model.observation_model_gvn_output(output)
                 pred += pred_
                 self.val_preds[i][batch_idx] = pred_
+                self.val_logliks[i][batch_idx] = obs_model.log_prob(y)
+                self.sampler.samplable.state = old_state
 
         pred /= len(self.sample_container)
 
@@ -164,3 +171,4 @@ class MCMCInference(InferenceModule):
         delete_keys = set(self.val_preds) - set(self.sample_container.samples)
         for key in delete_keys:
             del self.val_preds[key]
+            del self.val_logliks[key]

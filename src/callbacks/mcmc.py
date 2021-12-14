@@ -129,3 +129,10 @@ class SGHMCLogTemperature(Callback):
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
         torch.save(self.temperature_samples, self.path)
+
+
+class LogSamplePredictionsWithLikelihood(Callback):
+
+    def on_fit_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule") -> None:
+        torch.save(pl_module.val_logliks, "val_logliks.pt")
+        torch.save(pl_module.val_preds, "val_preds.pt")
