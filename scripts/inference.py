@@ -21,8 +21,11 @@ def main(cfg):
     trainer = instantiate(cfg.trainer)
     trainer.fit(inference, dm)
 
+    if trainer.interrupted:
+        raise KeyboardInterrupt
+
     if cfg.test:
-        trainer.test(inference, dm)
+        trainer.test(inference, dm, ckpt_path=cfg.test_ckpt_path)
         
     return trainer.logged_metrics.get("err/val")
     

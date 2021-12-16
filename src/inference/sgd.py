@@ -1,6 +1,6 @@
 import torch.optim
 from torch import nn
-from src.models.base import Model
+from src.models.base import ErrorRate, Model
 
 from .base import InferenceModule
 from src.bayesian.core import to_bayesian_model, log_prior
@@ -53,6 +53,14 @@ class SGDInference(InferenceModule):
 
         for name, metric in self.val_metrics.items():
             self.log(f"{name}/val", metric(output, y), prog_bar=True)
+
+    def on_test_epoch_start(self) -> None:
+        self.test_metric = ErrorRate()
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        output = self.model(x)
+        self.log(f"err/test", self.test_metric(output, y), prog_bar=True)
 
     def configure_optimizers(self):
 

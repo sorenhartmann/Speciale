@@ -3,7 +3,7 @@ from typing import Callable, Optional
 from torch.distributions import Normal
 
 from src.inference.base import InferenceModule
-from src.models.base import Model
+from src.models.base import ErrorRate, Model
 from src.utils import ModuleAttributeHelper
 
 
@@ -14,7 +14,7 @@ from src.bayesian.core import (
 )
 from src.bayesian.modules import BayesianModule, BayesianNop, BayesianLinear
 from src.bayesian.priors import ScaleMixturePrior
-
+import torchmetrics.functional as FM
 
 from torch import nn
 import torch
@@ -244,6 +244,15 @@ class VariationalInference(InferenceModule):
         preds = torch.stack(self.forward_particles(x)).softmax(-1).mean(0)
         for name, metric in self.val_metrics.items():
             self.log(f"{name}/val", metric(preds, y), prog_bar=True)
+
+    def on_test_epoch_start(self) -> None:
+        self.test_metric = ErrorRate()
+
+    def test_step(self, batch, batch_idx):
+
+        x, y = batch
+        preds = torch.stack(self.forward_particles(x)).softmax(-1).mean(0)
+        self.log(f"err/test", self.test_metric(preds, y), prog_bar=True)
 
     def on_after_backward(self) -> None:
         if self._adjust_gradients:

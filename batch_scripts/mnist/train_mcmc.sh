@@ -1,6 +1,6 @@
 #!/bin/sh
 #BSUB -q hpc
-#BSUB -J train_mnist
+#BSUB -J train_mnist_mcmc
 #BSUB -n 8
 #BSUB -W 10:00
 #BSUB -B
@@ -21,4 +21,5 @@ python scripts/inference.py -m hydra/launcher=joblib\
     +extra_callbacks=make_sample_curve_and_log_temp \
     ++trainer.max_epochs=1000 \
     ++data.num_workers=0 \
+    ++trainer.progress_bar_refresh_rate=0 \
     test=true

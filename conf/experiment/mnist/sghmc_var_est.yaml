@@ -12,10 +12,10 @@ data:
     
 inference:
   sampler:
-    lr: 2.e-7
-    resample_momentum_every: 10000
-    alpha: 0.005
-    estimation_margin: 30
+    lr: 5.e-8
+    resample_momentum_every: 0
+    alpha: 0.003
+    estimation_margin: 20
   
 tag: sghmc_var_est
 

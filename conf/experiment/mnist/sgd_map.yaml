@@ -6,6 +6,10 @@ defaults:
 
 inference:
   use_map : True
+  prior_config:
+    log_sigma_1: 0
+    log_sigma_2: -7
+    mixture_ratio: 0.7
   
 data:
   batch_size: 128

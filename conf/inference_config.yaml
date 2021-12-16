@@ -9,3 +9,4 @@ defaults:
 out_dir : "inference"
 seed : 123
 test: false
+test_ckpt_path: null

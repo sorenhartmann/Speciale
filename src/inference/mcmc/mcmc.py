@@ -194,12 +194,15 @@ class MCMCInference(InferenceModule):
 
         x, y = batch
 
+        pred = 0
         preds: Dict[int, Tensor] = {}
         for i, sample in self.sample_container.items():
             self.sampler.samplable.state = sample
             preds[i] = self.model.predict(x)
+            pred += preds[i]
 
-            self.log(f"err/test", self.test_metric(preds[i], y), prog_bar=True)
+        pred /= len(self.sample_container)
+        self.log(f"err/test", self.test_metric(pred, y), prog_bar=True)
 
         return {"batch_idx": batch_idx, "predictions": preds, "target": y}
 
