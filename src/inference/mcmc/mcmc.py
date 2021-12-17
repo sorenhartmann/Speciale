@@ -70,7 +70,8 @@ class MCMCInference(InferenceModule):
 
     def on_fit_start(self) -> None:
         self.val_preds = {}
-        self.val_logliks = {}
+        self.val_joint_logliks = {}
+        self.val_avg_likelihood = {}
 
     def on_train_start(self) -> None:
 
@@ -154,7 +155,8 @@ class MCMCInference(InferenceModule):
 
             if i not in self.val_preds:
                 self.val_preds[i] = {}
-                self.val_logliks[i] = {}
+                self.val_joint_logliks[i] = {}
+                self.val_avg_likelihood[i] = {}
 
             if batch_idx in self.val_preds[i]:
                 pred += self.val_preds[i][batch_idx]
@@ -167,7 +169,9 @@ class MCMCInference(InferenceModule):
                 obs_model = self.model.observation_model_gvn_output(output)
                 pred += pred_
                 self.val_preds[i][batch_idx] = pred_
-                self.val_logliks[i][batch_idx] = obs_model.log_prob(y).sum()
+                log_prob : Tensor =  obs_model.log_prob(y)
+                self.val_joint_logliks[i][batch_idx] = log_prob.sum()
+                self.val_avg_likelihood[i][batch_idx] = log_prob.exp().mean()
                 self.sampler.samplable.state = old_state
 
         pred /= len(self.sample_container)
@@ -181,7 +185,8 @@ class MCMCInference(InferenceModule):
         delete_keys = set(self.val_preds) - set(self.sample_container.samples)
         for key in delete_keys:
             del self.val_preds[key]
-            del self.val_logliks[key]
+            del self.val_joint_logliks[key]
+            del self.val_avg_likelihood[key]
 
     def on_test_epoch_start(self) -> None:
 
@@ -210,7 +215,7 @@ class MCMCInference(InferenceModule):
     def get_sample_logits(self):
         return {
             i: sum(x.sum() for x in logliks.values())
-            for i, logliks in self.val_logliks.items()
+            for i, logliks in self.val_joint_logliks.items()
         }
 
 def draw_n(logits: List[float], n: int) -> List[int]:
