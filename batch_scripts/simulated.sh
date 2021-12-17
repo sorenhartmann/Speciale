@@ -15,4 +15,7 @@ module load python3/3.9.6
 cd ~/Documents/Speciale
 source .venv/bin/activate
 
-python scripts/inference.py -m hydra/launcher=joblib +experiment=simulated experiment/simulated="glob(*)" ++trainer.progress_bar_refresh_rate=0
+python scripts/inference.py -m hydra/launcher=joblib \
+    +experiment=simulated \
+    experiment/simulated="glob(*)" \
+    ++trainer.progress_bar_refresh_rate=0

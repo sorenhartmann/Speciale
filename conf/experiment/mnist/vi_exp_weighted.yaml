@@ -13,6 +13,6 @@ inference:
     log_sigma_1: 0
     log_sigma_2: -7
     mixture_ratio: 0.4
-
-tag: vi
-
+  kl_weighting_scheme:
+    _target_: src.inference.vi.ExponentialKLWeight
+  

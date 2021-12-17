@@ -1,9 +1,20 @@
+import importlib
 import math
+import os
+from contextlib import contextmanager
+from dataclasses import dataclass
 from itertools import accumulate, tee
+from pathlib import Path
+from typing import Union
 
+import pandas as pd
 import torch
 import torch.nn as nn
-import importlib 
+from omegaconf import OmegaConf
+from optuna import Study
+from tensorboard.backend.event_processing.event_accumulator import \
+    EventAccumulator
+
 
 def import_from(module, name):
     module = importlib.import_module(module)
@@ -189,3 +200,87 @@ class SilenceWarnings(Callback):
 
     def on_init_start(self, trainer):
         silence_warnings()
+
+from functools import cache
+
+@dataclass(frozen=True)
+class Run:
+    dir: Union[str, Path]
+
+    @property
+    def cfg(self):
+        return OmegaConf.load(self.dir / ".hydra" / "config.yaml")
+
+    @cache
+    def get_scalar(self, tag):
+        acc = EventAccumulator(str(self.dir.resolve() / "metrics"))
+        acc.Reload()
+
+        scalars = acc.Scalars(tag)
+        index = [x.step for x in scalars]
+        values = [x.value for x in scalars]
+
+        return pd.Series(values, name=tag, index=pd.Index(index, name="step"))
+
+    @property
+    def inference_label(self):
+        if "sampler" in self.cfg.inference:
+            if "VarianceEstimator" in self.cfg.inference.sampler._target_:
+                return "SGHMC (with var. est.)"
+            else:
+                return "SGHMC"
+        elif "n_particles" in self.cfg.inference:
+            return "VI"
+        else:
+            if self.cfg.model.dropout is None or self.cfg.model.dropout == 0:
+                return "SGD (MAP)"            
+            else:
+                return "SGD (dropout)"
+
+
+@dataclass
+class Sweep:
+    study: Study
+
+    def summary(self) -> pd.DataFrame:
+
+        return pd.DataFrame.from_records(
+            (
+                {
+                    "trial": trial.number,
+                    "datetime_start": trial.datetime_start,
+                    "err/val": trial.value,
+                    **trial.params,
+                }
+                for trial in self.study.trials
+            ),
+            index="trial",
+        ).sort_values("err/val")
+
+    def loss(self) -> pd.DataFrame:
+        return pd.concat(
+            pd.DataFrame({"err/val": trial.intermediate_values.values()})
+            .rename_axis(index="step")
+            .assign(trial=trial.number)
+            .set_index("trial", append=True)
+            for trial in self.study.trials
+        )
+
+
+@contextmanager
+def set_directory(path: Path):
+    """Sets the cwd within the context
+
+    Args:
+        path (Path): The path to the cwd
+
+    Yields:
+        None
+    """
+
+    origin = Path().absolute()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(origin)

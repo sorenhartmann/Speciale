@@ -20,9 +20,9 @@ source .venv/bin/activate
 
 python scripts/sweep.py \
     +experiment=mnist \
-    experiment/mnist=vi_with_corr \
+    experiment/mnist=vi_exp_weighted \
     sweep/search_space=vi \
-    sweep.study_name="mnist-vi-with-corr" \
+    sweep.study_name="mnist-vi-exp-weighted" \
     ++trainer.max_epochs=1000 \
     ++data.num_workers=3 \
     ++trainer.gpus=1
