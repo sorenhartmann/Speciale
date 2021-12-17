@@ -110,14 +110,12 @@ Determined to make experimentation as painless as possible, we instead make use 
 This allows us to specify the different configurations in terms of the \texttt{.yaml} files found in the \texttt{conf/} directory, which are then used for object instantiation based on the particular setup. 
 Since Hydra also supports nested instantiation, the aforementioned complexity is greatly alleviated.
 In fact, just about every component of the implementation are instantiated using Hydra, which makes it possible to use only a few scripts: \texttt{scripts/inference.py}, \texttt{scripts/sweep.py} and \texttt{scripts/sample.py} for every experiment. 
-With this also comes a bunch of convinient 
+With this also comes a bunch of convenient extra features such as overriding every just about anything in the command line, launching several combinations of configurations at once and automatic management of output directory for every run.
 
-Hydra also allows for relatively smooth integration with the hyperparameter optimization library Optuna \cite{akiba_optuna_2019}, which is used to find sensible values for the various hyperparameters of the algorithms.
-While it has built in support for using Optuna with 
-
-\section{Optuna}
-
-
+Hydra also allows for smooth integration with the hyperparameter optimization library Optuna \cite{akiba_optuna_2019}, which we use later find sensible values for the various hyperparameters of the algorithms. 
+The hyperparameters of interest are defined in terms of the corresponding configuration fields, each specified with a search space. 
+Hyperparameters are then suggested by optuna's API, and subsequently injected into the main configuration. 
+This is all done in the \texttt{scripts/sweep.py} script.
 
 \section{Simulated Experiments}
 
@@ -180,3 +178,17 @@ We find that the also with this approach to the naive SGHMC the batched HMC does
 with not even the marginal densities being anywhere close to the actual parameter posterior.
 Notably, the SGHMC seems to provide a more reasonable estimate, however still with some overdispersion.
 In the following section, a possible improvement upon this algorithm is discussed.
+
+\subsection{Variational Inference} 
+We can also repeat the experiment above using the variational inference framework.
+A comparison of the pairwise marginal distributions for the true posterior and the variational posterior can be seen in \cref{fig:vi-simulated}. 
+Since we are assuming independent variables for the variational posterior, the fit is not particular good compared to the MCMC methods. 
+However, this still serves to verify that the implementation is behaving as expected.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/vi-simulated.pdf}
+    \caption{Variational posterior compared to true posterior.}
+    \label{fig:vi-simulated}
+\end{figure}
+
+

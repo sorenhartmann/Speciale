@@ -118,8 +118,6 @@ The resulting distribution of $r^T M r$ can be seen in \cref{fig:temperature_sum
 We see that the while the samplers with estimated variance doesn't fit the distributional assumptions, they are all much closer than the for the sampler with $\hat \beta = 0$.
 The $\hat T_{0.99}$ statistic have also been calculated in \cref{tbl:temp_99}, alongside a confidence interval based on the binomial distribution.
 
-\todo[inline]{prøv med mindre stepsize eller kom videre? Mest for at vise om varians estimation kunne afhælpe fx dårlig lr eller beta estimat. (hvilket det kunne, til dels?)}
-
 It seem like the samplers with estimated variance are all underdispersing slightly, compared to the actual posterior. with  which would make sense if we are overestimating variance.
 Looking at the PLOT, the estimation margin estimates also seems relatively uniformly distributed on the log scale, which would mean that we are generally overestimating with larger magnitude. 
 Since we are overestimating the noise from batching, this would lead to us not adding sufficient noise to the system, leading to underdispersion.
@@ -127,12 +125,14 @@ Since we are overestimating the noise from batching, this would lead to us not a
 \section{MNIST}
 In this section, we will explore the performance of the different methods on the MNIST dataset for classification.
 
-While the original SGHMC paper does explore the performance on the MNIST dataset compared to dropout, they do so with a feed forward neural network with only a single hidden layer of size 100.
+The original SGHMC paper does explore the performance on the MNIST dataset compared to methods using dropout. 
 
+
+, they do so with a feed forward neural network with only a single hidden layer of size 100.
 
 While they demonstrate comparable performance, it doesn't really serve to compare the performance of the methods with respect to deep learning with  
 
-While the MNIST dataset is not really 
+While the MNIST dataset is not really
 
 \begin{figure}[htbp]
     \centering
@@ -140,6 +140,27 @@ While the MNIST dataset is not really
     \caption{Validation curves for best run found during hyperparameter search.}
     \label{<label>}
 \end{figure}
+
+From the validation curves corresponding 
+
+Based on these results, I choose the parameters
+
+
+Train the models yet again, and calculate the test error.
+
+Seeing as some of the models tend to overfit i use the best model according to validation error for the non-mcmc methods.
+
+I give the variational method a bit more time, to see where the performance increases if we let the model train for all 1000 epochs.
+
+
+
+\begin{table}[htbp]
+    \centering
+    \input{Tables/mnist_test_err}
+    \caption{<caption>}
+    \label{tab:mnist-test-err}
+\end{table}
+
 
 \section{Convolutional Neural Net}
 

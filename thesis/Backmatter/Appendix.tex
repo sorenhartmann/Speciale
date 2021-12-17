@@ -1,49 +1,129 @@
 \chapter{Hyperparameter sweeps}
 
-\begin{table}[htbp]
-    \centering
-    \input{Tables/mnist-sghmc-var-est-hparams}
-    \caption{Top 10 hyperparameters for INFERENCE according to optuna sweep.}
-    \label{tab:mnist-sghmc-var-est-hparams}
-\end{table}
 
 
 \begin{table}[htbp]
     \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
     \input{Tables/mnist-sgd-dropout-hparams}
-    \caption{Top 10 hyperparameters for INFERENCE according to optuna sweep.}
+    }
+    \caption{Top 10 hyperparameters for SGD with dropout according to optuna sweep.}
     \label{tab:mnist-sgd-dropout-hparams}
 \end{table}
 
 
 \begin{table}[htbp]
     \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
     \input{Tables/mnist-sgd-map-hparams}
-    \caption{Top 10 hyperparameters for INFERENCE according to optuna sweep.}
+    }
+    \caption{Top 10 hyperparameters for sgd with MAP estimate according to optuna sweep.}
     \label{tab:mnist-sgd-map-hparams}
 \end{table}
 
 
-\begin{table}[htbp]
-    \centering
-    \input{Tables/mnist-vi-hparams}
-    \caption{Top 10 hyperparameters for INFERENCE according to optuna sweep.}
-    \label{tab:mnist-vi-hparams}
-\end{table}
-
 
 \begin{table}[htbp]
     \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
     \input{Tables/mnist-sghmc-hparams}
-    \caption{Top 10 hyperparameters for INFERENCE according to optuna sweep.}
+    }
+    \caption{Top 10 hyperparameters for SGHMC according to optuna sweep.}
     \label{tab:mnist-sghmc-hparams}
 \end{table}
 
 
 \begin{table}[htbp]
     \centering
-    \input{Tables/mnist-vi-with-corr-hparams}
-    \caption{Top 10 hyperparameters for INFERENCE according to optuna sweep.}
-    \label{tab:mnist-vi-with-corr-hparams}
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
+    \input{Tables/mnist-sghmc-var-est-hparams}
+    }
+    \caption{Top 10 hyperparameters for SGHMC with variance estimation according to optuna sweep.}
+    \label{tab:mnist-sghmc-var-est-hparams}
 \end{table}
 
+
+
+\begin{table}[htbp]
+    \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
+    \input{Tables/mnist-vi-hparams}
+    }
+    \caption{Top 10 hyperparameters for variational inference according to optuna sweep.}
+    \label{tab:mnist-vi-hparams}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{p{4cm}p{9cm}}
+        \toprule
+        Algorithm & Parameters chosen \\ \midrule
+        SGD (dropout) & $\texttt{lr}=5\times 10^{-4}$,
+        $\texttt{dropout}=0.3$ \\ \midrule
+        SGD (MAP) & 
+        $\texttt{lr}=4 \times 10^{-4}$, 
+        $\log\sigma_1=0$, 
+        $\log\sigma_2=-7$, 
+        $\texttt{mixture\_ratio}=0.7$ \\ \midrule
+        SGHMC & $\texttt{lr}=10^{-6}$, $\alpha=0.05$ \\ \midrule
+        SGHMC (with variance estimate) &  $\texttt{lr}= 5 \times 10^{-8}$, 
+        $\alpha=0.003$,
+        $\texttt{estimation\_margin}=20$ \\ 
+        Variational inference &    
+        $\texttt{lr}=4 \times 10^{-4}$,
+        $\log\sigma_1=0$,
+        $\log\sigma_2=-7$,
+        $\texttt{mixture\_ratio}=0.4$,
+        $\texttt{n\_particles}=8$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Top 10 hyperparameters for variational inference according to optuna sweep.}
+    \label{tab:mnist-vi-hparams}
+\end{table}
+
+\begin{description}
+    \item[] 
+        
+    \item[SGD (MAP)] 
+        
+    \item[SGHMC] 
+        
+    \item[] 
+        
+    \item[Variational inference] 
+        $\texttt{lr}=4 \times 10^{-4}$,
+        $\log\sigma_1=0$,
+        $\log\sigma_2=-7$,
+        $\texttt{mixture\_ratio}=0.4$ and
+        $\texttt{n\_particles}=8$
+\end{description}

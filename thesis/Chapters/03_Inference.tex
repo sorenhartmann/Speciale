@@ -34,27 +34,29 @@ This can be achieved by using using the posterior distribution of the parameters
     \begin{aligned}
         p(y^\ast | x^\ast, \D) &= \int_{\Omega} p(y^\ast | x^\ast, \theta, \D)  p(\theta|\D) \dd\theta \\
         &= \int_{\Omega} p(y^\ast | x^\ast, \theta)  p(\theta|\D) \dd\theta\\
-        &= \E_{p(\theta|\D)} [p(y^\ast | x^\ast, \theta)]  \dd\theta
+        &= \E_{p(\theta|\D)} [p(y^\ast | x^\ast, \theta)] 
     \end{aligned}
 \end{equation}
 In practice, at least in the case of deep learning models, the above integral is not feasible to evaluate exactly.
 We may also not know the exact form of the posterior $p(\theta|\D)$, however by applying Bayes rule, we find that we are able to determine it up to a constant:
-\begin{align*}
-    p(\theta | \D) 
-    &= \frac{p(\bm X , \bm Y, \theta)}{p(\bm{X}, \bm{Y})}\\
-    &= \frac{p(\theta) p(\bm X) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})p(\bm{X})} \\
-    &= \frac{p(\theta) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})} \\
-    &\propto p(\theta) p(\bm Y | \bm X, \theta)
-\end{align*}
+\begin{equation} \label{eq:posterior}
+    \begin{aligned}
+        p(\theta | \D) 
+        &= \frac{p(\bm X , \bm Y, \theta)}{p(\bm{X}, \bm{Y})}\\
+        &= \frac{p(\theta) p(\bm X) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})p(\bm{X})} \\
+        &= \frac{p(\theta) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})} \\
+        &\propto p(\theta) p(\bm Y | \bm X, \theta).
+    \end{aligned}
+\end{equation}
 Here we use the factorization lent to us by the graphical model:
-\begin{align*}
+\begin{align}
     p(\bm X, \bm Y, \theta) = p(\theta) p(\bm X) p(\bm Y | \bm X, \theta).
-\end{align*}
+\end{align}
 It turns out that we are able to use $f(\theta) \propto p(\theta | \D)$ to generate samples from the posterior, which allows for the following Monte Carlo estimate of the predictive distribution:
-\begin{align*}
-    p(y^\ast | x^\ast, \D)  \approx \frac{1}{N} \sum_{j=1}^N p(y^\ast | x^\ast, \theta^{(i)}) 
-\end{align*}
-Where $\theta^{(i)}\sim p(\theta | \D)$.
+\begin{align}
+    p(y^\ast | x^\ast, \D)  \approx \frac{1}{N} \sum_{i=1}^N p(y^\ast | x^\ast, \theta^{(i)}),
+\end{align}
+where $\theta^{(i)}\sim p(\theta | \D)$.
 
 In the remaining chapter, we discuss two different strategies for sampling from posterior, Markov Chain Monte Carlo, and variational inference.
 The first approach should be able to generate samples from the exact posterior given enough time, while the latter method instead attempts to find a good approximation, turning the problem of inference into an optimization problem.
@@ -500,12 +502,7 @@ Where we have used that $\nabla p_t(z) = \nabla \exp[-H(z)]= -\nabla H(z) \exp[-
     \pdv{t} p_t(z) &= \sum_{i} \pdv{z_i} [ G\nabla H(z)p_t(z)]_i \\
     &= \sum_{i} \pdv{z_i} [ -G\nabla p_t(z)]_i \\
     &= \sum_{\theta_i} \pdv{\theta_i} [ -G\nabla p_t(z)]_{\theta_i}
-    + \sum_{r_i} \pdv{r_i} [ -G\nabla p_t(z)]_{r_i} \\
-    % &= \sum_{\theta_i} \pdv{\theta_i} [ -G\nabla p_t(z)]_{\theta_i}
-    % + \sum_{r_i} \pdv{r_i} [ -G\nabla p_t(z)]_{r_i} \\
-    % \pdv{t} p_t(z) &= 
-    % \sum_{\theta_i} \pdv{\theta_i} \left([ G\nabla H(z)p_t(z)]_i \right) +
-    % \sum_{r_i} \pdv{r_i} \left([ G\nabla H(z)p_t(z)]_i \right)
+    + \sum_{r_i} \pdv{r_i} [ -G\nabla p_t(z)]_{r_i}
 \end{align}
 Next, since 
 \begin{align*}
@@ -584,6 +581,9 @@ When is comes to choosing parameters for the methods, we can therefore to some e
         \EndFor
     \end{algorithmic}
 \end{algorithm}
+\todo[inline]{fix algorithm}
+
+\todo[inline]{conjugate prior of precision. flexible prior}
 
 \section{Variational Inference}
 
@@ -591,65 +591,76 @@ Suppose we want to sample from some posterior distribution $p(\theta | \D)$.
 Variational methods aims to approximate this posterior distribution using a so called variational distribution $q_\psi (\theta)$ parameterized by some parameters $\psi$.  
 We then seek to to find a value of these variational parameters, such that the variational distribution is as close to the posterior as possible. 
 As a quantifying measure of difference between the two distributions, we use the Kullback-Liebler divergence:
+
+
 \begin{align}
-    \text{KL}(q_\psi\parallel p) 
+    \kld{q_\psi(\theta)}{p(\theta|\D)} 
     = \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\D)}} \dd{\theta} 
     = E_{q_\psi}\left[\log{\frac{q_\psi(\theta)}{p(\theta|\D)}}\right]
 \end{align}
 that is, the inference problem turns into an optimization problem 
 \begin{align}
-    \psi^\ast=\arg\min_{\psi}{\text{KL}(q_\psi\parallel p)}.
-\end{align}
-Inserting the parameter posterior from REF into the expression
+    \psi^\ast=\arg\min_{\psi}{\kld{q_\psi(\theta)}{p(\theta|\D)} }.
+\end{align} 
+Inserting the parameter posterior from \cref{eq:posterior} into the expression above:
 \begin{align}
-    \text{KL}(q_\psi\parallel p) 
+    \kld{q_\psi(\theta)}{p(\theta|\D)} 
     &= \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\D)}} \dd{\theta} \\
     &= \int_{\Omega} q_\psi(\theta)\log{\frac{p(\bm{Y}|\bm{X})q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} \\
     &= \int_{\Omega} q_\psi(\theta)\log{p(\bm Y|\bm{X})} + q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} \\
-    &= E_{q_{\psi}} [\log{p(\bm{Y}|\bm{X})}] + \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} 
+    &= \log{p(\bm{Y}|\bm{X})} + \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} 
 \end{align}
-While we don't know the value of marginalized likelihood $\log{p(\bm{Y}|\bm{X})}$, since the parameters are marginalized, we can ignore the term for the purposes of the minimization problem.
+While we don't know the value of marginal likelihood $\log{p(\bm{Y}|\bm{X})}$, since it is constant with respect to the variational parameters $\psi$, we can ignore the term for the purposes of the minimization problem.
 We therefore seek to minimize:
-\begin{align}
+\begin{align} \label{eq:elbo}
     \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta|\bm{X})}} \dd{\theta} 
     &= \int_{\Omega} q_\psi(\theta) \log{\frac{q_\psi(\theta)}{p(\theta|\bm{X})}} -q_\psi(\theta)\log{p(\bm{Y} |\theta, \bm{X})} \dd{\theta}\\
-    &= \text{KL}(q_\psi(\theta) \parallel p(\theta))  - E_{q_\psi}\left[ \log{p(\bm{Y} |\theta, \bm{X})}  \right] 
+    &= \kld{q_\psi(\theta)}{p(\theta)}  - \E_{q_\psi}\left[ \log{p(\bm{Y} |\theta, \bm{X})}  \right] 
 \end{align}
-We can therefore see than finding the optimal variational parameters is equivalent to finding the variational parameters maximizing the expected likelihood while regularized such that it stays close to the prior distribution. 
+This quantity is know a 
+This representation gives some insight as to what kind of solution the variational optimization problem produces. 
+We see that we are seeking to maximize the expected likelihood, while keeping the variational distribution close to the prior with respect to the KL divergence.
+The form of this KL divergence may be found for some choices of prior and variational distributions, but not in general.
+Likewise, the the expected likelihood is not known explicitly either.
 
-
-How may we find derivatives of distributions:
+We can express the term being optimized as an expectation under the variational distribution $\E_{q_{\psi}}(f(\psi, \theta))$.
+In order to optimize this expression, we are going to need the derivative with respect to the variational parameters.
+We thus seek derivatives of the following form:
 \begin{align*}
-    \pdv{\psi} E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right]
+    \pdv{\psi} \E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right].
 \end{align*}
-This can be solved by using the reparameterization trick.
+Since we are differentiating with respect to the parameters of the distribution, we can't just move derivate within the expectation.
+We get around this by using the reparameterization trick.
 That is, introducing a parameterless random variable $\epsilon$ following some distribution distribution $s(\epsilon)$, and use a deterministic function $t(\epsilon, \psi)$ such that $t(\epsilon, \psi) \sim q_\psi(\theta)$.
-Then the expectation 
-$ E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] =E_{s(e)}\left[ f(\psi, t(\epsilon, \psi)) \right]$ and 
-\begin{align*}
-    \pdv{\psi} E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] 
-    &= \pdv{\psi} \int_\theta q_\psi(\theta) f(\psi, \theta)\dd{\theta}\\
-    &= \pdv{\psi} \int_\epsilon s(\epsilon) f(\psi, t(\epsilon, \psi))\dd{e}\\
-    &= \int_\epsilon \pdv{\psi} s(\epsilon) f(\psi, t(\epsilon, \psi))\dd{e}\\
-    &= \int_\epsilon s(\epsilon) \pdv{\psi} f(\psi, t(\epsilon, \psi)) \dd{e}
-\end{align*}
-Since $s(\epsilon)$ does not depend on the variational parameters $\psi$, we need only find the partial derivative of $f(\psi, t(\epsilon, \psi))$ using the chain rule:
-\begin{align*}
-    \pdv{\psi} f(\psi, t(\epsilon, \psi)) 
-    &= \pdv{f(\psi, \theta)}{\psi}
-    + \pdv{f(\psi, \theta)}{\theta}\pdv{t(\epsilon, \psi)}{\psi} 
-\end{align*}
-and so 
-\begin{align*}
-    \pdv{\psi} E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] 
-    &= \int_\epsilon s(\epsilon) \left(\pdv{f(\psi, \theta)}{\psi}
-    + \pdv{f(\psi, \theta)}{\theta}\pdv{t(\epsilon, \psi)}{\psi} \right) \dd{e} \\
-    &= E_{s(\epsilon)} \left[\pdv{f(\psi, \theta)}{\psi} 
-    + \pdv{f(\psi, \theta)}{\theta}\pdv{t(\epsilon, \psi)}{\psi} \right]
-\end{align*}
-How may we estimate this gradient?  Using 
+Then we can reparameterize the expectation as
+$ \E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] = \E_{s(\epsilon)}\left[ f(\psi, t(\epsilon, \psi)) \right]$.
+We therefore get
+\begin{equation}
+    \begin{aligned}
+        \pdv{\psi} \E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] &= \pdv{\psi}\E_{s(\epsilon)}\left[ f(\psi, t(\epsilon, \psi)) \right] \\
+        &= \pdv{\psi} \int_\epsilon s(\epsilon) f(\psi, t(\epsilon, \psi))\dd{\epsilon}\\
+        &= \int_\epsilon s(\epsilon) \pdv{\psi} f(\psi, t(\epsilon, \psi)) \dd{\epsilon}\\
+        &= \E_{s(\epsilon)} \left[ \pdv{\psi} f(\psi, t(\epsilon, \psi)) \right]
+    \end{aligned}
+\end{equation}
+We can then approximate the expected value by drawing $M$ samples from the $\epsilon_i\sim s(\epsilon)$, computing the gradient for each sample and averaging over the computed gradients:
+\begin{equation} 
+    \begin{aligned}
+        \pdv{\psi} \E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] &\approx \sum_{i=1}^{M} \frac{1}{M} \pdv{\psi} f(\psi, t(\epsilon_i, \psi)).  
+    \end{aligned}
+\end{equation}
 
-\begin{align*}
-    \frac{1}{N} \sum_{i=1}^N \pdv{f(\psi, \theta_i)}{\psi} 
-    + \pdv{f(\psi, \theta)}{\theta}\pdv{t(\epsilon_i, \psi)}{\psi} 
-\end{align*}
+In \cite{blundell_weight_2015} and in this project, we will only consider a gaussian distributions for the variational distribution.
+Furthermore, we will assume a diagonal covariance matrix. 
+This is often not a correct assumption as we will se later, however for a model with millions of parameters, it is simply not feasible to also estimate covariance parameters. 
+An advantage of using the diagonal gaussian is that it is easily reparameterized by scaling and shifting noise sampled from a standard gaussian distribution.
+
+This leaves us with the choice of prior distribution of the parameters.
+While for deep leaning purposes there is no clear choice of prior, we will use a scale mixture prior as proposed in \cite{blundell_weight_2015}.
+
+Finally, for batched learning, we are only looking at small part of the total dataset.
+If we simply calculate the  
+
+\todo[inline]{exponentially weighted}
+
+
