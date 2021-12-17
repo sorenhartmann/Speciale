@@ -137,13 +137,12 @@ class SGHMCLogTemperature(Callback):
         torch.save(self.temperature_samples, self.path)
 
 
-class LogSamplePredictionsWithLikelihood(Callback):
+class LogSampleLikelihood(Callback):
     def on_fit_end(
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
-        torch.save(pl_module.val_logliks, "val_logliks.pt")
-        torch.save(pl_module.val_preds, "val_preds.pt")
-
+        torch.save(pl_module.val_joint_logliks, "val_joint_logliks.pt")
+        torch.save(pl_module.val_avg_likelihood, "val_avg_likelihood.pt")
 
 class GetSampleFilterCurve(Callback):
     def on_fit_start(
