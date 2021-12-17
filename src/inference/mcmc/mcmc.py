@@ -185,7 +185,7 @@ class MCMCInference(InferenceModule):
 
     def on_test_epoch_start(self) -> None:
 
-        self.test_metric = ErrorRate()
+        self.test_metric = ErrorRate().to(device=self.device)
         if self.filter_samples_before_test != 1:
             sample_logits = self.get_sample_logits()
             

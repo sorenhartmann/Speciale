@@ -246,7 +246,7 @@ class VariationalInference(InferenceModule):
             self.log(f"{name}/val", metric(preds, y), prog_bar=True)
 
     def on_test_epoch_start(self) -> None:
-        self.test_metric = ErrorRate()
+        self.test_metric = ErrorRate().to(device=self.device)
 
     def test_step(self, batch, batch_idx):
 
