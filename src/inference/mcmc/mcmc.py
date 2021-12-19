@@ -31,7 +31,7 @@ class MCMCInference(InferenceModule):
         steps_per_sample=None,
         use_gibbs_step=True,
         prior_config=None,
-        filter_samples_before_test: float = 1.0,
+        # filter_samples_before_test: float = 1.0,
     ):
 
         super().__init__()
@@ -58,7 +58,7 @@ class MCMCInference(InferenceModule):
         self.val_metrics = torch.nn.ModuleDict(self.model.get_metrics())
         self._precision_gibbs_step()
 
-        self.filter_samples_before_test = filter_samples_before_test
+        # self.filter_samples_before_test = filter_samples_before_test
 
     def configure_optimizers(self):
         pass
@@ -67,11 +67,11 @@ class MCMCInference(InferenceModule):
 
         self.sampler.setup(self.posterior)
 
-
     def on_fit_start(self) -> None:
         self.val_preds = {}
-        self.val_joint_logliks = {}
-        self.val_avg_likelihood = {}
+        # self.val_joint_logliks: Dict[int, Dict[int, Tensor]] = {}
+        # self.val_avg_likelihood: Dict[int, Dict[int, Tensor]] = {}
+        # self.train_joint_logliks: Dict[int, Tensor] = {}
 
     def on_train_start(self) -> None:
 
@@ -125,6 +125,12 @@ class MCMCInference(InferenceModule):
             return self.posterior.state.clone().detach()
 
         self.sample_container.register_sample(get_sample)
+        # sample_idx = sorted(self.sample_container.samples)[-1]  # latest sample idx
+        # with self.posterior.observe(x, y):
+        #     with torch.no_grad():
+        #         train_join_loglik = self.posterior.log_likelihood() / sampling_fraction
+        #         self.log("loglik/train", train_join_loglik)
+        #         self.train_joint_logliks[sample_idx] = train_join_loglik
 
     def _precision_gibbs_step(self):
 
@@ -155,8 +161,8 @@ class MCMCInference(InferenceModule):
 
             if i not in self.val_preds:
                 self.val_preds[i] = {}
-                self.val_joint_logliks[i] = {}
-                self.val_avg_likelihood[i] = {}
+                # self.val_joint_logliks[i] = {}
+                # self.val_avg_likelihood[i] = {}
 
             if batch_idx in self.val_preds[i]:
                 pred += self.val_preds[i][batch_idx]
@@ -166,12 +172,12 @@ class MCMCInference(InferenceModule):
                 self.sampler.samplable.state = sample
                 output = self.model(x)
                 pred_ = self.model.predict_gvn_output(output)
-                obs_model = self.model.observation_model_gvn_output(output)
+                # obs_model = self.model.observation_model_gvn_output(output)
                 pred += pred_
                 self.val_preds[i][batch_idx] = pred_
-                log_prob : Tensor =  obs_model.log_prob(y)
-                self.val_joint_logliks[i][batch_idx] = log_prob.sum()
-                self.val_avg_likelihood[i][batch_idx] = log_prob.exp().mean()
+                # log_prob: Tensor = obs_model.log_prob(y)
+                # self.val_joint_logliks[i][batch_idx] = log_prob.sum()
+                # self.val_avg_likelihood[i][batch_idx] = log_prob.exp().mean()
                 self.sampler.samplable.state = old_state
 
         pred /= len(self.sample_container)
@@ -185,15 +191,15 @@ class MCMCInference(InferenceModule):
         delete_keys = set(self.val_preds) - set(self.sample_container.samples)
         for key in delete_keys:
             del self.val_preds[key]
-            del self.val_joint_logliks[key]
-            del self.val_avg_likelihood[key]
+            # del self.val_joint_logliks[key]
+            # del self.val_avg_likelihood[key]
 
     def on_test_epoch_start(self) -> None:
 
         self.test_metric = ErrorRate().to(device=self.device)
-        if self.filter_samples_before_test != 1:
-            sample_logits = self.get_sample_logits()
-            
+        # if self.filter_samples_before_test != 1:
+        #     sample_logits = self.get_sample_logits()
+
     @torch.no_grad()
     def test_step(self, batch, batch_idx):
 
@@ -209,26 +215,25 @@ class MCMCInference(InferenceModule):
         pred /= len(self.sample_container)
         self.log(f"err/test", self.test_metric(pred, y), prog_bar=True)
 
-        return {"batch_idx": batch_idx, "predictions": preds, "target": y}
+        return {"per_sample_predictions": preds, "predictions": pred}
+
+    # def get_sample_logits(self):
+    #     return {
+    #         i: sum(x.sum() for x in logliks.values())
+    #         for i, logliks in self.val_joint_logliks.items()
+    #     }
 
 
-    def get_sample_logits(self):
-        return {
-            i: sum(x.sum() for x in logliks.values())
-            for i, logliks in self.val_joint_logliks.items()
-        }
+# def draw_n(logits: List[float], n: int) -> List[int]:
 
-def draw_n(logits: List[float], n: int) -> List[int]:
-    
+#     if n == -1:
+#         n = len(logits)
 
-    if n == -1:
-        n = len(logits)
+#     out = []
+#     logits_t = torch.tensor(logits)
+#     for _ in range(n):
+#         i = torch.distributions.Categorical(logits=logits_t).sample().item()
+#         out.append(i)
+#         logits_t[i] = -float("inf")
 
-    out = []
-    logits_t = torch.tensor(logits)
-    for _ in range(n):
-        i = torch.distributions.Categorical(logits=logits_t).sample().item()
-        out.append(i)
-        logits_t[i] = -float("inf")
-        
-    return out
+#     return out

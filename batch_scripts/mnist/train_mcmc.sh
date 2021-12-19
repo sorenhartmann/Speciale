@@ -22,5 +22,5 @@ python scripts/inference.py -m hydra/launcher=joblib \
     ++data.num_workers=0 \
     ++trainer.progress_bar_refresh_rate=0 \
     trainer.max_time="00:10:00:00" \
-    +extra_callbacks=make_sample_curve_and_log_temp \
+    +extra_callbacks=log_temp_and_calculate_calibration \
     test=true

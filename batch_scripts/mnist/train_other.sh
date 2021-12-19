@@ -26,4 +26,5 @@ python scripts/inference.py -m \
     test=true \
     test_ckpt_path=best \
     ++trainer.progress_bar_refresh_rate=0 \
+    ++extra_callbacks=calculate_calibration \
     ++trainer.gpus=1 
