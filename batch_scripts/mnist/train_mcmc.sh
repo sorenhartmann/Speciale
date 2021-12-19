@@ -1,7 +1,7 @@
 #!/bin/sh
 #BSUB -q hpc
 #BSUB -J train_mnist_mcmc
-#BSUB -n 8
+#BSUB -n 2
 #BSUB -W 11:00
 #BSUB -B
 #BSUB -N
