@@ -22,41 +22,6 @@ class Sampler(torch.nn.Module):
     def next_sample(self):
         raise NotImplementedError
 
-
-class MetropolisHastings(Sampler):
-    def __init__(self, step_size=0.01):
-
-        super().__init__()
-        self.register_buffer("step_size", torch.tensor(0.01))
-
-    def setup(self, samplable):
-
-        self.samplable = samplable
-        self.log_p = None
-
-    @torch.no_grad()
-    def next_sample(self, return_sample=True):
-
-        if self.log_p is None:
-            self.log_p = self.samplable.prop_log_p()
-
-        self.samplable.state
-        for param in self.model.parameters():
-            param.copy_(Normal(param, self.step_size).sample())
-
-        new_log_p = self.model.prop_log_p()
-        log_ratio = new_log_p - self.log_p
-
-        if log_ratio > 0 or torch.bernoulli(log_ratio.exp()):
-            self.state = clone_parameters(self.model)
-            self.log_p = new_log_p
-            return self.state
-
-        else:
-            self.model.load_state_dict(self.state, strict=False)
-            return self.state
-
-
 class HamiltonianMixin:
     def U(self):
         return -self.samplable.prop_log_p()

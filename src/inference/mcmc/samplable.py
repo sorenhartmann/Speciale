@@ -30,7 +30,7 @@ class ParameterPosterior(Samplable):
 
     """Posterior of model parameters given observations"""
 
-    def __init__(self, model: Model, temperature: float = 1.):
+    def __init__(self, model: Model, temperature: float = 1.0):
 
         super().__init__()
 
@@ -43,14 +43,15 @@ class ParameterPosterior(Samplable):
         self._sampling_fraction = 1.0
 
     def prop_log_p(self) -> torch.Tensor:
-        prop_log_p =  (
-            log_prior(self.model)
-            + log_likelihood(self.model, x=self._x, y=self._y).sum()
-            / self._sampling_fraction
+        prop_log_p = (
+            log_prior(self.model) + self.log_likelihood() / self._sampling_fraction
         )
         # TODO: Add temperature?
 
         return prop_log_p
+
+    def log_likelihood(self):
+        return log_likelihood(self.model, x=self._x, y=self._y).sum()
 
     def grad_prop_log_p(self):
         self.model.zero_grad()

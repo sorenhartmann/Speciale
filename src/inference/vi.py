@@ -254,6 +254,8 @@ class VariationalInference(InferenceModule):
         preds = torch.stack(self.forward_particles(x)).softmax(-1).mean(0)
         self.log(f"err/test", self.test_metric(preds, y), prog_bar=True)
 
+        return {"predictions": preds}
+
     def on_after_backward(self) -> None:
         if self._adjust_gradients:
             for module in self.variational_modules():

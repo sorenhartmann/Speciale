@@ -61,6 +61,7 @@ class SGDInference(InferenceModule):
         x, y = batch
         output = self.model(x)
         self.log(f"err/test", self.test_metric(output, y), prog_bar=True)
+        return {"predictions": output.softmax(-1)}
 
     def configure_optimizers(self):
 
