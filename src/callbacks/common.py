@@ -27,17 +27,18 @@ class GetCalibrationCurve(Callback):
     ) -> None:
 
         _, y = batch
-        preds = outputs["predictions"]
+        class_prediction = outputs["predictions"].argmax(-1)
+        confidence = outputs["predictions"][...,class_prediction]
         self.predictions.append((preds, y))
 
     def on_test_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
 
-        target = torch.cat([x[1] for x in self.predictions])
-        probs = torch.cat([x[0] for x in self.predictions])
-        pred = probs.argmax(-1)
+        target = torch.cat([x[1] for x in self.predictions]).to(device="cpu").numpy()
+        probs = torch.cat([x[0] for x in self.predictions]).to(device="cpu").numpy()
+
         (
-            pd.DataFrame(probs.numpy())
-            .assign(target=target.numpy())
+            pd.DataFrame(probs)
+            .assign(target=target)
             .melt(id_vars="target", value_name="prob", var_name="class_")
             .assign(
                 target_is_class=lambda x: x.target == x.class_,
