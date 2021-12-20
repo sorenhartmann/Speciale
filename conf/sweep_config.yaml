@@ -29,11 +29,6 @@ optuna_callback:
   _target_: optuna.integration.PyTorchLightningPruningCallback
   monitor: ${sweep.monitor}
 
-
-
-# extra_callbacks:
-#   - ${early_stopping}
-  
 trainer:
   progress_bar_refresh_rate: 0
 
