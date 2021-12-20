@@ -3,18 +3,19 @@ from pytorch_lightning import Callback, Trainer, LightningModule
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 from torch import Tensor
 import torch
-
+from torchmetrics import CalibrationError
 import pandas as pd
+
+from src.utils import pairwise
 
 
 class GetCalibrationCurve(Callback):
-    def __init__(self, breaks: Optional[List[float]] = None) -> None:
-        if breaks is None:
-            breaks = [0, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99, 1]
-        self.breaks = breaks
+    def __init__(self, n_bins: int = 10) -> None:
+        self.n_bins = n_bins
 
     def on_test_epoch_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
-        self.predictions: List[Tuple[Tensor, Tensor]] = []
+        self.predictions: List[Dict[str, Tensor]] = []
+        self.calibration_error = CalibrationError().to(device=pl_module.device)
 
     def on_test_batch_end(
         self,
@@ -27,30 +28,27 @@ class GetCalibrationCurve(Callback):
     ) -> None:
 
         _, y = batch
-        class_prediction = outputs["predictions"].argmax(-1)
-        confidence = outputs["predictions"][...,class_prediction]
-        self.predictions.append((preds, y))
+        self.calibration_error(outputs["predictions"], y)
 
     def on_test_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
 
-        target = torch.cat([x[1] for x in self.predictions]).to(device="cpu").numpy()
-        probs = torch.cat([x[0] for x in self.predictions]).to(device="cpu").numpy()
+        pl_module.log("ece/test", self.calibration_error.compute())
+
+        confs = torch.cat(self.calibration_error.confidences).to(device="cpu").numpy()
+        accs = torch.cat(self.calibration_error.accuracies).to(device="cpu").numpy()
+
+        bins = self.calibration_error.bin_boundaries.tolist()
+        bin_labels = [f"({a:.2}, {b:.2}]" for a, b in pairwise(bins)]
 
         (
-            pd.DataFrame(probs)
-            .assign(target=target)
-            .melt(id_vars="target", value_name="prob", var_name="class_")
-            .assign(
-                target_is_class=lambda x: x.target == x.class_,
-                interval=lambda x: pd.cut(x.prob, self.breaks),
+            pd.DataFrame({"confidence": confs, "accuracy": accs})
+            .assign(bin=lambda x: pd.cut(x.confidence, bins, labels=bin_labels))
+            .groupby("bin")
+            .agg(
+                mean_confidence=pd.NamedAgg("confidence", aggfunc="mean"),
+                mean_accuracy=pd.NamedAgg("accuracy", aggfunc="mean"),
+                count=pd.NamedAgg("accuracy", aggfunc="count"),
             )
-            .groupby(["interval"])  # "variable"
-            .agg({"target_is_class": ["mean", "count"]})
-            .droplevel(0, axis=1)
-            .rename(columns={"mean": "proportion"})
-            .assign(lower=self.breaks[:-1], upper=self.breaks[1:])
             .reset_index()
-            .to_csv("calibration_data.csv")
+            .to_csv("ce_stats.csv", index=False)
         )
-
-
