@@ -125,9 +125,9 @@ class SGHMC(Sampler, HamiltonianMixin):
     ):
         super().__init__()
 
-        self.alpha = torch.tensor(alpha)
-        self.beta = torch.tensor(beta)
-        self.lr = torch.tensor(lr)
+        self.register_buffer("alpha", torch.tensor(alpha))
+        self.register_buffer("beta", torch.tensor(beta))
+        self.register_buffer("lr", torch.tensor(lr))
 
         self.err_std = torch.sqrt(2 * (self.alpha - self.beta) * self.lr)
 
@@ -205,7 +205,8 @@ class SGHMCWithVarianceEstimator(SGHMC, HamiltonianMixin):
 
         self.register_buffer("alpha", torch.tensor(alpha))
         self.register_buffer("lr_0", torch.tensor(lr))
-        self.lr = self.lr_0
+        self.register_buffer("lr", torch.tensor(lr))
+
 
         if variance_estimator is None:
             variance_estimator = InterBatchEstimator()

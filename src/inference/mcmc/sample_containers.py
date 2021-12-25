@@ -44,7 +44,7 @@ class FIFOSampleContainer(SampleContainer):
         self.stream_position += 1
 
 class CompleteSampleContainer(SampleContainer):
-    """Retain as set of samples given an stream of samples of unkown length"""
+    """Retain all samples"""
 
     def __init__(self):
         self.samples = {}
