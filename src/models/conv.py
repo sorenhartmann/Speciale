@@ -18,23 +18,26 @@ class ConvModel(Model):
         add = seq_builder.add
         out_dim = seq_builder.out_dim
 
-        add(nn.Conv2d(out_dim(0), 20, 5, 1, 2))
-
+        add(nn.Conv2d(out_dim(0), 40, 5, 1, 2))
         add(nn.BatchNorm2d(out_dim(0)))
         add(nn.ReLU())
-        add(nn.Conv2d(out_dim(0), 10, 5, 1, 2))
+        add(nn.MaxPool2d(2, 2))
 
+        add(nn.Conv2d(out_dim(0), 40, 5, 1, 2))
         add(nn.BatchNorm2d(out_dim(0)))
         add(nn.ReLU())
-        add(nn.Conv2d(out_dim(0), 10, 5, 1, 2))
+        add(nn.MaxPool2d(2, 2))
 
+        add(nn.Conv2d(out_dim(0), 40, 5, 1, 2))
         add(nn.BatchNorm2d(out_dim(0)))
         add(nn.ReLU())
-        add(nn.Conv2d(out_dim(0), 5, 5, 1, 2))
+        add(nn.MaxPool2d(2, 2))
 
         add(torch.nn.Flatten())
+
         if dropout > 0.:
             add(nn.Dropout(dropout))
+            
         add(nn.Linear(out_dim(0), 128))
         add(nn.ReLU())
         if dropout > 0.:
