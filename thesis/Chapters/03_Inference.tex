@@ -568,7 +568,7 @@ This parameterization can be seen in \cref{alg:sghmc}
 Comparing the algorithm with stochastic gradient descent with momentum, we see that  $\eta$ corresponds to learning rate while $\alpha$ corresponds to momentum decay. 
 When is comes to choosing parameters for the methods, we can therefore to some extend draw on experience and/or conventional wisdom.
 
-\begin{algorithm}[H]
+\begin{algorithm}[htpb]
     \caption{Stochastic Gradient Hamiltonian Monte Carlo} \label{alg:sghmc}
     \begin{algorithmic}
         \For{$n=1,2,\dots$}
@@ -614,11 +614,12 @@ While we don't know the value of marginal likelihood $\log{p(\bm{Y}|\bm{X})}$, s
 We therefore seek to minimize:
 \begin{align} \label{eq:elbo}
     \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta|\bm{X})}} \dd{\theta} 
-    &= \int_{\Omega} q_\psi(\theta) \log{\frac{q_\psi(\theta)}{p(\theta|\bm{X})}} -q_\psi(\theta)\log{p(\bm{Y} |\theta, \bm{X})} \dd{\theta}\\
-    &= \kld{q_\psi(\theta)}{p(\theta)}  - \E_{q_\psi}\left[ \log{p(\bm{Y} |\theta, \bm{X})}  \right] 
+    &= \int_{\Omega} q_\psi(\theta) \log{\frac{q_\psi(\theta)}{p(\theta)}} -q_\psi(\theta)\log{p(\bm{Y} |\theta, \bm{X})} \dd{\theta}\\
+    &= \kld{q_\psi(\theta)}{p(\theta)}  - \E_{q_\psi}\left[ \log{p(\bm{Y} |\theta, \bm{X})}  \right]  \\
+    &= -\mathcal{L}
 \end{align}
-This quantity is know a 
-This representation gives some insight as to what kind of solution the variational optimization problem produces. 
+The quantity $\mathcal{L}$ is known as the Evidence lower bound (ELBO), as it constitutes a lower bound on the model evidence $\log{p(\bm{Y}|\bm{X})}$. 
+This representation also gives some insight as to what kind of solution the variational optimization problem produces. 
 We see that we are seeking to maximize the expected likelihood, while keeping the variational distribution close to the prior with respect to the KL divergence.
 The form of this KL divergence may be found for some choices of prior and variational distributions, but not in general.
 Likewise, the the expected likelihood is not known explicitly either.
@@ -659,8 +660,28 @@ This leaves us with the choice of prior distribution of the parameters.
 While for deep leaning purposes there is no clear choice of prior, we will use a scale mixture prior as proposed in \cite{blundell_weight_2015}.
 
 Finally, for batched learning, we are only looking at small part of the total dataset.
-If we simply calculate the  
+The joint likelihood $\log p(\tilde{Y}|\theta,\tilde{X})$ of the batch will therefore be much lower than the true likelihood. 
+Since the KL term does not depend on the batch, if we simply calculate the ELBO without taking this fact into account, the likelihood will be too small in comparison.
+In order to get the correct ratio between the likelihood and the KL term, we divide the KL term by the number of batches. 
+\cite{blundell_weight_2015} also proposes a scheme weighting the KL term of the $i$'th batch with a factor $2^{M-i}/(2^{M}-1)$, allowing the algorithm to optimize for the prior during the early batches and then largely ignore the KL term for later batches.
 
-\todo[inline]{exponentially weighted}
 
-
+\begin{algorithm}[htbp]
+    \caption{Variational Inference} \label{alg:vi}
+    \begin{algorithmic}
+        \State with data batch $\tilde{\D}_i =(\tilde{\bm{X}}_i, \tilde{\bm{Y}}_i)$, variational parameters $\psi = (\mu, \rho)$, $M$ number of batches
+        \For{$i=1,\dots$}
+        \For{$j=1,\dots,K$}
+            \State sample $\epsilon \sim \mathcal{N}(0, \bm{I})$
+            \State $\theta_j \gets \mu + \epsilon \cdot \log(1+\exp(\rho))$
+            \State 
+            $L \gets 
+            \log{p(\tilde{\bm{Y}}_i|\tilde{\bm{X}}_i,\theta_j)}$
+            \State $D_{KL} \gets \log q_\psi(\theta_j) - \log{p(\theta_j)}$
+            \State $\mathcal{L}_j \gets L - D_{KL}/M $
+        \EndFor
+        \State $\overline{\mathcal{L}} \gets 1/K\cdot \sum_j \mathcal{L}_j$
+        \State Step optimization with gradient $\pdv{\psi} (-\overline{\mathcal{L}})$
+        \EndFor
+    \end{algorithmic}
+\end{algorithm}

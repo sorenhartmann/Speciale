@@ -1,8 +1,7 @@
-\chapter{Hyperparameter sweeps}
+\chapter{Hyperparameter sweeps} 
 
-
-
-\begin{table}[htbp]
+\section{MNIST} \label{apx:mnist-sweep}
+\begin{table}[H]
     \centering
     \resizebox{
         \ifdim\width>\columnwidth
@@ -18,7 +17,7 @@
 \end{table}
 
 
-\begin{table}[htbp]
+\begin{table}[H]
     \centering
     \resizebox{
         \ifdim\width>\columnwidth
@@ -35,7 +34,7 @@
 
 
 
-\begin{table}[htbp]
+\begin{table}[H]
     \centering
     \resizebox{
         \ifdim\width>\columnwidth
@@ -51,7 +50,7 @@
 \end{table}
 
 
-\begin{table}[htbp]
+\begin{table}[H]
     \centering
     \resizebox{
         \ifdim\width>\columnwidth
@@ -68,7 +67,7 @@
 
 
 
-\begin{table}[htbp]
+\begin{table}[H]
     \centering
     \resizebox{
         \ifdim\width>\columnwidth
@@ -83,7 +82,25 @@
     \label{tab:mnist-vi-hparams}
 \end{table}
 
-\begin{table}[htbp]
+
+\begin{table}[H]
+    \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
+    \input{Tables/mnist-vi-exp-weighted-hparams}
+    }
+    \caption{Top 10 hyperparameters for VI with exponentially scaled KL-term according to optuna sweep.}
+    \label{tab:mnist-vi-exp-weighted-hparams}
+\end{table}
+
+
+
+\begin{table}[H]
     \centering
     \begin{tabular}{p{4cm}p{9cm}}
         \toprule
@@ -107,23 +124,129 @@
         $\texttt{n\_particles}=8$ \\
         \bottomrule
     \end{tabular}
-    \caption{Top 10 hyperparameters for variational inference according to optuna sweep.}
-    \label{tab:mnist-vi-hparams}
+    \caption{Chosen hyperparameters for MNIST.}
+    \label{tab:mnist-hparams}
 \end{table}
 
-\begin{description}
-    \item[] 
-        
-    \item[SGD (MAP)] 
-        
-    \item[SGHMC] 
-        
-    \item[] 
-        
-    \item[Variational inference] 
-        $\texttt{lr}=4 \times 10^{-4}$,
-        $\log\sigma_1=0$,
-        $\log\sigma_2=-7$,
-        $\texttt{mixture\_ratio}=0.4$ and
-        $\texttt{n\_particles}=8$
-\end{description}
+\FloatBarrier
+
+\section{CIFAR10 - Small model}
+
+\begin{table}[H]
+    \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
+    \input{Tables/cifar-small-sgd-map-hparams}
+    }
+    \caption{Top 10 hyperparameters for SGD (MAP) on CIFAR10 dataset according to optuna sweep.}
+    \label{tab:cifar-small-sgd-map-hparams}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
+    \input{Tables/cifar-small-sgd-dropout-hparams}
+    }
+    \caption{Top 10 hyperparameters for SGD (dropout) on CIFAR10 dataset according to optuna sweep.}
+    \label{tab:cifar-small-sgd-dropout-hparams}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
+    \input{Tables/cifar-small-sghmc-hparams}
+    }
+    \caption{Top 10 hyperparameters for SGHMC on CIFAR10 dataset according to optuna sweep.}
+    \label{tab:cifar-small-sghmc-hparams}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
+    \input{Tables/cifar-small-sghmc-var-est-hparams}
+    }
+    \caption{Top 10 hyperparameters for SGHMC (with var. est.) on CIFAR10 dataset according to optuna sweep.}
+    \label{tab:cifar-small-sghmc-var-est-hparams}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
+    \input{Tables/cifar-small-vi-hparams}
+    }
+    \caption{Top 10 hyperparameters for VI on CIFAR10 dataset according to optuna sweep.}
+    \label{tab:cifar-small-vi-hparams}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \resizebox{
+        \ifdim\width>\columnwidth
+        \columnwidth
+      \else
+        \width
+      \fi
+    }{!}{\small
+    \input{Tables/cifar-small-vi-exp-weighted-hparams}
+    }
+    \caption{Top 10 hyperparameters for VI (exp. KL weight) on CIFAR10 dataset according to optuna sweep.}
+    \label{tab:cifar-small-vi-exp-weighted-hparams}
+\end{table}
+
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{p{4cm}p{9cm}}
+        \toprule
+        Algorithm & Parameters chosen \\ \midrule
+        SGD (MAP) & 
+        $\texttt{lr}=9 \times 10^{-4}$, 
+        $\log\sigma_1=-2$, 
+        $\log\sigma_2=-8$, 
+        $\texttt{mixture\_ratio}=0.7$ \\ \midrule
+        SGD (dropout) & $\texttt{lr}=3\times 10^{-4}$,
+        $\texttt{dropout}=0.6$ \\ \midrule
+        SGHMC & $\texttt{lr}=9\times 10^{-8}$, $\alpha=0.05$, \texttt{resample\_momentum\_every}=5000 \\ \midrule
+        SGHMC (with variance estimate) &  $\texttt{lr}= 5 \times 10^{-8}$, 
+        $\alpha=0.05$,
+        $\texttt{estimation\_margin}=5$, \texttt{resample\_momentum\_every}=2000 \\  \midrule
+        Variational inference &    
+        $\texttt{lr}=7 \times 10^{-4}$,
+        $\log\sigma_1=-1$,
+        $\log\sigma_2=-8$,
+        $\texttt{mixture\_ratio}=0.4$,
+        $\texttt{n\_particles}=10$, constant KL weight \\
+        \bottomrule
+    \end{tabular}
+    \caption{Chosen hyperparameters for CIFAR10 model.}
+    \label{tab:cifar10-small-hparams}
+\end{table}

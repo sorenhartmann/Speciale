@@ -1,3 +1,28 @@
 \chapter{Introduction}
+Modern deep learning models are incredible.
+Following our increase in computational resources, we have been able to construct and train ever more powerful and expressive models.
+Combined with the use of massive datasets, these model are, for better or for worse, changing the world around us. 
+Despite this, as the models become more complex, it also becomes more difficult to reason about how the models are actually interpreting and reasoning about the data they are fed.
 
-\todo[inline]{Introduction}
+For instance, we see that as models are achieving better performance, they also become increasingly poorly calibrated\cite{guo_calibration_2017}, making us question how much trust we should put in the. 
+We also see examples of certain adversarial attacks, for which even powerful models completely break down CITE(https://arxiv.org/abs/1906.00204).
+This warrants consideration, especially in areas where robustness of models are paramount, be that medical applications or self driving cars. 
+This naturally leads us to the question of what we can do in order to achieve more robust models.
+
+Most inference problems can generally be framed in terms of figuring out the conditional probabilistic model of some output targets given some input data.
+Typically, this model is parameterized by some parameters, which are often unknown.
+Training the model then usually consists of figuring out maximum likelihood estimates for these parameters, usually seen as an optimization problem.
+In Bayesian statistics, instead of relying on a single point estimate of the unknown parameters, we instead seek a posterior distribution for the parameters given our dataset.
+Using this method, we can generally achieve more robust results compared to just using point estimates. 
+However, if we are to apply this method to deep learning models, we are faced with some difficulties due to the large amount of data and high number of parameters.
+
+Bayesian Neural Networks has been the subject of some interest, and several papers over the recent years. 
+In \cite{chen_stochastic_2014} the Hamiltonian Monte Carlo algorithm for Bayesian inference is adapted to use in a batched learning setting. 
+\cite{blundell_weight_2015} a variational distribution is used for approximating the posterior, allowing for an optimization based approach.
+More recently, \cite{wilson_bayesian_2019} proposes using SGD weight iterates to approximate the posterior.
+
+This project serves is an exploration into implementing and applying the ideas from the former two papers.
+First, we will walk through and describe the two approaches, including the mathematical results underpinning them.
+The methods will then be compared to each other and a baseline.
+
+We will discuss different practical considerations, and also explore to what degree Bayesian methods can be implemented as a drop in replacement for regular SGD based algorithms.
