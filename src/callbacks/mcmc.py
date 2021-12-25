@@ -168,9 +168,11 @@ class GetSampleFilterCurve(Callback):
         self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
     ) -> None:
 
-        self.samples_order = torch.randperm(
+        sample_idx_order = torch.randperm(
             len(pl_module.sample_container), generator=torch.Generator().manual_seed(24)
         ).tolist()
+        sample_idx =  list(pl_module.sample_container)
+        self.samples_order = [sample_idx[i] for i in sample_idx_order]
         self.results = []
 
     def on_test_batch_end(
