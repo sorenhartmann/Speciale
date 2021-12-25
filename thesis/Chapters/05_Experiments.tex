@@ -16,7 +16,7 @@ Since the $\alpha$ corresponds to the momentum decay of the algorithm, we may en
 Instead, we keep $\alpha=CM^{-1}$ fixed, and adjust the mass matrix $M$, implicitly adjusting $C$ as well.
 With $M = M_0 W$ were $W$ is a diagonal matrix of weights, we can then, depending on the variance estimate, rescale the mass such that the upper bound $\alpha$ is sufficiently above the estimate $\hat\beta$, eg. by some factor $m_{\text{est}}$.
 If we let the learning rate be given as $\eta_0$  for the unscaled mass matrix with $W = I$, then the learning rate for the scaled system can be found as $\eta = \epsilon^2 M^{-1} = \epsilon^2 M_0^{-1}W^{-1} = \eta_0 W^{-1}$, and
-\begin{align*}
+\begin{align}
     m_{\text{est}} \cdot \hat{\beta}  &\leq \alpha \Leftrightarrow\\ 
     m_{\text{est}} \cdot \frac{1}{2} \hat V \eta   &\leq \alpha \Leftrightarrow\\ 
     m_{\text{est}} \cdot \frac{1}{2} \hat V \eta_0 W^{-1}  &\leq \alpha \Leftrightarrow\\ 
@@ -25,7 +25,7 @@ If we let the learning rate be given as $\eta_0$  for the unscaled mass matrix w
         1 & \frac{1}{2\alpha}m_{\text{est}} \eta_0 \hat{V}_{i,i} < 1 \\
         \frac{1}{2\alpha}m_{\text{est}} \eta_0 \hat{V}_{i,i} & \text{otherwise}
     \end{cases}
-\end{align*}
+\end{align}
 
 The sampler then every once in a while, eg. every 50 samples, rescales the system based on the variance estimates.
 If the variance estimates $\hat \beta$ happen to be greater than $\alpha$ in between the mass rescaling, the estimate is simply clamped at the upper bound $\alpha$, and no additional noise is generated.  
@@ -123,46 +123,141 @@ Looking at the PLOT, the estimation margin estimates also seems relatively unifo
 Since we are overestimating the noise from batching, this would lead to us not adding sufficient noise to the system, leading to underdispersion.
 
 \section{MNIST}
-In this section, we will explore the performance of the different methods on the MNIST dataset for classification.
+In this section, we will explore the performance of the different methods on the MNIST dataset for classification. 
+This dataset is often used to benchmark and compare different methods and implementations. 
+In \cite{chen_stochastic_2014} they also compare against MNIST, using a small neural network with a single hidden layer of 100 units.
+For this model, they demonstrate comparable, and even superior performance compared to SGD methods using weight regularization.
+The authors of \cite{blundell_weight_2015} also compare with MNIST, only they use much larger networks with two hidden layers of size 400, 800 and 1200. 
+They also compare against regular SGD, also using dropout during training. showing slightly better test performance of VI.
 
-The original SGHMC paper does explore the performance on the MNIST dataset compared to methods using dropout. 
+In this project, we compare all these methods using a regular feed forward neural network with two hidden layers of size 800 and using ReLU as activation function. 
+The different algorithms all have different hyperparameters, some more than others.
+As an effort to keep the comparison fair between the algorithms, the hyperparameter optimization framework Optuna \cite{akiba_optuna_2019} is used. 
+This framework treats the choice of hyperparameters as a black box optimization problem, trying to figure out what choices of parameters leads to the best validation error.
+\todo{optimizers}
 
-
-, they do so with a feed forward neural network with only a single hidden layer of size 100.
-
-While they demonstrate comparable performance, it doesn't really serve to compare the performance of the methods with respect to deep learning with  
-
-While the MNIST dataset is not really
-
+For each algorithm, we spend 24 hours to figure out sensible values for the various hyperparameters over 1000 epochs. 
+Since the variational method may be a lot slower than the other methods if using a lot of samples for estimating the ELBO gradient, we impose a 2 hour time limit for each training run. 
+The validation curve corresponding to the best run for each algorithm can be seen in \cref{fig:mnist-best-val-curves}.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=.9\linewidth]{Figures/mnist-best-runs-val-curves.pdf}
     \caption{Validation curves for best run found during hyperparameter search.}
-    \label{<label>}
+    \label{fig:mnist-best-val-curves}
 \end{figure}
 
-From the validation curves corresponding 
+Tables documenting the choice of parameters and related validation error can be seen in \cref{apx:mnist-sweep} 
+For each algorithm, the parameters are then set based on the top few results and the models are trained a final time.
+Seeing as some of the algorithms tended to overfit, the best model during training according to validation error is chosen for the non-MCMC methods.
+The variational algorithm is given some more time to finish training, to see whether the performance increases if we let the model train for all 1000 epochs. 
 
-Based on these results, I choose the parameters
+The resulting testing errors for each algorithm can be seen in \cref{tab:mnist-test-err}.
+\begin{table}[htbp]
+    \centering
+    \input{Tables/mnist_test_err}
+    \caption{Testing errors for MNIST for different inference algorithm.}
+    \label{tab:mnist-test-err}
+\end{table}
+We see that out of the methods attempted, regular SGD with dropout wins out. 
+Interestingly, both SGHMC methods seem to perform a significantly better than suggested by the validation error curves. 
+Since we used the validation set for tuning our parameters, we would in fact expect the opposite to be true. 
+Anyhow, both the validation and test error seems to indicate that the SGHMC using gradient variance estimation improves the predictive performance of the models.
+\todo{vi også med kl weightnign}
+
+not entriely fair comparison... downsample mnist <-
+
+% \subsection{Downsampling MCMC Samples}
+% For this experiment, we keep parameter samples for every epoch after the initial burn in period.
+For larger models, this may not be entirely feasible.
+It may also be worth exploring to what degree a larger ensemble of models affects the test error.
+In
+
+% \begin{figure}[htbp]
+%     \centering
+%     \includegraphics[width=\linewidth]{Figures/mnist-downsampling.pdf}  
+%     \caption{Test error of }
+%     \label{<label>}
+% \end{figure}
+\subsection{Model confidence}
+
+As mentioned in the introduction, overconfident models are a common phenomenon within modern deep learning, especially for deeper models. 
+A key motivator for experimenting with Bayesian methods has been to try and get a more robust and reliable estimate.
+As in CITE we use the \emph{expected calibration error} (ECE) for benchmarking the uncertainty of the different methods.
+For some set of predictions, the \emph{confidence} is defined as the estimated probability $\hat{p}$ of belonging to the estimated class.
+The ECE statistic compares the confidence of the model to the observed accuracies.
+This is done by first grouping the test observations into $M$ bins of size $1/M$, according to the confidence. 
+
+Then, the accuracy of each bin $B_m$, can be calculated as:
+\begin{align}
+    \acc(B_m) = \frac{1}{|B_m|}\sum_{i\in B_m}\bm{1}(\hat{y}_i = y_i)
+\end{align}
+Likewise, we calculate the average model confidence across the bin
+\begin{align}
+    \conf(B_m) = \frac{1}{|B_m|}\sum_{i\in B_m} \hat{p}_i.
+\end{align}
+Now, if the confidence of the model is to be trusted, we would expect $\acc{B_m} = \conf{B_m}$.
+These measures thus gives us a way to benchmark the uncertainty of the model.
+Further, we also calculate the ECE as the expected absolute difference between the accuracy and the confidence weighted according to the size of each bin
+\begin{align}
+    \text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n}|\acc(B_m)-\conf(B_m)|.
+\end{align}
+This gives us a single statistic to compare the inference methods across.
+In \cref{tab:mnist-ece}, the ECE for the test set can be seen for each of the inference methods. 
+\todo{comment on result}
+\begin{table}[htbp]
+    \centering
+    \input{Tables/mnist-ece.tex}
+    \caption{<caption>}
+    \label{tab:mnist-ece}
+\end{table}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/mnist-calibration.pdf}
+    \caption{<caption>}
+    \label{<label>}
+\end{figure}
+Interestingly, we see that the models trained with MCMC are both overconfident in their predictions.  
+Cifar bliver sgu nok sjovere. -> check assumptions
+\subsection{Checking SGHMC Assumptions}
+As with the polynomial model, we can use the marginal distribution of the momentum variables $r$ to examine how well the sampled distribution resembles the correct distribution. 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/mnist-temperatures.pdf}
+    \caption{Temperature distributions for different parameter groups in the model during SGHMC training.}
+    \label{fig:mnist-temperatures}
+\end{figure}
+We see that samples for neither sampling method really matches the correct marginal distribution for the momentum variables. 
+It therefore seems like the sampling methods breaks down for many parameters compared to the simple examples explored in the previous experiments.
+
+It is worth noting, that we optimized the choice of hyperparameters with respect to the validation error, which does not necessarily imply correctness of the samples from the posterior. 
 
 
-Train the models yet again, and calculate the test error.
+\todo{Having the probabilistic model is ill-posed -> to discussion?}
 
-Seeing as some of the models tend to overfit i use the best model according to validation error for the non-mcmc methods.
 
-I give the variational method a bit more time, to see where the performance increases if we let the model train for all 1000 epochs.
-
+\section{Convolutional Neural Net}
+While the combination of MNIST and feed forward neural networks are great for getting
 
 
 \begin{table}[htbp]
     \centering
-    \input{Tables/mnist_test_err}
+    \input{Tables/cifar-small-test-err.tex}
     \caption{<caption>}
-    \label{tab:mnist-test-err}
+    \label{<label>}
 \end{table}
 
-
-\section{Convolutional Neural Net}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{Figures/cifar10-small-calibration.pdf}
+    \caption{<caption>}
+    \label{<label>}
+\end{figure}
+\begin{table}[htbp]
+    \centering
+    \input{Tables/cifar-small-ece.tex}
+    \caption{<caption>}
+    \label{<label>}
+\end{table}
 
 \subsection{CIFAR10}
 
