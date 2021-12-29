@@ -22,7 +22,7 @@ source .venv/bin/activate
 python scripts/inference.py -m \
     +experiment=cifar10_densenet \
     experiment/cifar10_densenet=sghmc \
-    inference.sampler.lr=1e-8,1e-7,1e-6 \
+    inference.sampler.lr=2e-8,5e-8,1e-7 \
     ++trainer.max_epochs=1000 \
     ++trainer.max_time="00:07:00:00" \
     ++data.num_workers=3 \
