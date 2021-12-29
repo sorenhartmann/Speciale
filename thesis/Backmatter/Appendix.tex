@@ -222,31 +222,3 @@
     \label{tab:cifar-small-vi-exp-weighted-hparams}
 \end{table}
 
-
-\begin{table}[H]
-    \centering
-    \begin{tabular}{p{4cm}p{9cm}}
-        \toprule
-        Algorithm & Parameters chosen \\ \midrule
-        SGD (MAP) & 
-        $\texttt{lr}=9 \times 10^{-4}$, 
-        $\log\sigma_1=-2$, 
-        $\log\sigma_2=-8$, 
-        $\texttt{mixture\_ratio}=0.7$ \\ \midrule
-        SGD (dropout) & $\texttt{lr}=3\times 10^{-4}$,
-        $\texttt{dropout}=0.6$ \\ \midrule
-        SGHMC & $\texttt{lr}=9\times 10^{-8}$, $\alpha=0.05$, \texttt{resample\_momentum\_every}=5000 \\ \midrule
-        SGHMC (with variance estimate) &  $\texttt{lr}= 5 \times 10^{-8}$, 
-        $\alpha=0.05$,
-        $\texttt{estimation\_margin}=5$, \texttt{resample\_momentum\_every}=2000 \\  \midrule
-        Variational inference &    
-        $\texttt{lr}=7 \times 10^{-4}$,
-        $\log\sigma_1=-1$,
-        $\log\sigma_2=-8$,
-        $\texttt{mixture\_ratio}=0.4$,
-        $\texttt{n\_particles}=10$, constant KL weight \\
-        \bottomrule
-    \end{tabular}
-    \caption{Chosen hyperparameters for CIFAR10 model.}
-    \label{tab:cifar10-small-hparams}
-\end{table}

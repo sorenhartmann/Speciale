@@ -1,6 +1,6 @@
 % spellchecker: disable
 
-\documentclass[a4paper,twoside,11pt]{report} %openright
+\documentclass[a4paper,twoside,10.5pt]{report} %openright
 
 \input{Setup/Statics.tex}
 \input{Setup/Preamble.tex}
@@ -46,24 +46,35 @@ performance?
 
 estimatino variance helps?
 
+
 \section{Discussion}
 Applicability of mcmc methods for non-deep learning with lots of data -> registerforskning fx.
 
-what does it even mean to have a prior.
+what does it even mean to have a prior. correcntness of model
+
+Reweightnig/resmapling of samplesaccording to validation.
+
+how much does the correctness of the model matter -> model is obv. wrong...
+
+various problems with hparam search approach
+But prabably relavent for wanting to fit a model given a finitiate evalition budget
+all seem to be overfitting <- fine in the sense that we dont want to continue training. However probably is biased towards qui
+
+identificability huge search spaces
+
+discuss implementation
+ - Robust -- currently adhoc blablabla
+
+
+ineteristing to train from scratch? smaller models worked fine -> batch norm... proably doesnt do muich for smaller models compared to deep models
+-> dirty likelihoods
+
 
 VI methods -> flows?
 bunch of other stuff we could try to improve the performance of any of the methods lr scheduling, feature engineering, other model structures etc. 
 dropout for prob method per dirty likelihood.
 
-Reweightnig according to validation.
-
-how much does the correctness of the model matter -> model is obv. wrong...
-
-
-
-identificability huge search spaces
-
-
+lack of modelling techniques?
 
 %%%%%%%%%%%%%
 

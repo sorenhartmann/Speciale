@@ -238,3 +238,32 @@
 	pages = {1--6},
 	file = {Fezza et al. - 2019 - Perceptual Evaluation of Adversarial Attacks for C.pdf:/Users/soren/Zotero/storage/3TDWDIRB/Fezza et al. - 2019 - Perceptual Evaluation of Adversarial Attacks for C.pdf:application/pdf},
 }
+
+@article{maddox_simple_2019,
+	title = {A {Simple} {Baseline} for {Bayesian} {Uncertainty} in {Deep} {Learning}},
+	url = {http://arxiv.org/abs/1902.02476},
+	abstract = {We propose SWA-Gaussian (SWAG), a simple, scalable, and general purpose approach for uncertainty representation and calibration in deep learning. Stochastic Weight Averaging (SWA), which computes the first moment of stochastic gradient descent (SGD) iterates with a modified learning rate schedule, has recently been shown to improve generalization in deep learning. With SWAG, we fit a Gaussian using the SWA solution as the first moment and a low rank plus diagonal covariance also derived from the SGD iterates, forming an approximate posterior distribution over neural network weights; we then sample from this Gaussian distribution to perform Bayesian model averaging. We empirically find that SWAG approximates the shape of the true posterior, in accordance with results describing the stationary distribution of SGD iterates. Moreover, we demonstrate that SWAG performs well on a wide variety of tasks, including out of sample detection, calibration, and transfer learning, in comparison to many popular alternatives including MC dropout, KFAC Laplace, SGLD, and temperature scaling.},
+	urldate = {2021-12-23},
+	journal = {arXiv:1902.02476 [cs, stat]},
+	author = {Maddox, Wesley and Garipov, Timur and Izmailov, Pavel and Vetrov, Dmitry and Wilson, Andrew Gordon},
+	month = dec,
+	year = {2019},
+	note = {arXiv: 1902.02476},
+	keywords = {Computer Science - Machine Learning, Statistics - Machine Learning, Computer Science - Artificial Intelligence, Computer Science - Computer Vision and Pattern Recognition},
+	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/JRQNEEK6/Maddox et al. - 2019 - A Simple Baseline for Bayesian Uncertainty in Deep.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/R9RRSQLX/1902.html:text/html},
+}
+
+@article{ioffe_batch_2015,
+	title = {Batch {Normalization}: {Accelerating} {Deep} {Network} {Training} by {Reducing} {Internal} {Covariate} {Shift}},
+	shorttitle = {Batch {Normalization}},
+	url = {http://arxiv.org/abs/1502.03167},
+	abstract = {Training Deep Neural Networks is complicated by the fact that the distribution of each layer's inputs changes during training, as the parameters of the previous layers change. This slows down the training by requiring lower learning rates and careful parameter initialization, and makes it notoriously hard to train models with saturating nonlinearities. We refer to this phenomenon as internal covariate shift, and address the problem by normalizing layer inputs. Our method draws its strength from making normalization a part of the model architecture and performing the normalization for each training mini-batch. Batch Normalization allows us to use much higher learning rates and be less careful about initialization. It also acts as a regularizer, in some cases eliminating the need for Dropout. Applied to a state-of-the-art image classification model, Batch Normalization achieves the same accuracy with 14 times fewer training steps, and beats the original model by a significant margin. Using an ensemble of batch-normalized networks, we improve upon the best published result on ImageNet classification: reaching 4.9\% top-5 validation error (and 4.8\% test error), exceeding the accuracy of human raters.},
+	urldate = {2021-12-25},
+	journal = {arXiv:1502.03167 [cs]},
+	author = {Ioffe, Sergey and Szegedy, Christian},
+	month = mar,
+	year = {2015},
+	note = {arXiv: 1502.03167},
+	keywords = {Computer Science - Machine Learning},
+	file = {arXiv Fulltext PDF:/Users/soren/Zotero/storage/ZIUMWMPH/Ioffe and Szegedy - 2015 - Batch Normalization Accelerating Deep Network Tra.pdf:application/pdf;arXiv.org Snapshot:/Users/soren/Zotero/storage/Z8GCSFDM/1502.html:text/html},
+}
