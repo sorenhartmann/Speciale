@@ -6,6 +6,12 @@ defaults:
 data:
   batch_size: 128
 
+inference:
+  lr: 5e-4
+  n_particles: 7
+  prior_config:
+    log_sigma_1: -1
+    log_sigma_2: -8
+    mixture_ratio: 0.35
 
-tag: vi
-
+  

@@ -2,12 +2,16 @@
 
 defaults:
   - override /inference : mcmc
+  - override /inference/sampler : sghmc
+  - override /inference/sample_container: doubling
+
 
 inference:
   sampler:
-    lr: 2.e-7
+    lr: 9.e-8
+    alpha: 0.05
+    resample_momentum_every: 10000
+
   sample_container:
-    max_items: 100
-
-
-tag: sghmc
+    max_items: 200
+    

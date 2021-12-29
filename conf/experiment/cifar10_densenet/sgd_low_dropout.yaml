@@ -5,11 +5,9 @@ defaults:
 
 inference:
   use_map: False
-  lr: 9e-04
+  lr: 3e-04
   
-data:
-  batch_size: 128
 
 model:
-  dropout: 0.6
+  dropout: 0.3
 

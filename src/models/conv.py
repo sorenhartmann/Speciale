@@ -34,15 +34,7 @@ class ConvModel(Model):
         add(nn.MaxPool2d(2, 2))
 
         add(torch.nn.Flatten())
-
-        if dropout > 0.:
-            add(nn.Dropout(dropout))
-            
-        add(nn.Linear(out_dim(0), 128))
-        add(nn.ReLU())
-        if dropout > 0.:
-            add(nn.Dropout(dropout))
-        add(nn.Linear(out_dim(0), 512))
+        add(nn.Linear(out_dim(0), 256))
         add(nn.ReLU())
         if dropout > 0.:
             add(nn.Dropout(dropout))

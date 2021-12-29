@@ -1,9 +1,9 @@
 #!/bin/sh
 #BSUB -q gpuv100
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -J train_mnist_other
+#BSUB -J train_cifar_densenet_sgd_no_dropout
 #BSUB -n 4
-#BSUB -W 10:00
+#BSUB -W 24:00
 #BSUB -B
 #BSUB -N
 #BSUB -R span[hosts=1]
@@ -20,11 +20,12 @@ cd ~/Documents/Speciale
 source .venv/bin/activate
 
 python scripts/inference.py -m \
-    +experiment=mnist \
-    experiment/mnist=sgd_dropout,sgd_map,vi_exp_weighted \
-    trainer=best_checkpoint \
-    trainer.max_epochs=1000 \
-    trainer.max_time="00:06:00:00" \
+    +experiment=cifar10_densenet \
+    experiment/cifar10_densenet=sgd_no_dropout \
+    inference.lr=1e-5,1e-4,1e-3 \
+    ++trainer.max_epochs=1000 \
+    ++trainer.max_time="00:07:00:00" \
+    trainer=best_checkpoint_top_ten \
     ++data.num_workers=3 \
     test=true \
     test_ckpt_path=best \

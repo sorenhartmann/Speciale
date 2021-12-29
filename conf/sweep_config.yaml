@@ -23,7 +23,7 @@ sweep:
   monitor: "err/val"
 
   optimize_args:
-    n_trials: 1000
+    n_trials: 200
 
 optuna_callback:
   _target_: optuna.integration.PyTorchLightningPruningCallback

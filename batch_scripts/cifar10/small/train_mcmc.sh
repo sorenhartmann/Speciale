@@ -1,8 +1,9 @@
 #!/bin/sh
-#BSUB -q hpc
-#BSUB -J train_mnist_mcmc
-#BSUB -n 2
-#BSUB -W 11:00
+#BSUB -q gpuv100
+#BSUB -gpu "num=1:mode=exclusive_process"
+#BSUB -J train_cifar_small_mcmc
+#BSUB -n 4
+#BSUB -W 6:30
 #BSUB -B
 #BSUB -N
 #BSUB -R span[hosts=1]
@@ -18,12 +19,13 @@ module load cudnn/v7.0-prod-cuda8
 cd ~/Documents/Speciale
 source .venv/bin/activate
 
-python scripts/inference.py -m hydra/launcher=joblib \
-    +experiment=mnist \
-    experiment/mnist="glob(sghmc*)" \
+python scripts/inference.py -m \
+    +experiment=cifar10_small \
+    experiment/cifar10_small=sghmc,sghmc_var_est \
     ++trainer.max_epochs=1000 \
-    ++data.num_workers=0 \
+    ++trainer.max_time="00:03:00:00" \
+    ++data.num_workers=3 \
+    test=true \
     ++trainer.progress_bar_refresh_rate=0 \
-    trainer.max_time="00:10:00:00" \
     +extra_callbacks=log_temp_and_calculate_calibration \
-    test=true
+    ++trainer.gpus=1 

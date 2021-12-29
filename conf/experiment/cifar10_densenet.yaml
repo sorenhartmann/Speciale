@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - /experiment/cifar10_densenet : ???
+  - /experiment/cifar10_densenet : "???"
   - override /data : cifar
   - override /model : densenet_classifier
   - _self_

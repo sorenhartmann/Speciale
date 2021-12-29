@@ -3,13 +3,13 @@
 defaults:
   - override /inference : vi
 
-data:
-  batch_size: 128
 
 inference:
-  n_particles: 4
-  lr: 2.e-5
+  lr: 7e-4
+  n_particles: 5
+  prior_config:
+    log_sigma_1: -1
+    log_sigma_2: -8
+    mixture_ratio: 0.4
 
-
-tag: vi
-
+  

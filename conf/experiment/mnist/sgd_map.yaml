@@ -6,6 +6,7 @@ defaults:
 
 inference:
   use_map : True
+  lr: 4e-4
   prior_config:
     log_sigma_1: 0
     log_sigma_2: -7

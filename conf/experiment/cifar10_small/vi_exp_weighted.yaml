@@ -1,0 +1,12 @@
+# @package _global_
+
+defaults:
+  - override /inference : vi
+
+data:
+  batch_size: 128
+
+inference:
+  kl_weighting_scheme:
+    _target_: src.inference.vi.ExponentialKLWeight
+  

@@ -1,9 +1,9 @@
 #!/bin/sh
 #BSUB -q gpuv100
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -J cifar10_densenet_sghmc_var_est
+#BSUB -J cifar_small_sgd_dropout
 #BSUB -n 4
-#BSUB -W 24:00
+#BSUB -W 12:00
 #BSUB -B
 #BSUB -N
 #BSUB -R span[hosts=1]
@@ -18,10 +18,11 @@ module load cudnn/v7.0-prod-cuda8
 cd ~/Documents/Speciale
 source .venv/bin/activate
 
-python scripts/inference.py \
-    +experiment=cifar10_densenet \
-    experiment/cifar10_densenet=sghmc_var_est \
-    ++trainer.max_epochs=1600 \
-    ++data.num_workers=2 \
-    ++trainer.gpus=1 \
-    ++trainer.progress_bar_refresh_rate=0
+python scripts/sweep.py \
+    +experiment=cifar10_small \
+    experiment/cifar10_small=sgd_dropout \
+    sweep/search_space=sgd_dropout \
+    sweep.study_name="cifar-small-sgd-dropout" \
+    +extra_callbacks=early_stopping \
+    ++data.num_workers=3 \
+    ++trainer.gpus=1

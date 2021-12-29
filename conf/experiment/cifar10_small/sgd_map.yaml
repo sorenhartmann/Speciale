@@ -6,9 +6,12 @@ defaults:
 
 inference:
   use_map : True
+  lr: 9e-4
+  prior_config:
+    log_sigma_1: -2
+    log_sigma_2: -8
+    mixture_ratio: 0.6
   
 data:
   batch_size: 128
-
-tag: sgd-map
 

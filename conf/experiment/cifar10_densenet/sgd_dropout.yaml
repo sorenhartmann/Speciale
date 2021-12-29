@@ -2,14 +2,12 @@
 
 defaults:
   - override /inference : sgd
-  
-data:
-  batch_size: 128
-
-model:
-  dropout: 0.3
 
 inference:
-  lr: 5.e-5
+  use_map: False
+  lr: 3e-04
+  
 
-tag: sgd
+model:
+  dropout: 0.6
+
