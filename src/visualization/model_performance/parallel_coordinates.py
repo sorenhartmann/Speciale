@@ -1,5 +1,3 @@
-
-
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,9 +10,9 @@ def _guess_log_scale(values):
 
     y = np.sort(values)
     x = np.arange(len(y))
-    _, _, r_norm, _, _  = linregress(x, y)
+    _, _, r_norm, _, _ = linregress(x, y)
     if np.all(y > 0):
-        _, _, r_log, _, _  = linregress(x, np.log(y))
+        _, _, r_log, _, _ = linregress(x, np.log(y))
     else:
         r_log = -np.inf
 
@@ -28,7 +26,7 @@ def parallel_coordinates(data, columns, value, cmap=None):
     ynames = columns + [value]
     ys = data[ynames].to_numpy()
 
-    for i in range(ys.shape[1]-1):
+    for i in range(ys.shape[1] - 1):
         if _guess_log_scale(ys[:, i]):
             ys[:, i] = np.log(ys[:, i])
             ynames[i] = f"log({ynames[i]})"
@@ -42,7 +40,6 @@ def parallel_coordinates(data, columns, value, cmap=None):
     zs = np.zeros_like(ys)
     zs[:, 0] = ys[:, 0]
     zs[:, 1:] = (ys[:, 1:] - ymins[1:]) / dys[1:] * dys[0] + ymins[0]
-
 
     host = plt.gca()
     # fig, host = plt.subplots(figsize=(10,4))
@@ -94,4 +91,3 @@ def parallel_coordinates(data, columns, value, cmap=None):
 
     plt.tight_layout()
     plt.show()
-

@@ -1,4 +1,5 @@
 import torch
+
 from src.models.base import ClassifierMixin, Model
 
 
@@ -20,6 +21,7 @@ class Densenet(Model):
 
     def forward(self, x):
         return self.net.forward(x)
+
 
 class DensenetClassifier(ClassifierMixin, Densenet):
     ...

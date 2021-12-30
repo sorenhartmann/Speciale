@@ -1,11 +1,13 @@
-from typing import Any, Dict, List, Optional, Tuple
-from pytorch_lightning import Callback, Trainer, LightningModule
+from typing import Dict, List, Optional, cast
+
+import pandas as pd
+import torch
+from pytorch_lightning import Callback, LightningModule, Trainer
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 from torch import Tensor
-import torch
 from torchmetrics import CalibrationError
-import pandas as pd
 
+from src.inference.base import BATCH_IN
 from src.utils import pairwise
 
 
@@ -22,22 +24,28 @@ class GetCalibrationCurve(Callback):
         trainer: Trainer,
         pl_module: LightningModule,
         outputs: Optional[STEP_OUTPUT],
-        batch: Any,
+        batch: BATCH_IN,
         batch_idx: int,
         dataloader_idx: int,
     ) -> None:
 
+        assert isinstance(outputs, dict)
+
         _, y = batch
+
         self.calibration_error(outputs["predictions"], y)
 
     def on_test_epoch_end(self, trainer: Trainer, pl_module: LightningModule) -> None:
 
         pl_module.log("ece/test", self.calibration_error.compute())
 
-        confs = torch.cat(self.calibration_error.confidences).to(device="cpu").numpy()
-        accs = torch.cat(self.calibration_error.accuracies).to(device="cpu").numpy()
+        confidences = cast(List[Tensor], self.calibration_error.confidences)
+        accuracies = cast(List[Tensor], self.calibration_error.accuracies)
 
-        bins = self.calibration_error.bin_boundaries.tolist()
+        confs = torch.cat(confidences).to(device="cpu").numpy()
+        accs = torch.cat(accuracies).to(device="cpu").numpy()
+
+        bins = cast(Tensor, self.calibration_error.bin_boundaries).tolist()
         bin_labels = [f"({a:.2}, {b:.2}]" for a, b in pairwise(bins)]
 
         (

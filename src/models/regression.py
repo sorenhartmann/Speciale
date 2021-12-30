@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -6,6 +6,7 @@ import torchmetrics
 from torch import Tensor
 
 from src.models.base import Model
+
 
 class RegressionModel(Model):
     def __init__(self, n_vars):
@@ -22,4 +23,4 @@ class RegressionModel(Model):
         return torch.distributions.Normal(output, 1.0)
 
     def get_metrics(self) -> Dict[str, torchmetrics.Metric]:
-        return {"mse" : torchmetrics.MeanSquaredError()}
+        return {"mse": torchmetrics.MeanSquaredError()}

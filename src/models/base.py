@@ -8,7 +8,6 @@ from torch import Tensor
 
 
 class Model(nn.Module):
-
     def observation_model_gvn_output(self, output: Tensor):
         """Returns p(y | x, theta) given the model output, f(x)"""
         raise NotImplementedError
@@ -32,22 +31,20 @@ class Model(nn.Module):
         return self.predict_gvn_output(self.forward(x))
 
 
-
 class ErrorRate(torchmetrics.Accuracy):
-
     def compute(self) -> Tensor:
         return 1 - super().compute()
 
-class ClassifierMixin:
 
+class ClassifierMixin:
     def observation_model_gvn_output(self, logits: torch.FloatTensor):
         return torch.distributions.Categorical(logits=logits)
 
     def loss(self, output: torch.FloatTensor, target: torch.FloatTensor):
         return F.cross_entropy(output, target)
-    
+
     def predict_gvn_output(self, output):
         return output.softmax(-1)
 
-    def get_metrics(self):        
-        return {"err" : ErrorRate()}
+    def get_metrics(self):
+        return {"err": ErrorRate()}

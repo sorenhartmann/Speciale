@@ -1,50 +1,56 @@
-import os
-import hydra
-import torch
-from hydra.utils import instantiate, get_original_cwd
-from contextlib import contextmanager
 from pathlib import Path
+from typing import Any, Dict, cast
+
+import hydra
 import optuna
-from omegaconf import OmegaConf
+import torch
+from hydra.utils import get_original_cwd, instantiate
+from omegaconf import DictConfig, OmegaConf
+from optuna import Trial
+from pytorch_lightning import Trainer
 
-@contextmanager
-def set_directory(path: Path):
+from src.data.data_module import DataModule
+from src.inference.base import InferenceModule
+from src.utils import set_directory
 
-    origin = Path().absolute()
-    try:
-        os.chdir(path)
-        yield
-    finally:
-        os.chdir(origin)
 
-def get_search_grid(search_space):
-    return {k : v["_grid_options_"] for k,v in search_space.items()}
+def get_search_grid(search_space: DictConfig) -> Dict[str, Any]:
+    search_space_ = cast(Dict[str, Any], search_space)  # Hydra shenanigans
+    return {k: v["_grid_options_"] for k, v in search_space_.items()}
 
-def get_sqlite_storage_string(study_name):
+
+def get_sqlite_storage_string(study_name: str) -> str:
     return f"sqlite:///{get_original_cwd()}/optuna_storages/{study_name}.db"
+
 
 OmegaConf.register_new_resolver("get_search_grid", get_search_grid)
 OmegaConf.register_new_resolver("get_sqlite_storage_string", get_sqlite_storage_string)
 
-def get_suggestions(trial, search_space_cfg):
+
+def get_suggestions(trial: Trial, search_space_cfg: DictConfig) -> Dict[str, Any]:
 
     suggestions = {}
-    for name, config in search_space_cfg.items():
-        config = dict(config)
-        suggest_method_name = f"suggest_{config.pop('type')}"
+    search_space_cfg_ = cast(
+        Dict[str, DictConfig], search_space_cfg
+    )  # Hydra shenanigans
+    for name, config in search_space_cfg_.items():
+        config_: Dict[str, Any] = dict(config)
+        suggest_method_name = f"suggest_{config_.pop('type')}"
         suggest_method = getattr(trial, suggest_method_name)
-        if "_grid_options_" in config:
-            del config["_grid_options_"]
-        suggestions[name] = suggest_method(name=name, **config)
+        if "_grid_options_" in config_:
+            del config_["_grid_options_"]
+        suggestions[name] = suggest_method(name=name, **config_)
+
     return suggestions
+
 
 class TrainingError(Exception):
     ...
 
-@hydra.main("../conf", "sweep_config")
-def main(cfg):
 
-    def objective(trial: optuna.Trial):
+@hydra.main("../conf", "sweep_config")
+def main(cfg: DictConfig) -> None:
+    def objective(trial: Trial) -> float:
 
         work_dir = (Path(".") / f"{trial.number:03}").resolve()
         work_dir.mkdir()
@@ -62,8 +68,8 @@ def main(cfg):
 
             torch.manual_seed(trial_cfg.seed)
 
-            dm = instantiate(trial_cfg.data)
-            inference = instantiate(trial_cfg.inference)
+            dm: DataModule = instantiate(trial_cfg.data)
+            inference: InferenceModule = instantiate(trial_cfg.inference)
 
             # add extra callbacks
             _callbacks = list(cfg.trainer.get("callbacks", []))
@@ -71,8 +77,8 @@ def main(cfg):
             callbacks = [instantiate(x) for x in _callbacks]
             callbacks += [instantiate(cfg.optuna_callback, trial=trial)]
 
-            trainer = instantiate(trial_cfg.trainer, callbacks=callbacks)
-            
+            trainer: Trainer = instantiate(trial_cfg.trainer, callbacks=callbacks)
+
             try:
                 trainer.fit(inference, dm)
             except ValueError:
@@ -83,11 +89,11 @@ def main(cfg):
         if trainer.interrupted:
             raise KeyboardInterrupt
 
-        return trainer.logged_metrics.get(cfg.sweep.monitor)
+        return cast(float, trainer.logged_metrics.get(cfg.sweep.monitor))
 
-    sampler = instantiate(cfg.sweep.sampler)
-    study = instantiate(cfg.sweep.study, sampler=sampler)
-    
+    sampler: optuna.samplers.BaseSampler = instantiate(cfg.sweep.sampler)
+    study: optuna.Study = instantiate(cfg.sweep.study, sampler=sampler)
+
     study.optimize(objective, **cfg.sweep.optimize_args)
 
 

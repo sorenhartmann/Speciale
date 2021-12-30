@@ -1,8 +1,7 @@
-import torch
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
-
+import torch
 
 PLOT_COLORS = {
     ("HMC", 15): {"color_palette": "Blues_r"},

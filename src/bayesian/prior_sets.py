@@ -1,13 +1,14 @@
-from torch.nn import Linear, Conv2d, BatchNorm2d
-from src.bayesian.modules import BayesianLinear, BayesianNop, BayesianConv2d
+from torch.nn import BatchNorm2d, Conv2d, Linear
+
+from src.bayesian.core import BayesianConversionConfig, BayesianModuleConfig
+from src.bayesian.modules import BayesianConv2d, BayesianLinear, BayesianNop
 from src.bayesian.priors import NormalPrior, ScaleMixturePrior
-from src.bayesian.core import BayesianModuleConfig, BayesianConversionConfig
 
 
 def get_normal(
-    mean=0.,
-    precision=1.
-):
+    mean: float = 0.0,
+    precision: float = 1.0,
+) -> BayesianConversionConfig:
     return BayesianConversionConfig(
         modules_to_replace={
             Linear: BayesianModuleConfig(
@@ -33,12 +34,12 @@ def get_normal(
 
 
 def get_mixture(
-    mean_1,
-    mean_2,
-    log_sigma_1,
-    log_sigma_2,
-    mixture_ratio,
-):
+    mean_1: float,
+    mean_2: float,
+    log_sigma_1: float,
+    log_sigma_2: float,
+    mixture_ratio: float,
+) -> BayesianConversionConfig:
     kwargs = {
         "mean_1": mean_1,
         "mean_2": mean_2,

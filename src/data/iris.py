@@ -1,14 +1,14 @@
 from pathlib import Path
+from typing import Optional, Tuple
 
 import pandas as pd
 import requests
 import torch
-from torch.utils.data import Dataset, random_split, DataLoader
-from pytorch_lightning import LightningDataModule
+from sklearn.decomposition import PCA
+from torch import Tensor
+from torch.utils.data import Dataset
 
 data_dir = Path(__file__).parents[2] / "data"
-
-from sklearn.decomposition import PCA
 
 
 class IrisDataset(Dataset):
@@ -16,7 +16,12 @@ class IrisDataset(Dataset):
     url = "https://gist.githubusercontent.com/curran/a08a1080b88344b0c8a7/raw/0e7a9b0a5d22642a06d3d5b9bcbad9890c8ee534/iris.csv"
     file = data_dir / "raw" / "iris" / "iris.csv"
 
-    def __init__(self, n_dims=None, train=True, download=False):
+    def __init__(
+        self,
+        download: bool = False,
+        train: bool = True,
+        n_dims: Optional[int] = None,
+    ) -> None:
 
         if not train:
             raise ValueError("No test set available")
@@ -39,7 +44,7 @@ class IrisDataset(Dataset):
 
         self.y = torch.tensor(self.df["species"].cat.codes, dtype=torch.long)
 
-    def download_data(self):
+    def download_data(self) -> None:
 
         if self.file.exists():
             return
@@ -52,8 +57,8 @@ class IrisDataset(Dataset):
         with open(self.file, "wb") as f:
             f.write(r.content)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.y)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Tuple[Tensor, Tensor]:
         return self.X[index], self.y[index]

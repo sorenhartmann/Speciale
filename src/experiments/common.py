@@ -1,18 +1,13 @@
-import logging
 import os
-import re
 from argparse import Namespace
-from inspect import signature
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 import torch
-from hydra.utils import get_original_cwd, to_absolute_path
 from omegaconf import Container, OmegaConf
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning import LightningModule
 from pytorch_lightning.core.saving import save_hparams_to_yaml
 from pytorch_lightning.loggers.base import LightningLoggerBase, rank_zero_experiment
-from pytorch_lightning.loggers.csv_logs import ExperimentWriter
 from pytorch_lightning.utilities import (
     _OMEGACONF_AVAILABLE,
     rank_zero_only,
@@ -20,19 +15,11 @@ from pytorch_lightning.utilities import (
 )
 from pytorch_lightning.utilities.cloud_io import get_filesystem
 from pytorch_lightning.utilities.distributed import rank_zero_only
-
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.tensorboard.summary import hparams
-from typing_extensions import runtime
-
-from inspect import signature
-
-
-from dataclasses import asdict
-from functools import wraps
-
 
 ROOT_DIR = Path(__file__).parents[2]
+EXPERIMENT_PATH = Path(__file__).parents[2] / "experiment_results"
 
 
 class FlatTensorBoardLogger(LightningLoggerBase):
@@ -46,7 +33,7 @@ class FlatTensorBoardLogger(LightningLoggerBase):
         log_graph: bool = False,
         default_hp_metric: bool = True,
         prefix: str = "",
-        **kwargs,
+        **kwargs: Dict[str, Any],
     ):
         super().__init__()
         self._save_dir = save_dir
@@ -55,17 +42,17 @@ class FlatTensorBoardLogger(LightningLoggerBase):
         self._prefix = prefix
         self._fs = get_filesystem(save_dir)
 
-        self._experiment = None
-        self.hparams = {}
+        self._experiment: Optional[SummaryWriter] = None
+        self.hparams: Dict[str, Any] = {}
         self._kwargs = kwargs
 
     @property
     def save_dir(self) -> Optional[str]:
         return self._save_dir
 
-    @property
+    @property  # type: ignore
     @rank_zero_experiment
-    def experiment(self):
+    def experiment(self) -> SummaryWriter:
         r"""
         Actual tensorboard object. To use TensorBoard features in your
         :class:`~pytorch_lightning.core.lightning.LightningModule` do the following.
@@ -78,7 +65,7 @@ class FlatTensorBoardLogger(LightningLoggerBase):
         if self._experiment is not None:
             return self._experiment
 
-        assert rank_zero_only.rank == 0, "tried to init log dirs in non global_rank=0"
+        assert rank_zero_only.rank == 0, "tried to init log dirs in non global_rank=0"  # type: ignore
 
         self._experiment = SummaryWriter(log_dir=self.save_dir, **self._kwargs)
         return self._experiment
@@ -129,7 +116,7 @@ class FlatTensorBoardLogger(LightningLoggerBase):
     def log_metrics(
         self, metrics: Dict[str, float], step: Optional[int] = None
     ) -> None:
-        assert rank_zero_only.rank == 0, "experiment tried to log from global_rank != 0"
+        assert rank_zero_only.rank == 0, "experiment tried to log from global_rank != 0"  # type: ignore
 
         metrics = self._add_prefix(metrics)
 
@@ -148,7 +135,9 @@ class FlatTensorBoardLogger(LightningLoggerBase):
                     raise ValueError(m) from ex
 
     @rank_zero_only
-    def log_graph(self, model: "pl.LightningModule", input_array=None):
+    def log_graph(
+        self, model: LightningModule, input_array: Optional[Any] = None
+    ) -> None:
         if self._log_graph:
             if input_array is None:
                 input_array = model.example_input_array
@@ -170,6 +159,8 @@ class FlatTensorBoardLogger(LightningLoggerBase):
         dir_path = self.save_dir
 
         # prepare the file path
+        if dir_path is None:
+            dir_path = ""
         hparams_file = os.path.join(dir_path, self.NAME_HPARAMS_FILE)
 
         # save the metatags file if it doesn't exist and the log directory exists
@@ -182,214 +173,16 @@ class FlatTensorBoardLogger(LightningLoggerBase):
         self.experiment.close()
         self.save()
 
-    def __getstate__(self):
+    def __getstate__(self) -> Any:
         state = self.__dict__.copy()
         state["_experiment"] = None
         return state
 
     @property
-    def name(self):
+    def name(self) -> str:
         pass
 
     @property
-    def version(self):
+    def version(self) -> Union[int, str]:
         pass
-
-
-import datetime
-from pathlib import Path
-
-import pandas as pd
-from omegaconf import OmegaConf
-
-
-def flatten_config(config):
-    def iter_flat_config(config, prefixes=None):
-        if prefixes is None:
-            prefixes = []
-
-        if OmegaConf.is_list(config):
-            k_v_iter = ((str(i), x) for i, x in enumerate(config))
-        elif OmegaConf.is_dict(config):
-            k_v_iter = config.items
-
-        for k, v in k_v_iter:
-            if OmegaConf.is_config(v):
-                yield from iter_flat_config(v, prefixes=prefixes + [k])
-            elif k == "_target_":
-                yield "/".join(prefixes), v
-            else:
-                yield "/".join(prefixes + [k]), v
-
-    return dict(sorted(list(iter_flat_config(config))))
-
-
-from dataclasses import asdict, dataclass
-
-EXPERIMENT_PATH = Path(__file__).parents[2] / "experiment_results"
-
-import datetime
-import os
-from contextlib import contextmanager
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List
-
-from omegaconf import DictConfig
-
-
-
-
-
-from functools import cache
-
-log = logging.getLogger(__name__)
-
-
-@dataclass(order=True, frozen=True)
-class Run:
-
-    experiment_name: str
-    date: datetime.date
-    id: str
-    config: DictConfig = field(repr=False, compare=False)
-    overrides: DictConfig = field(repr=False, compare=False)
-    path: Path = field(repr=False, compare=False)
-
-    @property
-    def experiment(self):
-        return Experiment(self.experiment_name)
-
-    @property
-    def short_name(self):
-        name = self.experiment_name
-        if self.run_index is not None:
-            name += f"[{self.run_index}]"
-        return name
-
-    def get_override_value(self, value):
-
-        match = next(
-            y
-            for y in (re.match(f"{value}=(.+)", x) for x in self.overrides)
-            if y is not None
-        )
-        return match.group(1)
-
-
-@dataclass(order=True)
-class MultiRun:
-
-    experiment_name: str
-    date: datetime.date
-    id: str
-    runs: List[Run] = field(compare=False)
-    path: Path = field(repr=False, compare=False)
-
-    @property
-    def experiment(self):
-        return Experiment(self.experiment_name)
-
-
-def get_run_from_path(path, recurse=True):
-
-    path = Path(to_absolute_path(path))
-
-    name, date, *id_ = str(path.relative_to(EXPERIMENT_PATH)).split("/")
-    date = datetime.date.fromisoformat(date)
-    id_ = "/".join(id_)
-
-    if (path / ".hydra").exists():
-        config = OmegaConf.load(path / ".hydra" / "config.yaml")
-        overrides = OmegaConf.load(path / ".hydra" / "overrides.yaml")
-        return Run(name, date, id_, config, overrides, path)
-    elif recurse:
-        runs = []
-        for x in path.iterdir():
-            if not x.is_dir() or x.stem.startswith("_"):
-                continue
-            run = get_run_from_path(x, recurse=False)
-            if run is not None:
-                runs.append(run)
-
-        if len(runs) > 0:
-            runs = sorted(
-                runs,
-                key=lambda x: f"{int(x.path.stem):03}"
-                if x.path.stem.isnumeric()
-                else x.path.stem,
-            )
-            return MultiRun(name, date, id_, runs, path)
-    else:
-        return None
-
-
-def cast_run(func):
-
-    sig = signature(func)
-
-    multirun_args = [
-        (a, k.annotation) for a, k in sig.parameters.items() if k.annotation is MultiRun
-    ]
-    singlerun_args = [
-        (a, k.annotation) for a, k in sig.parameters.items() if k.annotation is Run
-    ]
-    ((arg_name, arg_type),) = multirun_args + singlerun_args
-
-    @wraps(func)
-    def wrapper(run, *args, **kwargs):
-
-        if isinstance(run, arg_type):
-            func(run, *args, **kwargs)
-        elif arg_type is MultiRun:
-            data = asdict(run)
-            data["run_index"] = 0
-            multirun = MultiRun(run.experiment_name, run.time, [Run(**data)], run.path)
-            func(multirun, *args, **kwargs)
-        elif arg_type is Run:
-            for run_ in run.runs:
-                out_dir = (Path(".") / f"{run_.run_index}").resolve()
-                out_dir.mkdir(exist_ok=True)
-                with (set_directory(out_dir)):
-                    func(run_, *args, **kwargs)
-
-    return wrapper
-
-
-from importlib import import_module
-from inspect import getmembers
-import os
-
-
-@dataclass
-class Experiment:
-
-    name: str
-
-    @property
-    def path(self):
-        return EXPERIMENT_PATH / self.name
-
-    def run_dirs(self):
-        return sorted([x for x in self.path.glob(r"*/*") if x.is_dir()])
-
-    def runs(self):
-        return [get_run_from_path(dir_) for dir_ in self.run_dirs()]
-
-    def latest_run(self):
-        run_dirs = self.run_dirs()
-        latest_dir = run_dirs[-1]
-        return get_run_from_path(latest_dir.absolute())
-
-    def members(self):
-        experiment_module = import_module(f"src.experiments.{self.name}")
-        return getmembers(experiment_module)
-
-    def get_plot_funcs(self):
-        return {name: x for name, x in self.members() if getattr(x, "__isplot", False)}
-
-    def get_result_funcs(self):
-        return {
-            name: x for name, x in self.members() if getattr(x, "__isresult", False)
-        }
 

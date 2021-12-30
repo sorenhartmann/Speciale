@@ -1,12 +1,11 @@
 from functools import cache
-from typing import cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from omegaconf import OmegaConf
 
-from src.experiments.common import MultiRun, Run, cast_run
+from src.experiments.common import MultiRun, cast_run
 
 from .parallel_coordinates import parallel_coordinates
 

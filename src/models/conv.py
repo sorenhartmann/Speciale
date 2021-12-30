@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 
@@ -8,8 +7,7 @@ from .base import ClassifierMixin, Model
 
 
 class ConvModel(Model):
-    
-    def __init__(self, in_shape=(3, 32, 32), out_features=10, dropout=0.):
+    def __init__(self, in_shape=(3, 32, 32), out_features=10, dropout=0.0):
 
         super().__init__()
 
@@ -36,7 +34,7 @@ class ConvModel(Model):
         add(torch.nn.Flatten())
         add(nn.Linear(out_dim(0), 256))
         add(nn.ReLU())
-        if dropout > 0.:
+        if dropout > 0.0:
             add(nn.Dropout(dropout))
         add(nn.Linear(out_dim(0), out_features))
 

@@ -1,16 +1,12 @@
-from functools import cache, wraps
+from functools import cache
 
 import matplotlib.pyplot as plt
-import pandas as pd
-from pandas.core.indexes.base import Index
-import seaborn as sns
-from omegaconf import OmegaConf
-from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-
-from src.experiments.common import MultiRun, Run, cast_run, set_directory
-from pathlib import Path
-import torch
 import numpy as np
+import pandas as pd
+import seaborn as sns
+import torch
+
+from src.experiments.common import MultiRun, Run, cast_run
 
 
 @cache
@@ -47,7 +43,6 @@ def load_estimates(run: Run, sub_dir, single_step=None):
 
 @cast_run
 def grad_variance_estimates(multirun: MultiRun):
-
     def get_estimates(run):
         variance_interbatch = load_estimates(run, "variance_interbatch", -1)
         variance_estimated = load_estimates(run, "variance_estimated", -1)

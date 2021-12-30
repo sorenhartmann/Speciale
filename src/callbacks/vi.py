@@ -1,11 +1,19 @@
-from pytorch_lightning import Callback
+from pytorch_lightning import Callback, LightningModule, Trainer
+from pytorch_lightning.utilities.types import STEP_OUTPUT
 
+from src.inference.base import BATCH_IN
 from src.inference.vi import VariationalModule
 
 
 class LogVariationalParameterDistribution(Callback):
     def on_train_batch_end(
-        self, trainer, pl_module, outputs, batch, batch_idx, dataloader_idx
+        self,
+        trainer: Trainer,
+        pl_module: LightningModule,
+        outputs: STEP_OUTPUT,
+        batch: BATCH_IN,
+        batch_idx: int,
+        dataloader_idx: int,
     ) -> None:
 
         if batch_idx == len(trainer.train_dataloader) - 1:
