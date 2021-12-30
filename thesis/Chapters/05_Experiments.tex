@@ -43,19 +43,19 @@ More specifically, three sampling strategies are considered, regular HMC conditi
 For demonstration, a plot of the sampled joint distribution of $a_1$ and $a_3$ can be seen in \cref{fig:simulated_joint_comp}.
 \begin{figure}[htbp]
     \centering
-    \begin{subfigure}[b]{0.4\textwidth}
+    \begin{subfigure}[b]{0.45\linewidth}
         \centering
-        \includegraphics[width=\textwidth]{Figures/simulated_joint_HMC_15.pdf} 
+        \includegraphics[width=\linewidth]{Figures/simulated_joint_HMC_15.pdf} 
         \caption{HMC conditioned on all data points.}
     \end{subfigure}
-    \begin{subfigure}[b]{0.4\textwidth}
+    \begin{subfigure}[b]{0.45\linewidth}
         \centering
-        \includegraphics[width=\textwidth]{Figures/simulated_joint_HMC_5.pdf} 
+        \includegraphics[width=\linewidth]{Figures/simulated_joint_HMC_5.pdf} 
         \caption{HMC with batch size 5}
     \end{subfigure}
-    \begin{subfigure}[b]{0.4\textwidth}
+    \begin{subfigure}[b]{0.45\linewidth}
         \centering
-        \includegraphics[width=\textwidth]{Figures/simulated_joint_SGHMC_5.pdf} 
+        \includegraphics[width=\linewidth]{Figures/simulated_joint_SGHMC_5.pdf} 
         \caption{SGHMC with batch size 5}
     \end{subfigure}
     \caption{Joint distribution of samples for $a_1$ and $a_3$ for the polynomial regression example for HMC and SGHMC for different batch sizes, with the actual posterior density also shown.}
@@ -135,7 +135,7 @@ This estimate is then compared to the estimate.
 The estimation provided by the estimators compared to the observed variance can be seen in \cref{fig:est_variances_simulated}.
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{Figures/simulated_sghmc_gradient_variance_estimations.pdf}
+    \includegraphics[width=\linewidth]{Figures/simulated_sghmc_gradient_variance_estimations.pdf}
     \caption{Estimated variance compared to observed variances}
     \label{fig:est_variances_simulated}
 \end{figure}
@@ -149,14 +149,14 @@ It may still be that they are better than simply setting $\hat\beta=0$ in terms 
 In \cref{fig:simualted_var_est_joint_comp}, the sampled marginal distribution of $a_1$ and $a_3$ are shown again, now compared SGHMC with and without a variance estimator.
 \begin{figure}[htbp]
     \centering
-    \begin{subfigure}[t]{0.4\textwidth}
+    \begin{subfigure}[t]{0.45\linewidth}
         \centering
-        \includegraphics[width=\textwidth]{Figures/simulated_joint_SGHMC_5.pdf} 
+        \includegraphics[width=\linewidth]{Figures/simulated_joint_SGHMC_5.pdf} 
         \caption{SGHMC with with gradient variance estimated as $\hat{V}=0$.}
     \end{subfigure}
-    \begin{subfigure}[t]{0.4\textwidth}
+    \begin{subfigure}[t]{0.45\linewidth}
         \centering
-        \includegraphics[width=\textwidth]{Figures/simulated_joint_SGHMCWithVarianceEstimator_5.pdf} 
+        \includegraphics[width=\linewidth]{Figures/simulated_var_est_joint_ExpWeightedEstimator.pdf} 
         \caption{SGHMC with using the exponentially scaled estimator of gradient variance}
     \end{subfigure}
     \caption{Joint distribution of samples for $a_1$ and $a_3$ for the polynomial regression example for HMC and SGHMC for different batch sizes, with the actual posterior density also shown.}
@@ -170,10 +170,14 @@ This may come down to the approach with estimated variance is able to adjust the
 In \cite{wenzel_how_2020}, they propose using the marginal distribution of the momentum as a test of the sampling assumptions. 
 Per the dynamical system, if the system is simulated exactly, the marginal distribution of $r$ should be $\mathcal{N}(0, M^{-1})$. 
 We should therefore have that $r M^{-1/2} \sim \mathcal{N}(0, I)$. 
-Applying the inner product, $r^T M r$ should therefore follow a $\chi^2(d)$ distribution, where $d$ is the length of $r$ ie. the number of parameters. 
-If we look at some $c$ quantile of the $\chi^2(d)$ distribution, we would expect a fraction $c$ of the samples for $r^T M r$ to land within that particular quantile. 
-To this end, let $\hat T_{0.99}$ be the fraction of samples for some set of $d$ parameters, that fall within a $0.99$ quantile of the $\chi^2(d)$ distribution. 
-We should therefore expect $\hat T_{0.99}=0.99$ given a perfectly simulated system.
+Applying the inner product, we arrive at so called kinetic temperature $T_K(r) = \frac{r^T M r}{d}$, for which we then have that $T_K(r)d\sim \chi^2(d)$, where $d$ is the length of $r$ ie. the number of parameters. 
+We then consider some $c\in (0, 1)$ confidence interval of  $\chi^2(d)$ distribution:
+\begin{align}
+    J_{T_k}(d, c) = \left(\frac{1}{d} F_{\chi^2(d)}^{-1}\left( \frac{1-c}{2} \right),~\frac{1}{d} F_{\chi^2(d)}^{-1}\left(\frac{1+c}{2}\right)\right),
+\end{align}
+where $F_{\chi^2(d)}^{-1}$ is the inverse cumulative distribution function of the $\chi^2(d)$ distribution.
+We would expect the samples for $\hat{T}_K$ to fall within the interval $J_{T_k}(d, c)$ with probability exactly $c$. 
+We should therefore expect $\E[\hat{T}_K \in J_{T_K}(d, {0.99})] = 0.99$ given a perfectly simulated system.
 This allows us to test the correctness of our sampler, even if we don't know the true posterior, which is going to be the case in the following experiments.
 
 Applying this statistic, we can see whether the estimation of the variance helps with regard to the correctness of the simulation. 
@@ -181,19 +185,20 @@ Returning back to our simulated polynomial example, in the previous experiment, 
 However, if we resample the momentum from the marginal distribution too often, the $\hat{T}_{0.99}$ measure would obviously be less informative with regard to the influence of discretization and batching error. 
 The momentum is therefore instead resampled every $1000$ steps, with a slightly lower learning rate of $\eta=4 \cdot 10^{-5}$.
 The lower learning rate is used since otherwise, the SGHMC sampler with $\hat{\beta}=0$ becomes unstable. 
-\begin{figure}[htb]
+\begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.9\textwidth]{Figures/temperature_sum_chi2_comp.pdf}
-    \caption{<caption>}
+    \includegraphics[width=\linewidth]{Figures/temperature_sum_chi2_comp.pdf}
+    \caption{<0 is because of the KDE approdiximation...}
     \label{fig:temperature_sum_chi2_comp}
 \end{figure}
-\begin{table}[htb]
+
+\begin{table}[htbp]
     \centering
-    \input{Tables/temp_99}
+    \input{Tables/var-estimators-temperatures.tex}
     \caption{<caption>}
     \label{tbl:temp_99}
 \end{table}
-The resulting distribution of $r^T M r$ can be seen in \cref{fig:temperature_sum_chi2_comp}, compared against the expected $\chi^2$ distribution. 
+The resulting distribution of $\hat{T}_K$ can be seen in \cref{fig:temperature_sum_chi2_comp}, compared against the expected $\chi^2$ distribution. 
 We see that the while the samplers with estimated variance doesn't fit the distributional assumptions, they are all much closer than the for the sampler with $\hat \beta = 0$.
 The $\hat T_{0.99}$ statistic have also been calculated in \cref{tbl:temp_99}, alongside a confidence interval based on the binomial distribution.
 
@@ -421,13 +426,13 @@ VI again results in the best calibrated model, now by some margin.
 If we take a look at \cref{fig:cifar-small-calibration} we also see that while the SGD method are generally way overconfident, the probabilistic methods tend to be underconfident.
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\linewidth]{Figures/cifar10-small-calibration.pdf}
-    \caption{cifar10-small-calibration}
+    \includegraphics[width=\linewidth]{Figures/cifar-small-calibration.pdf}
+    \caption{cifar-small-calibration}
     \label{fig:cifar-small-calibration}
 \end{figure}
 \subsection{SGHMC Assumptions}
 Again, we look at how well the distributional assumptions are met for the sampling algorithms.
-In \cref{fig:cifar-small-temperatures}
+In \cref{fig:cifar-small-temperatures} the observed temperatures $T$
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{Figures/cifar-small-temperatures.pdf}
