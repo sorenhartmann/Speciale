@@ -1,11 +1,11 @@
-\begin{tabular}{ll}
+\begin{tabular}{lc}
 \toprule
-{} & Test error incl. 95\% CI \\
+                Method &    Test error incl. 95\% CI \\
 \midrule
-SGD (MAP)              &      $0.0175 \pm 0.0026$ \\
-SGD (dropout)          &      $0.0143 \pm 0.0023$ \\
-SGHMC                  &      $0.0173 \pm 0.0026$ \\
-SGHMC (with var. est.) &      $0.0158 \pm 0.0024$ \\
-VI (exp. KL weight)    &      $0.0155 \pm 0.0024$ \\
+             SGD (MAP) &          1.75 $\pm$ 0.26~\% \\
+\textbf{SGD (dropout)} & \textbf{1.43 $\pm$ 0.23~\%} \\
+                 SGHMC &          1.73 $\pm$ 0.26~\% \\
+SGHMC (with var. est.) &          1.58 $\pm$ 0.24~\% \\
+   VI (exp. KL weight) &          1.55 $\pm$ 0.24~\% \\
 \bottomrule
 \end{tabular}

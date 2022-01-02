@@ -2,14 +2,16 @@
 
 % \section{Overview}
 
-In this section we outline the general structure and design choices that went into the implementation of this process. 
-While we wont go into the minutiae of the source code, it can be found at the GitHub repository...\question{GitHub link?}
-The project is primarily implemented using three different frameworks: PyTorch, PyTorch Lightning and Hydra.
-PyTorch provides the base deep learning methods, while PyTorch Lightning also provides a bunch of additional features, such as handling of different computational devices such as GPU, handling the different train, validation and test data splits, an extensive callback API and more.
-Importantly, PyTorch Lightning also provides encapsulation of the inference process through the use of LightningModules.
-A goal for the implementation has been to separate the modelling, the data and the inference methods as much as possible.
+In this section, we outline the general structure and design choices that went into implementing the various methods and models. 
+While we will not go into the minutiae of the source code, it can be found at the GitHub repository, \url{https://github.com/sorenhartmann/Speciale}.
+
+We primarily use three different frameworks for the implementation, PyTorch, PyTorch Lightning, and Hydra.
+PyTorch provides the base deep learning methods underpinning the deep learning models. 
+PyTorch Lightning provides many additional features, such as dealing with different computational devices such as GPU or TPU, data splitting, an extensive callback API, and more.
+Importantly, PyTorch Lightning also encapsulates the inference process through the use of LightningModules.
+In implementing the various methods, a particular goal has been to separate the various components, such as models, data, and inference, as much as possible.  
 This makes it possible to effectively compare different methods of inference across different models and data.
-The overall architecture can be seen in \cref{fig:sw-arch}.
+The overall architecture is based around composition and can be seen in \cref{fig:sw-arch}.
 \begin{figure}[htbp]
     \centering
     \input{Figures/software_arch}
@@ -19,44 +21,44 @@ The overall architecture can be seen in \cref{fig:sw-arch}.
 
 \section{Models}
 The models used in this project are defined in the \texttt{src/models} directory.
-These are implemented as PyTorch modules with some additional methods that are used by the other components. 
-At a high level, they define some amount of trainable parameters $\theta$, as well as a mapping from input $x$ to output $y=f_\theta(x)$. 
-They also define an observation model through $p(y|x, \theta)$ using the distribution objects provided by PyTorch.
-These model does not provide any probabilistic assumptions about model parameters.
-They are instead applied dynamically to each model according some configuration, which allows for 
-In practice, for the bayesian methods, each Pytorch module with learnable parameters is changed for a Bayesian copy that also includes information about the parameter priors.
+We implement these as PyTorch modules with additional methods used by the other components. 
+At a high level, they define some amount of trainable parameters $\theta$ and a mapping from input $x$ to output $y=f_\theta(x)$. 
+They also define an observation model through $p(y|x, \theta)$ using the probability distribution objects provided by PyTorch.
+
+The prior distributions are defined by implementing probabilistic analogs, \texttt{BayesianModule}s to the PyTorch \texttt{Module}s, which also contains an instance of \texttt{Prior} object. 
+The \texttt{Prior} object stores the prior distribution for each parameter and allows the \texttt{BayesianModule} to retrieve the prior log density. 
+We can dynamically turn a non-probabilistic model into a probabilistic model by replacing any PyTorch module with trainable parameters with an instance of \texttt{BayesianModule}.
+How the different modules should be converted and which priors should be applied is supplied through a \texttt{BayesianConversionConfig}.
+
+The dynamical approach can be helpful since it simplifies the models and allows for the training of models specified elsewhere, such as pre-trained models. 
+It also allows for adjusting the priors dynamically and differently based on the methods in question, 
 
 \section{Data}
-Data is represented by PyTorch datasets.
-The dataset abstraction is implemented using two methods, one for getting the total size of the dataset $N$, and another for getting extracting the $i$th observation.
-For use with PyTorch Lightning these dataset are then wrapped in a \texttt{pl.LightningDatamodule} object, which defines how the data should be used during training, specifying data splits, batch sizes etc.
-For this project, a general \texttt{pl.LightningDatamodule} implementation, \texttt{DataModule} is used in order to reduce code duplication and better be able to ensure consistency between experiments. 
+We generally define data through the PyTorch \texttt{Dataset} abstraction.
+The \texttt{Dataset} class implements two methods, one for getting the total size of the dataset $N$, and another for getting extracting the $i$th observation.
+For use with Lightning, these datasets are wrapped in a \texttt{pl.LightningDatamodule} object, which defines how the data should be used during training, specifying data splits, batch sizes, e.t.c.
+For this project, we use a general \texttt{pl.LightningDatamodule} implementation, \texttt{DataModule} in order to reduce code duplication and better be able to ensure consistency between experiments. 
 
 \section{Inference Modules}
-The inference modules defines the different means of inference and are initialized using a model object alongside any inference hyper-parameters.
-The modules are implemented as \texttt{pl.LightningModule}s, and are therefore meant to be used with the \texttt{pl.Trainer} object alongside a \texttt{pl.Datamodule} for model fitting. 
-There are three different inference methods implemented: regular stochastic gradient descent, variational inference and inference using Markov chain Monte Carlo inference.
+The inference modules define the different means of inference and are initialized using a model object alongside any inference hyper-parameters.
+The different inference methods are implemented as subclasses of \texttt{pl.LightningModule}s, and are therefore meant to be used with the \texttt{pl.Trainer} object alongside a \texttt{pl.Datamodule} for model fitting. 
+There are three different inference methods implemented: regular SGD (\texttt{SGDInference}), variational inference (\texttt{VariationalInference}), and Markov chain Monte Carlo inference (\texttt{MCMCInference}).
+For comparing with the probabilistic methods, the SGD inference optionally allows for using MAP estimation also using this framework.
 
-In order to implement probabilistic methods, we have to supply the inference methods with additional information in form prior probabilities of the parameters. 
-These are specified using a user specified Bayesian conversion configuration.
-We then substitute each module with trainable parameters with a corresponding \texttt{BayesianModule}, that defines parameter priors as well a method for calculating the prior log probability.
-The dynamical approach is chosen since it makes specifying the models simpler, allows for adjusting the priors dynamically and differently based on the methods in question, and also allows for training of models specified elsewhere like pre-trained models. 
-For comparison with the probabilistic methods, the SGD inference optionally allows for using MAP estimation also using this framework.
-
-At the core, the PyTorch Lightning framework is centered around the implementation of a \texttt{training\_step()} method.
-This function gets as argument a batch of training data and is supposed to return the corresponding loss.
-The Lightning framework then deals backwards pass, enabling and disabling gradients, pre-fetching data, moving values across different devices and so on.
-For SGD inference it is therefore as simple as calculating the loss and passing it along.
-For the two other methods the implementation is a bit more involved.
+At the core, the PyTorch Lightning framework centers around the implementation of a \texttt{training\_step()} method.
+This function receives a batch of training data as an argument and returns the corresponding loss.
+The Lightning framework then deals with backpropagation, optimization steps, enabling and disabling gradients, pre-fetching data, moving values across different devices, e.t.c.
+Therefore, for SGD inference, it is as simple as calculating the loss and passing it along.
+For the two other methods, the implementation is a bit more involved.
 
 \subsection{Variational Inference}
 Variational inference is primarily implemented through the use of yet another wrapper module, \texttt{VariationalModule}.
-These modules wraps the Bayesian modules, and upon initialization, deletes their parameters.
-For each parameter deleted, they define a pair of variational parameters, $\mu$ and $\rho$, defining the variational distribution. 
+These modules wrap the Bayesian modules, and upon initialization, delete their parameters.
+They then define a pair of variational parameters, $\mu$ and $\rho$ for each parameter deleted. 
 In order to make a \texttt{forward()} pass, they must sample one or more sets of new parameters with a \texttt{sample\_parameters()} method.
-This method draws a given number of samples from the variational distribution, and stores them in an instance variable.
+This method draws a given number of samples from the variational distribution and stores them in an instance variable.
 
-A forward pass can then be accomplished by setting the appropriate attributes of the Bayesian module to instead reference one of the sets of samples. 
+The forward pass can then consist of setting the appropriate attributes of the Bayesian modules to reference one of the sets of samples instead. 
 The Bayesian module can then be used for the forward pass as usual, and a counter in the variational module is incremented afterwards to use the next sample for the next forward pass.
 \begin{figure}[htbp]
     \centering
@@ -73,19 +75,19 @@ The Bayesian module can then be used for the forward pass as usual, and a counte
     \caption{Diagrams showing the implementation of variational inference.}
     \label{fig:vi-arch}
 \end{figure}
-We can then train the model averaging over $n$ gradients by getting every variational module of the model to draw $n$ samples and then doing $n$ forward passes of the model, with each variational module keeping track of their samples.
+If averaging over $n$ gradients, we train the model by drawing $n$ for every variational module of the model and then doing $n$ forward passes of the model, where each variational module keeps track of its samples.
 Then, the loss is calculated for each forward pass, averaged and returned from \texttt{training\_step()}, letting Lightning handle the backward pass. 
 See \cref{fig:vi-arch} for a diagram 
 
 \subsection{MCMC Inference}
-The Markov chain Monte Carlo implementation differs a bit compared to the two other implemented methods, in that we need to do more with the gradients, than just perform an optimization step. 
-It is probably possible to use PyTorch Lightning's \texttt{on\_after\_backward()} hook to implement the HMC methods in PyTorch Lightning, however with this implementation we instead opt to implement the sampling algorithms more explicitly.
-This allows for a simpler implementation of the samplers, that can also be used in other contexts, eg. for sampling from a density function directly.
-The different samplers are therefore implemented as  subclasses of the \texttt{Sampler} class, that each defines a \texttt{next\_sample()} method independently.
-After initializing each sampler, they are set up by registering to them an object defining what distribution should be sampled from. 
+The Markov chain Monte Carlo implementation differs a bit compared to the two other implemented methods in that we need to do more with the gradients than perform an optimization step. 
+It is probably possible to use PyTorch Lightning's \texttt{on\_after\_backward()} hook to implement the HMC methods in PyTorch Lightning, however with this implementation, we instead opt to implement the sampling algorithms more explicitly.
+This tactic allows for a more straightforward implementation of the samplers, which we can also use in other contexts, like directly sampling from a density function.
+The different samplers are therefore implemented as  subclasses of a \texttt{Sampler} class that each define a \texttt{next\_sample()} method independently.
+After initializing each sampler, we set them up by registering an object to them, defining what distribution should be sampled from. 
 This object, dubbed \texttt{Samplable}, should define the following properties: The current state as a PyTorch tensor, the shape of the state, the logarithmic proportional probability density at the current state, and the corresponding gradient.  
 
-In the context of deep learning inference, the model parameter posterior is represented by a \texttt{ParameterPosterior} object that wraps the model object and allows for setting of different sets of observations with an \texttt{observe()} method.
+In the context of deep learning inference, the model parameter posterior is represented by a \texttt{ParameterPosterior} object that wraps the model object and allows for the setting of different sets of observations with an \texttt{observe()} method.
 This wrapper then implements the \texttt{Samplable} interface, with the state being model parameters stacked as single one-dimensional tensor, and uses the observation model and autograd to implement the remaining methods.
 \begin{figure}[htbp]
     \centering
@@ -95,24 +97,28 @@ This wrapper then implements the \texttt{Samplable} interface, with the state be
 \end{figure}
 The MCMC inference module is thus responsible for setting up the \texttt{Samplable} wrapper with each batch of observations with \texttt{observe()}, and stepping the sampler with \texttt{next\_sample()} method. 
 A diagram of the procedure can be seen in \cref{fig:mcmc-arch}.
-As a special case when the batch size is equal to the number of elements in the whole dataset, this also allows for sampling in a non-batched manner eg. proper HMC.
-This is obviously not the most efficient sampling strategy for HMC, however allows for easy comparison of the methods.
+In a particular case, when the batch size is equal to the number of elements in the whole dataset, this allows for sampling in a non-batched manner, such as with proper HMC.
+This sampling strategy is not the most efficient; however, it allows for easy comparison of the different methods.
 
-Furthermore the module defines the additional hyperparameters such as how many steps should be performed per sample and a burn in period.
-The strategy of which and how many samples should be retained is defined through the use of a \texttt{SampleContainer} object.
+Furthermore, the module defines the additional hyperparameters, such as how many steps should be performed per sample and a burn-in period.
+We define the strategy of which and how many samples we keep through the use of a \texttt{SampleContainer} object.
 
 \section{Other frameworks}
 
-While independently defining the different components allows for great flexibility, it can make it a bit cumbersome to configure and instantiate experiments, as objects may needs other instantiated objects in order to be instantiated themselves.
-As the different inference methods also needs different types of objects and hyperparameters, parameterizing and documenting different configurations can become unmanageable and prone to errors.
+While independently defining the different components allows for great flexibility, it can make it cumbersome to configure and instantiate experiments, as objects may need other instantiated objects to be instantiated themselves.
+As the different inference methods also need different types of objects and hyperparameters, parameterizing and documenting different configurations can become unmanageable and prone to errors.
 
-Determined to make experimentation as painless as possible, we instead make use of the Hydra Python framework to manage the configuration for us.  
-This allows us to specify the different configurations in terms of the \texttt{.yaml} files found in the \texttt{conf/} directory, which are then used for object instantiation based on the particular setup. 
-Since Hydra also supports nested instantiation, the aforementioned complexity is greatly alleviated.
-In fact, just about every component of the implementation are instantiated using Hydra, which makes it possible to use only a few scripts: \texttt{scripts/inference.py}, \texttt{scripts/sweep.py} and \texttt{scripts/sample.py} for every experiment. 
-With this also comes a bunch of convenient extra features such as overriding every just about anything in the command line, launching several combinations of configurations at once and automatic management of output directory for every run.
+To make experimentation as painless as possible, we use the Hydra \cite{yadan_hydra_2019} framework to manage the configuration for us.  
+This framework allows us to specify the different configurations in terms of the \texttt{.yaml} files found in the \texttt{conf/} directory.
+The configured values can be used directly in the Python code but can also be used for object instantiation using the \texttt{\_target\_} field.
+Since Hydra also supports nested instantiation.
+We can instantiate just about every component of the implementation dynamically, alleviating the mentioned complexity is somewhat.
 
-Hydra also allows for smooth integration with the hyperparameter optimization library Optuna \cite{akiba_optuna_2019}, which we use later find sensible values for the various hyperparameters of the algorithms. 
-The hyperparameters of interest are defined in terms of the corresponding configuration fields, each specified with a search space. 
-Hyperparameters are then suggested by optuna's API, and subsequently injected into the main configuration. 
-This is all done in the \texttt{scripts/sweep.py} script.
+This also results in the experiments being carried out using only a few scripts: \texttt{scripts/inference.py}, \texttt{scripts/sweep.py} and \texttt{scripts/sample.py}.
+
+With this also comes many convenient extra features such as overriding every just about anything using the command line, launching several combinations of configurations at once, and automatic management of output directory for every run.
+
+We also use the hyperparameter optimization library Optuna \cite{akiba_optuna_2019} for automating model fitting.
+This framework is also relatively easy to implement by defining the hyperparameters of interest in the corresponding configuration fields, each specified with a search space. 
+Hyperparameters are then suggested by Optuna's API and subsequently injected into the main configuration. 
+An example can be seen in the \texttt{scripts/sweep.py} script.
