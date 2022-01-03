@@ -3,7 +3,7 @@
 At the outset of this project, we wanted to investigate how  Bayesian methods apply to deep learning problems to achieve better modeling performance.
 Since deep learning applications are often very data-intensive, for feasibility, we would prefer that the methods are applicable for batched learning. 
 Primarily focusing on MCMC methods, we see that naively implementing the HMC sampling algorithm leads to incorrect samples in a batching data setting.
-We model the noise introduced through batching as a Gaussian distribution, and then correct for the additional variance by adding a friction term to the HMC algorithm. 
+We model the noise introduced through batching as a Gaussian distribution and then correct for the additional variance by adding a friction term to the HMC algorithm. 
 The resulting sampling algorithm, named SGHMC, closely resembles regular stochastic gradient descent with momentum, with some additional noise added to the gradient, and can be parameterized as such.
 For comparison with the MCMC, we also implemented the variational inference algorithm.
 
@@ -20,25 +20,25 @@ Implementing a medium-sized convolutional neural network for the more challengin
 Applying the different methods to the larger convolutional model, DenseNet, we again find that regular SGD yields the best performance in terms of accuracy. 
 
 These results are not entirely surprising.
-The feed-forward neural network model is an extremely flexible model due to modelling interactions between every pair of pixel in the input images. 
+The feed-forward neural network model is a highly flexible model due to modeling interactions between every pair of pixels in the input images. 
 Combined with an uninformative prior on the model parameters, we thus also get a very uninformative prior in function space.
-Comparably, the convolutional model prior may be more informative, and thus makes the Bayesian MCMC method more effective. 
+Comparably, the convolutional model prior may be more informative and thus makes the Bayesian MCMC method more effective. 
 
-On other other hand, we also see inferior performance for the DenseNet models. 
-It is very possible that this mostly caused by the removal of the batch normalization layer. 
-While we also removed the batch normalization layers in the smaller convolutional model, the DenseNet model is much deeper, and may therefore be more dependent on the batch normalization for efficient training.
+On the other hand, we also see inferior performance for the DenseNet models. 
+It is possible that this is mostly caused by the removal of the batch normalization layers. 
+While we also removed the batch normalization layers in the smaller convolutional model, the DenseNet model is much deeper and may therefore be more dependent on the batch normalization layers for efficient training.
 
 As for SGHMC with gradient variance estimation, it is unclear whether this approach is helpful in a deep learning context. 
 We see better performance with gradient estimation for the feed-forward network; however, the performance is worse for the convolutional models.
 Using the gradient variance estimates seems to calibrate the model slightly better.
 
-The above considerations are, however, mostly dependent on the fact that the samples from the sampling algorithms are representative of the actual posterior of the model parameters. 
+However, the above considerations are primarily dependent on the fact that the samples from the sampling algorithms represent the actual posterior of the model parameters. 
 
-We see throughout training of every deep learning model, that the kinetic temperature diagnostic $\hat{p}_{0.99}$ is not satisfied for either sampler. 
-This indicates that that both sampling algorithms seemingly break down to some extent for every deep learning model. 
-How much thus influences the quality of the samples is unclear, but does not bode well for the robustness of the methods as implemented.
+We see throughout the training of every deep learning model that the kinetic temperature diagnostic $\hat{p}_{0.99}$ is not satisfied for either sampler. 
+This breakdown indicates that both sampling algorithms seemingly break down for every deep learning model to some extent. 
 This breakdown may be caused by optimizing the modeling parameters for the validation accuracy, which may not coincide with the most accurate samples from the posterior. 
-Therefore, it is also unclear whether we can attribute the superior performance of the medium-sized convolutional model on CIFAR10 to the Bayesian approach or whether it is due to the larger ensemble of models, or something else.
+How much this influences the quality of the samples is unclear, but it does not bode well for the robustness of the methods as implemented.
+Therefore, it is also unclear whether we can attribute the superior performance of the medium-sized convolutional model on CIFAR10 to the Bayesian approach or whether it is due to the larger ensemble of models or something else.
 
 There are some ways we may go about trying to achieve a more robust sampling algorithm. 
 In \autocite{wenzel_how_2020}, they demonstrate how they, using a combination of a preconditioning step and cyclical time-stepping, achieve robust samples from a similar SGHMC scheme.  
@@ -55,54 +55,16 @@ For instance, \autocite{wenzel_how_2020} discusses how using a "cold" posterior,
 
 \chapter{Conclusion}
 
-Using small-scale simulated examples, we are able to demonstrate that that the SGHMC algorithm is able to improve sampling accuracy in a batched data setting compared to regular HMC.
-We where also able to show that included a gradient variance estimator improved the sampling performance in these simulated scenarios.
+Using small-scale simulated examples, we demonstrate that the SGHMC algorithm can improve sampling accuracy in a batched data setting compared to regular HMC.
+We also show that including a gradient variance estimator improved the sampling performance in these simulated scenarios.
+We also implement a variational inference algorithm.
 
-However, using these methods, we find that a fully Bayesian approach to training deep learning models does not necessarily improve model performance.
-Taking a purely Bayesian approach to model estimation, we find that we are unable to make use of certain modelling techniques proved useful for training very deep models. 
+However, we find that using these methods, a fully Bayesian approach to training deep learning models does not necessarily improve model performance.
 
+We see performance improvements for a medium-sized convolutional model on the CIFAR10 dataset but worse performance when training a feed-forward network on MNIST and the DenseNet-121 model on the CIFAR10 dataset.
+
+Taking a purely Bayesian approach to model estimation, we find that we cannot use specific modeling techniques that have proved helpful for training deep models. 
 We also find diagnostics indicating that the sampling algorithms, as implemented, may yield inaccurate posterior samples.
+Therefore, we must improve the robustness of the samplers before we can draw any definitive conclusions on the usefulness of a Bayesian MCMC approach in deep learning.
 
-Using variational inference resulted in the best calibrated models, however the predictive performance was generally inferior compared to using other methods.
-
-% abstract?
-
-% We implement two different approaches, the first being a Markov chain Monte Carlo algorithm, SGHMC introduced in \autocite*{chen_stochastic_2014}.
-% This algorithm is a variation of the Hamiltonian Monte Carlo algorithm, allowing for sampling in a batched learning environment.
-% SGHMC accomplishes this by modifying the stochastic dynamic to correct for the additional variance by introducing a friction term. 
-% This approach works well in small-scale simulated experiments. 
-% We also find that introducing a gradient variance estimator for these simulated scenarios can improve the performance of the sampling algorithm.
-% The second approach is approximating the Bayesian posterior using the variational inference algorithm.
-% We implement both of these approaches using the PyTorch and PyTorch Lightning frameworks.
-
-
-
-
-
-% and variational inference \autocite*{blundell_weight_2015}, we  
-
-
-% We see that naively implementing the HMC sampling algorithm leads to incorrect samples in a batching data setting. 
-% By modeling the noise introduced through batching as a Gaussian distribution, we can account for the additional variance by adding a friction term to the HMC algorithm. 
-% The resulting sampling algorithm, named SGHMC, closely resembles regular stochastic gradient descent with momentum, with some additional noise added to the gradient, and can be parameterized as such.
-
-% The efficacy of this algorithm is shown through two simulated experiments. 
-% First, a small-scale experiment, precisely replicating the noise model, shows that the algorithm can correct for the noise applied the gradient in an ideal scenario. 
-% Next, a simulated example of Bayesian linear regression demonstrates the algorithm's validity beyond an idealized setting.  
-% We find that SGHMC, as implemented in \autocite{chen_stochastic_2014}, does yield better samples than a naive HMC implementation. 
-% Further, we see that introducing a variance estimator to the SGHMC algorithm improves the quality of the samples and specific statistics. 
-% We also implement a variational inference algorithm for comparison with the sampling methods.
-
-% We find that introducing the above probabilistic methods to deep learning does not necessarily lead to a higher quality inference.
-% On the contrary, we find that regular SGD with dropout results in the lowest test error.
-% We see no performance improvement for a medium-sized feed-forward neural network applied to MNIST using the discussed probabilistic methods. 
-% Implementing a medium-sized convolutional neural network for the more challenging to predict dataset CIFAR10, the SGHMC algorithms improve performance with and without gradient variance estimation. 
-% Applying the different methods to the larger convolutional model, DenseNet, we again find that regular SGD yields the best performance in terms of accuracy. 
-
-% Across all experiments, we find that variational inference leads to the most well-calibrated models; however, not the best accuracy.
-% Likewise, for SGHMC, estimating the variance seems to calibrate the model better but does not yield the best predictions.
-% We also find that both sampling methods break down to some extent when applied to deep learning models.
-
-
-
-% The lack of robustness of the sampler, b
+Using variational inference resulted in the best-calibrated models; however, the predictive performance was generally inferior to the other methods implemented.

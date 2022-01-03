@@ -1,24 +1,56 @@
 \section*{Abstract}
 \addcontentsline{toc}{section}{Abstract}
 
-intro
-
-teori
-
-We implement both of these approaches using the PyTorch and PyTorch Lightning frameworks.
-
-We implement two different approaches, the first being a Markov chain Monte Carlo algorithm, SGHMC introduced in \autocite{chen_stochastic_2014}.
-This algorithm is a variation of the Hamiltonian Monte Carlo algorithm, allowing for sampling in a batched learning environment.
-SGHMC accomplishes this by modifying the stochastic dynamic to correct for the additional variance by introducing a friction term. 
-This approach works well in small-scale simulated experiments. 
-We also find that introducing a gradient variance estimator for these simulated scenarios can improve the performance of the sampling algorithm.
-The second approach is approximating the Bayesian posterior using the variational inference algorithm.
-
-hurtig konklu
-
-% \blindtext
+Recent advancements in machine learning have led to complex models that, while powerful, are also difficult to interpret and calibrate.
+Using methods from Bayesian statistics, we investigate whether we can achieve more robust inference by implementing two different Bayesian approaches.
+First, we implement the Stochastic Gradient Hamiltonian Monte Carlo (SGHMC) algorithm.
+We show how we arrive at this algorithm by modifying the Hamiltonian Monte Carlo algorithm to support batched data.
+We also implement a variational inference algorithm, approximating the Bayesian posterior. 
+In small-scale simulated experiments, we see that the SGHMC algorithm works better than a naive implementation.  
+We find that we can improve the performance of the SGHMC algorithm in these simulated scenarios by introducing a gradient variance estimator.
+When applied to deep learning problems, we do not find that either of the Bayesian methods necessarily leads to better performance than conventional methods. 
+Further, diagnostic statistics suggest that the sampling methods, as implemented, do not scale well into the deep learning setting.
 
 
 
 
 
+
+% abstract?
+
+% We implement two different approaches, the first being a Markov chain Monte Carlo algorithm, SGHMC introduced in \autocite*{chen_stochastic_2014}.
+% This algorithm is a variation of the Hamiltonian Monte Carlo algorithm, allowing for sampling in a batched learning environment.
+% SGHMC accomplishes this by modifying the stochastic dynamic to correct for the additional variance by introducing a friction term. 
+% This approach works well in small-scale simulated experiments. 
+% We also find that introducing a gradient variance estimator for these simulated scenarios can improve the performance of the sampling algorithm.
+% The second approach is approximating the Bayesian posterior using the variational inference algorithm.
+% We implement both of these approaches using the PyTorch and PyTorch Lightning frameworks.
+
+
+% and variational inference \autocite*{blundell_weight_2015}, we  
+
+
+% We see that naively implementing the HMC sampling algorithm leads to incorrect samples in a batching data setting. 
+% By modeling the noise introduced through batching as a Gaussian distribution, we can account for the additional variance by adding a friction term to the HMC algorithm. 
+% The resulting sampling algorithm, named SGHMC, closely resembles regular stochastic gradient descent with momentum, with some additional noise added to the gradient, and can be parameterized as such.
+
+% The efficacy of this algorithm is shown through two simulated experiments. 
+% First, a small-scale experiment, precisely replicating the noise model, shows that the algorithm can correct for the noise applied the gradient in an ideal scenario. 
+% Next, a simulated example of Bayesian linear regression demonstrates the algorithm's validity beyond an idealized setting.  
+% We find that SGHMC, as implemented in \autocite{chen_stochastic_2014}, does yield better samples than a naive HMC implementation. 
+% Further, we see that introducing a variance estimator to the SGHMC algorithm improves the quality of the samples and specific statistics. 
+% We also implement a variational inference algorithm for comparison with the sampling methods.
+
+% We find that introducing the above probabilistic methods to deep learning does not necessarily lead to a higher quality inference.
+% On the contrary, we find that regular SGD with dropout results in the lowest test error.
+% We see no performance improvement for a medium-sized feed-forward neural network applied to MNIST using the discussed probabilistic methods. 
+% Implementing a medium-sized convolutional neural network for the more challenging to predict dataset CIFAR10, the SGHMC algorithms improve performance with and without gradient variance estimation. 
+% Applying the different methods to the larger convolutional model, DenseNet, we again find that regular SGD yields the best performance in terms of accuracy. 
+
+% Across all experiments, we find that variational inference leads to the most well-calibrated models; however, not the best accuracy.
+% Likewise, for SGHMC, estimating the variance seems to calibrate the model better but does not yield the best predictions.
+% We also find that both sampling methods break down to some extent when applied to deep learning models.
+
+
+
+% The lack of robustness of the sampler, b
