@@ -95,19 +95,3 @@ def get_frac_in_ci(
         .is_in_ci.groupby(level=groupby_levels)
         .agg(frac_in_ci="mean", count="count")
     )
-
-
-def format_rate_with_95_ci(
-    data: pd.DataFrame,
-    rate_col: str,
-    count_col: str,
-) -> pd.DataFrame:
-
-    from math import sqrt
-
-    def format_ci(rate: float, count: int) -> str:
-
-        pm = sqrt(rate * (1 - rate) / count) * 1.96
-        return f"${100*rate:.2f} \\pm {100*pm:.2f}~\\%$"
-
-    return data.apply(lambda x: format_ci(x[rate_col], x[count_col]), axis=1)

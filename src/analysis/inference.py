@@ -8,8 +8,13 @@ import torch
 from scipy.stats import chi2
 from src.utils import Run
 
-from .temperatures import plot_temperature_chi2
+import hydra
+import numpy as np
+from math import sqrt
+
+from .temperatures import load_temperatures, plot_temperature_chi2, get_frac_in_ci
 from .colors import get_colors
+from .utils import format_as_percent, format_rate_with_95_ci, embolden_
 
 
 def plot_val_err(
@@ -228,7 +233,6 @@ def plot_temperatures(
             lambda x: x.index.get_level_values("parameter").isin(sampled_params)
         ]
 
-
     fg = sns.displot(
         data=temperatures.reset_index(),
         x="temperature_sum",
@@ -256,3 +260,83 @@ def plot_temperatures(
     )
 
     return fg
+
+
+def get_test_err_table(
+    runs: List[Run], labels: Optional[List[str]] = None
+) -> pd.DataFrame:
+
+    if labels is None:
+        labels = [r.inference_label for r in runs]
+
+    dm = hydra.utils.instantiate(runs[0].cfg.data)
+    dm.setup()
+    n_test = len(dm.test_data)
+
+    test_errs = pd.DataFrame.from_dict(
+        {
+            l: {"err/test": run.get_scalar("err/test").iloc[0]}
+            for l, run in zip(labels, runs)
+        },
+        orient="index",
+    )
+
+    best_idx = test_errs["err/test"].idxmin()
+
+    return (
+        test_errs.assign(count=n_test)
+        .pipe(format_rate_with_95_ci, "err/test", "count")
+        .rename("Test error incl. 95\\% CI")
+        .rename_axis("Method")
+        .pipe(pd.DataFrame)
+        .pipe(embolden_, best_idx)
+        .reset_index()
+    )
+
+
+def get_ece_table(runs: List[Run], labels: Optional[List[str]] = None):
+
+    if labels is None:
+        labels = [r.inference_label for r in runs]
+
+    ece = (
+        pd.Series({l: r.get_scalar("ece/test").item() for l, r in zip(labels, runs)})
+        .rename("ECE")
+        .rename_axis("Method")
+    )
+    best_ece = ece.idxmin()
+    return (
+        ece.apply(format_as_percent)
+        .pipe(pd.DataFrame)
+        .pipe(embolden_, best_ece)
+        .reset_index()
+    )
+
+
+def get_temp_ci_table(runs: List[Run], labels: Optional[List[str]] = None) -> pd.DataFrame:
+    
+    if labels is None:
+        labels = [r.inference_label for r in runs]
+
+    mcmc_labelled_runs = {
+        l: r for l, r in zip(labels, runs) if "SGHMC" in r.inference_label
+    }
+
+    runs = list(mcmc_labelled_runs.values())
+    labels = list(mcmc_labelled_runs.keys())
+
+    temperature_samples = pd.concat(
+        load_temperatures(run)
+        .assign(Method=label)
+        .set_index("Method", append=True)
+        .reorder_levels(["Method", "parameter", "step"])
+        for label, run in zip(labels, runs)
+    ).assign(T_k=lambda x: x.temperature_sum / x.n_params)
+
+    return (
+        get_frac_in_ci(temperature_samples, ["Method"])
+        .pipe(format_rate_with_95_ci, "frac_in_ci", "count")
+        .rename("$\E[\hat{T}_K \in J_{T_K}(d, {0.99})]$")
+        .reset_index()
+    )
+
