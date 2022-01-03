@@ -1,9 +1,9 @@
 \chapter{Inference}
 
 In this section, we briefly discuss the problem in inference.
-This serves to summarize the modeling assumptions and introduce some notations for use in the rest of the thesis. 
+This summarizes the modeling assumptions and introduces some notations for use in the rest of the thesis. 
 In general, we will consider the problem of inference as follows:
-We have some data points, denoted $\D = (\bm{X}, \bm{Y})$, where $\bm{X} = (x_1,\dots,x_N)$ are covariates and $\bm{Y} = (y_1, \dots, y_N)$ are attributes we want to model. 
+We have some data points, denoted $\D = (\bm{X}, \bm{Y})$, where $\bm{X} = (x_1,\dots,x_N)$ are covariates, $x_i\in \mathbb{R}^D$, and $\bm{Y} = (y_1, \dots, y_N)$ are attributes we want to model. 
 We assume some parameterization of the probability density of each observation $y_i$ conditioned on the covariates $p(y_i|x_i,\theta)$.
 The corresponding graphical model can be seen in \cref{fig:pgm}. 
 \begin{figure}[htbp]
@@ -29,43 +29,41 @@ The corresponding graphical model can be seen in \cref{fig:pgm}.
 Given some new data point, $x^\ast$, we may then want to find the predictive distribution $p(y^\ast | x^\ast, \D)$. 
 In a frequentist framework, we would usually attempt to find a suitable estimate $\hat{\theta}$ of our model parameters, and model our predictive distribution as $p(y^\ast | x^\ast, \hat{\theta})$.
 Depending on the model, we may even be able to give some measure of uncertainty about the estimate.
-Using a Bayesian approach, we would instead account for any uncertainty about the model parameters (and thus estimates), by marginalizing them out. 
+Using a Bayesian approach, we instead account for any uncertainty about the model parameters by marginalizing them out. 
 This can be achieved by using using the posterior distribution of the parameters conditioned on the data $p(\theta|\D)$.
-\begin{equation}\label{eq:inference}
-    \begin{aligned}
+\begin{align}\label{eq:inference}
         p(y^\ast | x^\ast, \D) &= \int_{\Omega} p(y^\ast | x^\ast, \theta, \D)  p(\theta|\D) \dd\theta \\
         &= \int_{\Omega} p(y^\ast | x^\ast, \theta)  p(\theta|\D) \dd\theta\\
-        &= \E_{p(\theta|\D)} [p(y^\ast | x^\ast, \theta)] 
-    \end{aligned}
-\end{equation}
+        &= \E_{p(\theta|\D)} [p(y^\ast | x^\ast, \theta)]. 
+\end{align}
 In practice, at least in the case of deep learning models, the above expectation is not feasible to evaluate exactly.
 We may also not know the exact form of the posterior $p(\theta|\D)$, however by applying Bayes rule, we find that we are able to determine it up to a constant:
-\begin{equation} \label{eq:posterior}
-    \begin{aligned}
+\begin{align} 
         p(\theta | \D) 
         &= \frac{p(\bm X , \bm Y, \theta)}{p(\bm{X}, \bm{Y})}\\
         &= \frac{p(\theta) p(\bm X) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})p(\bm{X})} \\
-        &= \frac{p(\theta) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})} \\
+        &= \frac{p(\theta) p(\bm Y | \bm X, \theta)}{p(\bm{Y}|\bm{X})} \label{eq:posterior} \\ 
         &\propto p(\theta) p(\bm Y | \bm X, \theta).
-    \end{aligned}
-\end{equation}
+\end{align}
 Here we use the factorization lent to us by the graphical model:
 \begin{align}
     p(\bm X, \bm Y, \theta) = p(\theta) p(\bm X) p(\bm Y | \bm X, \theta).
 \end{align}
-It turns out that we are able to use $f(\theta) \propto p(\theta | \D)$ to generate samples from the posterior, which allows for the following Monte Carlo estimate of the predictive distribution:
+It turns out that we are able to use $f(\theta) \propto p(\theta | \D)$ to generate samples from the posterior, which allows for a Monte Carlo estimate of the predictive distribution:
 \begin{align}
-    p(y^\ast | x^\ast, \D)  \approx \frac{1}{N} \sum_{i=1}^N p(y^\ast | x^\ast, \theta^{(i)}),
+    p(y^\ast | x^\ast, \D)  \approx \frac{1}{K} \sum_{k=1}^K p(y^\ast | x^\ast, \theta^{(k)}),
 \end{align}
 where $\theta^{(i)}\sim p(\theta | \D)$.
 
 In the remaining chapter, we discuss two different strategies for sampling from posterior, Markov Chain Monte Carlo (MCMC) and variational inference (VI).
-We will briefly cover the core concepts of MCMC algorithms in order to introduce the stochastic gradient Hamiltonian Monte Carlo (SGHMC) algorithm.
+We will briefly cover the core concepts of MCMC algorithms to introduce the stochastic gradient Hamiltonian Monte Carlo (SGHMC) algorithm.
 
 \section{Markov Chain Monte Carlo}
-
-Suppose we want to obtain samples from some probability distribution $p(x)$.
-The Markov chain Monte Carlo (MCMC) sampling scheme aims to produce a series of states $x^{(1)},\dots,x^{(K)}$, sampling each state $x^{(i)}$ conditioned on only the previous state $x^{(i-1)}$. 
+The following sections deal with sampling methods in use generally for sampling for various kinds of distributions. 
+Therefore, we will discuss the problem of sampling from a general random variable $x$, with some probability distribution $p(x)$.
+We then use these algorithms for sampling $\theta$ with probability distribution $p(\theta|\D)$.
+We use results from the theory presented in \autocite{bishop_pattern_2006} and \autocite{li_markov_2010} to give an overview of how and why the different methods works. 
+The Markov chain Monte Carlo (MCMC) sampling scheme aims to produce a series of states $x^{(1)},\dots,x^{(K)}$, sampling each state $x^{(k)}$ conditioned on only the previous state $x^{(k-1)}$. 
 We represent the conditional probability of transitioning from some state $x$ to a new state $x^\prime$ using the transition density $q(x^\prime | x)$.
 That is, for some subset of the sample space $B\subseteq \Omega$, then 
 \begin{align}    
@@ -112,7 +110,7 @@ Then, the proposed sample is \emph{accepted} with probability:
 \begin{align}
     A(x^{\ast}, x) = \min\left\{1, \frac{\tilde{p}(x^\ast)}{\tilde{p}(x)}\right\}.
 \end{align}
-If the sample is accepted, the chain transitions to the proposed state $x^\prime \gets x^\ast$.
+If the sample is accepted, the chain transitions to the proposed state $x^\prime = x^\ast$.
 Otherwise, the sample is \emph{rejected}, and the state is unchanged.
 We then repeat this process until we have obtained the required amount of samples $x^{(1)},\dots,x^{(K)}$. 
 
@@ -121,7 +119,6 @@ To show that the target distribution $p(x)$ is stationary with respect to this s
 With $x$ the current state, for $x^\prime=x$ the property of detailed balance \cref{eq:detailed-balance} is trivially met.
 
 For any $x^\prime \neq x$, let $B\subset \Omega$, where $x\not\in B$ be some subset of the sample space. 
-
 Using the proposal distribution, we generate a proposal state $x^\ast$.
 The following state of the Markov chain $x^\prime$ is then within some $B \subset \Omega$, if and only if $x^\ast \in B$ and the sample is accepted.
 We can compute the corresponding probability by marginalizing the proposal distribution:
@@ -138,13 +135,13 @@ For simplicity, we assume that the proposal distribution is symmetric, that is $
 We can then verify that this transition probability does indeed satisfy the property of detailed balance:
 \begin{align}
     p(x)q(x^\prime|x) &= p(x)g(x^\prime | x) A(x^\prime, x) \\
-    &= p(x)g(x^\prime | x) \min\left\{1,  \tilde{p}(x^\prime) / \tilde{p}(x)\right\} \\
-    &= \underbrace{p(x)}_{\geq 0} \underbrace{g(x^\prime | x)}_{=g(x | x^\prime)} \min\left\{1,  p(x^\prime) / p(x)\right\} \\
+    &= p(x)g(x^\prime | x) \min\left\{1,  \frac{\tilde{p}(x^\prime)}{ \tilde{p}(x)}\right\} \\
+    &= \underbrace{p(x)}_{\geq 0} \underbrace{g(x^\prime | x)}_{=g(x | x^\prime)} \min\left\{1,  \frac{p(x^\prime)}{p(x)}\right\} \\
     &= g(x | x^\prime) \min\left\{p(x), p(x^\prime)\right\} \\
-    &= g(x | x^\prime) p(x^\prime) \min\left\{p(x)/p(x^\prime), 1\right\} \\
+    &= g(x | x^\prime) p(x^\prime) \min\left\{\frac{p(x)}{p(x^\prime)}, 1\right\} \\
     &= p(x^\prime) g(x | x^\prime)  A(x ,x^\prime) = p(x^\prime) q(x|x^\prime).
 \end{align}
-Thus, the Markov chain satisfies the property of detailed balance and is stationary with respect to the Markov chain.
+Thus, the Markov chain is stationary with respect to the target distribution.
 If we choose our proposal distribution such that the chain is also ergodic eg. by having $q(x^\prime|x) \neq 0$ for all $x^\prime,x$, the sample distribution will therefore eventually converge towards $p(x)$. 
 
 While the algorithm will eventually sample from the correct distribution, it does not necessarily do so within a reasonable time frame. 
@@ -152,16 +149,16 @@ We are essentially hoping that our proposal distribution $g(x^\prime | x)$ relia
 We can achieve this for simple problems by adjusting the proposal distribution, e.g., a Gaussian distribution, around the current state.
 However, this strategy may fall short for problems with high dimensionality and complex target distributions.
 
-\subsection{Gibbs sampling}
+\subsection{Gibbs Sampling}
 Next, we will be looking into the Gibbs sampling scheme.
 This algorithm is also important for introducing the HMC algorithm, but we will also be applied directly in the modeling section.
-Suppose we are trying to sample from some joint distribution $x=(x_1,\dots, x_M)$, and we had some way of efficiently sampling each of our variables conditioned on our other variables, that is $p(x_i|x_{\setminus i})$.
+Suppose we are trying to sample from some joint distribution $x=(x_1,\dots, x_D)$, and we had some way of efficiently sampling each of our variables conditioned on our other variables, that is $p(x_i|x_{\setminus i})$.
 The Gibbs sampling strategy generates a new sample $x$ by sampling each variable $x_i$ in turn, conditioned on the other variables, from $p(x_i|x_{\setminus i})$.  
 
-In order to argue for the stationarity of this procedure, we show that the joint distribution $p(x)$ is stationary with respect to each of these steps. 
-In the step sampling $x_i$, we can specify the transition density $q(x^\prime| x)$ using the Dirac delta function as:
+In order to argue for the stationarity of this scheme, we show that the joint distribution $p(x)$ is stationary with respect to each of these steps. 
+In the step sampling $x_i$, we can specify the transition density $q(x^\prime| x)$ using a delta function as:
 \begin{align}
-    q(x^\prime| x) = \delta(x_{\setminus i} -x^\prime_{\setminus i}) p(x_i^\prime|x_{\setminus i})
+    q(x^\prime| x) = \delta(x_{\setminus i} -x^\prime_{\setminus i}) p(x_i^\prime|x_{\setminus i}).
 \end{align}
 We can verify that this transition density satisfies the stationarity requirements in \cref{eq:stationarity}, by evaluating the integral:
 \begin{align}
@@ -171,7 +168,7 @@ We can verify that this transition density satisfies the stationarity requiremen
     &= p(x^\prime_i|x^\prime_{\setminus i}) \underbrace{\int_{\Omega}  p(x_i,x^\prime_{\setminus i}) \dd{x_i}}_{p(x^\prime_{\setminus i})} \\ 
     &= p(x^\prime_i|x^\prime_{\setminus i}) p(x^\prime_{\setminus i})  \\
     &=  p(x^\prime_i,x^\prime_{\setminus i})  \\
-    &= p(x^\prime)
+    &= p(x^\prime).
 \end{align}
 
 If the conditional distributions $p(x_i|x_{\setminus i})$ are non-zero for all values of all variables $x_i$, the chain is also ergodic.
@@ -179,11 +176,12 @@ If not, the ergodicity of the sampling strategy will have to be proven explicitl
 
 \subsection{Hamiltonian Monte Carlo}
 
-With these results in hand, we can introduce the Hamiltonian Monte Carlo (HMC) algorithm.
+With these results in hand, we can introduce the Hamiltonian Monte Carlo (HMC) algorithm. 
+This section is based on the theory from \autocite{bishop_pattern_2006} and \autocite{betancourt_conceptual_2018}.
 From the Metropolis-Hastings algorithm, we see that we need a proposal strategy that leaves the target distribution stationary while taking significant steps to explore the sample space.
 Borrowing from the field of dynamical systems, HMC uses the notions of kinetic and potential energy to generate samples from the target distribution. 
 We then seek to abuse the fact that the system's total energy is invariant over time to construct a transition scheme that leaves the target distribution invariant.
-Concretely, this is done by modelling the random variable $x=(x_1,\dots,x_M)$ as a particle in a Hamiltonian system.
+Concretely, this is done by modelling the random variable $x=(x_1,\dots,x_D)$ as a particle in a Hamiltonian system.
 To this end, we define the \emph{momentum}, $r_i$ of each variable $x_i$.
 \begin{align}
     \dv{x_i}{t} = M^{-1} r_i.
@@ -225,13 +223,13 @@ Therefore, if we introduce the negative log density of the target distribution a
 \newcommand{\nextr}{{r^{(i+1)}}}
 
 Ideally, we would sample from $p(x, r)$ in two steps.
-Let $\phi_\Delta: \mathbb{R}^{2M} \mapsto \mathbb{R}^{2M}$ be the flow of the dynamical system in \cref{eq:hmc-dynamics}, that is, $\phi_\Delta$ maps a position in state space to the corresponding position after time $\Delta$.
+Let $\phi_\Delta: \mathbb{R}^{2D} \mapsto \mathbb{R}^{2D}$ be the flow of the dynamical system in \cref{eq:hmc-dynamics}, that is, $\phi_\Delta$ maps a position in state space to the corresponding position after time $\Delta$ under the dynamics of \cref{eq:hmc-dynamics}.
 Suppose the current position in state space is $(\oldx, \oldr)$. 
 First, the momentum is resampled as $\oldr^\ast\sim \mathcal{N}(0, M^{-1})$.
 Then, the system dynamics are simulated for some amount of time $\Delta$ to yield the following sample $\phi_\Delta((\oldx, \oldr^\ast))$.
 
 The stationarity with respect to $p(x, r)$ of this procedure is shown by showing the stationarity of each of the two steps.
-From \cref{eq:hmc-joint}, we see that $p(r|x) \propto \exp[-K(r)] = \exp[\frac{1}{2}r^tM^{-1}r]$, ie. the conditional distribution of $r$ is $\mathcal{N}(0, M^{-1})$.
+From \cref{eq:hmc-joint}, we see that $p(r|x) \propto \exp[-K(r)] = \exp[-\frac{1}{2}r^TM^{-1}r]$, ie. the conditional distribution of $r$ is $\mathcal{N}(0, M)$.
 By resampling the momentum, we are thus performing a Gibbs step, and as seen previously, this does indeed have $p(x, r)$ as stationary distribution.
 Then, since we are deterministically simulating the system, we can model the next transition density using the delta function, $q(z^\prime|z) = \delta(z^\prime - \phi_\Delta(z))$, where $z=(x, r)$. 
 Since $H$ is constant along trajectories of the system, $p(z) =p(\phi_t(z))$ for any $t$, and thus
@@ -239,7 +237,7 @@ Since $H$ is constant along trajectories of the system, $p(z) =p(\phi_t(z))$ for
     \int_{\Omega} q(z^\prime| z ) p(z) \dd{z} = \int_{\Omega} \delta(z^\prime - \phi_\Delta(z))p(z) \dd{z} 
     = p(\phi_{-\Delta}(z^\prime)) = p(z^\prime).
 \end{align}
-Where we use that we can invert the flow, $\phi^{-1}_\Delta$ as $\phi_{-\Delta}$. 
+Where we use that we can invert the flow, $\phi^{-1}_\Delta$ as $\phi_{-\Delta}$ \autocite{perko_differential_1991}. 
 This second step, therefore, also satisfies the stationarity requirement.
 The initial resampling of the procedure ensures the ergodicity of the sampling procedure.
 Since we are sampling the momentum from a normal distribution, there is a non-zero probability of reaching any point in state space in a finite number of steps.
@@ -248,7 +246,7 @@ In practice, it is not possible to exactly simulate the system, and we, therefor
 We do this in a leapfrog manner, initially simulating the momentum variable $r$ a half step, then alternatively simulating the dynamics of $x$ and $r$ respectively.
 In the end, we perform a final half step for $r$.
 
-While we can obtain very good approximations, these also come with a computational cost and would still be susceptible to areas of high curvature, potentially leading to unstable estimates. 
+While we can obtain very good approximations, these also come with a computational cost and would still be susceptible to areas of high curvature, potentially leading to unstable behavior. 
 Instead, we can use a Metropolis-Hastings step to correct the introduced discretization error.
 First, we ensure that the proposal distribution is symmetric by using an additional step $N((x, r)) = (x, -r)$, negating the momentum after simulating the dynamics.
 The proposed sample then becomes $z^\ast = N(\hat{\phi}_\epsilon^T(z)) $.
@@ -348,15 +346,16 @@ This also implies that under the induction hypothesis $\hat{\phi}^{T}_\epsilon(N
         \underbrace{V \circ S^{\circ T} \circ U \circ N \circ V \circ  S^{\circ T} \circ U}_{=N}
         \circ V\circ S \circ U \\
         &= \underbrace{N\circ V\circ S\circ U\circ N \circ V\circ S \circ U}_{\text{$\text{id}$ per i.h.}} \\
-        &= \text{id} 
+        &= \text{id}.
 \end{align}
 And so $N(\hat{\phi}^{T+1}_\epsilon(N(\hat{\phi}^{T+1}_\epsilon(z)))) = z$, and indeed $N(\hat{\phi}^{T}_\epsilon(N(\hat{\phi}^{T}_\epsilon(z)))) = z$ for any number of steps $T$. 
 The proposal distribution $g(z^\prime | z) = \delta(z^\prime- \hat{\phi}^{T}_\epsilon(z)))$ is therefore symmetrical.
 Including a Metropolis-Hastings step, accepting the proposed state, $z^\ast$ with probability
 \begin{align}
-    A(z^\ast, z) = \min\left\{1, \frac{p(z)}{p(z^\ast)}\right\} = \min\left\{ 1, \exp[-H(x) + H(x^\prime)] \right\}.
+    A(z^\ast, z) = \min\left\{1, \frac{p(z)}{p(z^\ast)}\right\} = \min\left\{ 1, \exp[-H(x) + H(x^\prime)] \right\},
 \end{align}
-Since we are resampling the momentum immediately after each integration step, and $K(r) = K(-r)$ we do not need to negate the momentum in practice.
+we thus ensure stationary of the integration step.
+Since we resample the momentum immediately after each integration step, and $K(r) = K(-r)$ we do not need to negate the momentum in practice.
 We thus end up with the algorithm described in \cref{alg:hmc}.
 
 \algnewcommand{\IfThenElse}[3]{% \IfThenElse{<if>}{<then>}{<else>}
@@ -411,26 +410,28 @@ We may consider a similar scheme, approximating the $U$ gradient based only on a
     \nabla\tilde{U}(\theta) = -\left(\frac{|\D|}{|\tilde{\D}|}  \nabla \sum_{x_i, y_i\in \tilde{\D}} \log{p(y_i |\theta, x_i)}\right)  -\nabla \log{p(\theta)}.
 \end{align}
 While this introduces some approximation error into the algorithm, this greatly increases the number of gradient steps we can take given the same computational budget.
-In \cite{chen_stochastic_2014}, they model the behavior of this approach with:
+In \autocite{chen_stochastic_2014}, they model the behavior of this approach with
 \begin{align} \label{eq:sghmc-model}
     \nabla\tilde{U}(\theta) \approx \nabla{U}(\theta) + e,
 \end{align}
 where $e \sim \mathcal{N}(0, V(\theta))$ is the noise introduced through the approximation.
-A Gaussian noise model is reasonable when considering the central limit theorem and that observations are independent; however, it is still an approximation.
 This model of the gradient noise has some ramifications for the Hamiltonian system described in the previous section. 
-While we may try to use the HMC algorithm regardless, we can also attempt to modify the system's dynamics with this noise term in mind.
-If we for some step size $\epsilon$ consider the discretized system as
+While we may attempt to use the HMC algorithm regardless, we can also attempt to modify the system's dynamics with this noise term in mind.
+Consider for some step size $\epsilon$ the discretized system:
 \begin{align}
-    \Delta \theta &=  \epsilon M^{-1} r,\\
-    \Delta r &=  -\epsilon\nabla{\tilde{U}}(\theta) = -\epsilon\nabla{U}(\theta)  + \epsilon e.
+    \Delta \theta &=  \epsilon M^{-1} r, \label{eq:ds1}\\
+    \Delta r &=  -\epsilon\nabla{\tilde{U}}(\theta) = -\epsilon\nabla{U}(\theta)  + \epsilon e.\label{eq:ds2}
 \end{align}
 These updates can be interpreted as discrete steps with size $\epsilon$ from the continuous stochastic system:
 \begin{align} 
     \dd{\theta} &= M^{-1} r\dd{t} \\
-    \dd{r} &= -\nabla{U}(\theta)\dd{t}  + \sqrt{\epsilon V(\theta)} \dd{W_t},
+    \dd{r} &= -\nabla{U}(\theta)\dd{t}  + \sqrt{\epsilon} V(\theta)^{\frac{1}{2}} \dd{W_t},
 \end{align}
-where $W_t$ is a $M$ dimensional Weiner process.
-Alternatively, we can express the dynamics as a $2M$-dimensional system using vector notation:
+where $W_t$ is a $D$ dimensional Weiner process.
+Time increments of size $\epsilon$ of the Wiener process are normally distributed, with mean zero and variance $\epsilon$ \autocite{ottinger_stochastic_1996}.
+Scaling the Weiner process by a factor $\sqrt{\epsilon} V(\theta)^{\frac{1}{2}}$, the variance of the increment increases to $\epsilon^2 V(\theta)$, corresponding to variance of the noise in the  
+discretizing system in the \crefrange{eq:ds1}{eq:ds2}. 
+Alternatively, we can express the dynamics as a $2D$-dimensional system using vector notation:
 \begin{align} \label{eq:stoch-hmc-naive}
     \dd{\begin{bmatrix}\theta \\ r \end{bmatrix}} &= 
     \begin{bmatrix}
@@ -440,9 +441,9 @@ Alternatively, we can express the dynamics as a $2M$-dimensional system using ve
         0 & \sqrt{\epsilon} V(\theta)^{\frac{1}{2}}
     \end{bmatrix} \dd{W_t}.
 \end{align}
-As argued in \cite{chen_stochastic_2014}, the target distribution $p(\theta, r)\propto \exp(-H(\theta, r))$ is indeed no longer stationary with respect to the now stochastic dynamics of \cref{eq:stoch-hmc-naive}.
+As argued by \autocite{chen_stochastic_2014}, the target distribution $p(\theta, r)\propto \exp(-H(\theta, r))$ is no longer stationary with respect to the now stochastic dynamics of \cref{eq:stoch-hmc-naive}.
 Thus, unlike the original Hamiltonian dynamics, where we only had to correct for the discretization error, in this case not even the underlying dynamics are stationary with respect to $p(\theta, r)$.
-Assuming we know the noise model $V(\theta)$, the solution proposed in \cite{chen_stochastic_2014} is to instead introduce a proportional friction term in \cref{eq:stoch-hmc-naive}, to counteract the additional variance:
+Assuming we know the noise model $V(\theta)$, the solution proposed in \autocite{chen_stochastic_2014} is to instead introduce a proportional friction term in \cref{eq:stoch-hmc-naive}, to counteract the additional variance:
 \begin{align} \label{eq:stoch-hmc-w-friction}
     \dd{\begin{bmatrix}\theta \\ r \end{bmatrix}} &= 
     \begin{bmatrix}
@@ -467,20 +468,20 @@ Factoring out common terms, and introducing $B(\theta) = \frac{1}{2}\epsilon V(\
 \end{align}
 Introducing the matrices
 \begin{align} \label{eq:stoch-hmc-matrix-defs}
-    G=\begin{bmatrix}0 & -I \\ I & 0 \end{bmatrix}, ~ 
+    G=\begin{bmatrix}0 & -I \\ I & 0 \end{bmatrix},\quad 
     D = \begin{bmatrix}
         0 & 0 \\ 
         0 & B
-    \end{bmatrix}
+    \end{bmatrix}.
 \end{align}
 and identifying the gradient of the Hamiltonian, we can write the system on the compact form: 
 \begin{align}
     \dd{\begin{bmatrix}\theta \\ r\end{bmatrix}}= - (D+G) \nabla H(\theta, r)\dd{t} + \sqrt{2}D^{\frac{1}{2}} \dd{W_t}.
 \end{align}
-We can then make use of the Fokker-Planck equations \cite{ottinger_stochastic_1996}, to describe the evolution of our target distribution $p(\theta, r)=p(z)$ under these dynamics. 
-According the FP equation, for the stochastic on the system:
+We can then make use of the Fokker-Planck (FP ) equations \autocite{ottinger_stochastic_1996}, to describe the evolution of our target distribution $p(\theta, r)=p(z)$ under these dynamics. 
+According the FP equation, for the stochastic  system:
 \begin{align}
-    \dd{Z_t} =A(t, Z_t) \dd{t}+ S(t, Z_t)\dd{W_t}
+    \dd{Z_t} =A(t, Z_t) \dd{t}+ S(t, Z_t)\dd{W_t},
 \end{align}
 with $\Sigma=SS^T$, we then have:
 \begin{align}
@@ -493,13 +494,13 @@ Inserting into the equation with $p_t(z) = \exp[-H(z)]$, above, we find that
     \pdv{t} p_t(z) &= - \sum_{i} \pdv{z_i} [ -(D+G)\nabla H(\theta, r)]_i p_t(z) 
     + \frac{1}{2}\sum_{i}\sum_{j}\pdv{}{z_i}{z_j}[2D]_{i,j}p_t(z). 
 \end{align}
-From \cref{eq:stoch-hmc-matrix-defs}, we see that $D(\theta)$ only depends on $z = (\theta, r)$, in the lower right quadrant, where the terms depends on only on $\theta$.
+From \cref{eq:stoch-hmc-matrix-defs}, we see that $D(\theta)$ only depends on $z= (\theta, r)$, in the lower right quadrant, where the terms depends only on $\theta$.
 Since the partial derivatives are only taken with respect to the momentum variables, $r$ in this quadrant, we can reduce the second term:
 \begin{align}
     \frac{1}{2}\sum_{i}\sum_{j}\pdv{}{z_i}{z_j}[2D]_{i,j}p_t(z)
     &= \frac{1}{2}\sum_{i}\pdv{z_i}\sum_{j}\pdv{z_j}\underbrace{[2D]_{i,j}}_{\text{Const. wrt. $z_j$}}p_t(z) \\
     &= \frac{1}{2}\sum_{i}\pdv{z_i}\sum_{j}[2D]_{i,j}\pdv{z_j}p_t(z)\\
-    &= \frac{1}{2}\sum_{i}\pdv{z_i}[2D \nabla p_t(z)]_{i}
+    &= \frac{1}{2}\sum_{i}\pdv{z_i}[2D \nabla p_t(z)]_{i}.
 \end{align}
 We can then insert into the expression in \cref{eq:stoch-hmc-fp}:
 \begin{align} 
@@ -525,16 +526,16 @@ We then evaluate the expression further:
 \end{align}
 Next, since 
 \begin{align}
-    -G\nabla p_t(z) = \begin{bmatrix}0 & 1 \\ -1 & 0 \end{bmatrix}
+    -G\nabla p_t(z) = \begin{bmatrix}0 & I \\ -I & 0 \end{bmatrix}
     \begin{bmatrix}
         \nabla_\theta p_t(z) \\ 
         \nabla_r p_t(z)
     \end{bmatrix} = \begin{bmatrix}
         \nabla_r p_t(z) \\
         -\nabla_\theta p_t(z) 
-    \end{bmatrix}
+    \end{bmatrix},
 \end{align}
-We can conclude that $[-G\nabla p_t(z)]_{\theta_i} = [\nabla p_t(z)]_{r_i} = \pdv*{p_t(z)}{r_i}$, and likewise $[-G\nabla p_t(z)]_{r_i} = [-\nabla p_t(z)]_{\theta_i} =-\pdv*{p_t(z)}{\theta_i}$.
+we can conclude that $[-G\nabla p_t(z)]_{\theta_i} = [\nabla p_t(z)]_{r_i} = \pdv*{p_t(z)}{r_i}$, and likewise $[-G\nabla p_t(z)]_{r_i} = [-\nabla p_t(z)]_{\theta_i} =-\pdv*{p_t(z)}{\theta_i}$.
 We can thus simplify further
 \begin{align}
     \pdv{t} p_t(z) 
@@ -542,34 +543,35 @@ We can thus simplify further
     + \sum_{r_i} \pdv{r_i} [ -G\nabla p_t(z)]_{r_i} \\
     &= \sum_{\theta_i} \pdv{\theta_i} \pdv{r_i} p_t(z)
     - \sum_{r_i} \pdv{r_i} \pdv{\theta_i} p_t(z)\\
-    &= 0
+    &= 0.
 \end{align}
 
 Summarizing, we see that the time derivative of the distribution $p_t(z)=\exp[-H(z)]$ is zero, and the distribution is thus invariant under the dynamics of the stochastic system in \cref{eq:stoch-hmc-w-friction}. 
 There are still some considerations when implementing this approach in practice. 
 
 First, the noise model $\mathcal{N}(0, V(\theta))$ is only approximately normal and is generally not known.
+A normal noise model is reasonable when considering the central limit theorem and that observations are independent; however, it is still an approximation.
 We instead use an estimate $\hat{V}$ for the noise variance, which also introduces error into the sampling procedure. 
 In order to alleviate the estimation error somewhat, we instead use an upper bound $C \succeq \hat{B}= \frac{1}{2}\epsilon \hat{V}$ of the system noise.
 We then sample
 \begin{align}
-    \Delta \theta &=  \epsilon M^{-1} r\\
-    \Delta r &=  -\epsilon\nabla\tilde{U}(\theta) - \epsilon CM^{-1}r  + \tau
+    \Delta \theta &=  \epsilon M^{-1} r,\\
+    \Delta r &=  -\epsilon\nabla\tilde{U}(\theta) - \epsilon CM^{-1}r  + \tau.
 \end{align}
 Where $\tau\sim  \mathcal{N}(0, 2(C - \hat{B})\epsilon)$.
 In effect, we are simulating the dynamics of a noisier system by injecting additional noise, however now we at least know some terms of the noise model.
 With $C$ much larger than $B$, the relative impact of the estimation noise becomes smaller. 
-In \cite{chen_stochastic_2014}, they simply set $\hat{V} = 0$, and relies on this upper bound to approximate the dynamics sufficiently.  
+In \autocite{chen_stochastic_2014}, they simply set $\hat{V} = 0$, and relies on this upper bound to approximate the dynamics sufficiently.  
 
 Secondly, we are still stuck approximating the continuous dynamics using discrete time steps.
 Unlike the HMC algorithm, we do not have any way of correcting for the discretization error. 
-Therefore, we are still only approximately sampling from the target distribution and will have to rely on the step size $\epsilon$ to be small for the approximation to be good.
+Therefore, we are still only approximately sampling from the target distribution and will have to rely on the step size $\epsilon$ to be sufficiently small for the approximation to be good.
 However, we do not need to resample the momentum term since we ensure ergodicity through the stochastic nature of the algorithm.
 
-Finally in \cite{chen_stochastic_2014} they argue for an alternative parameterization.
+Finally in \autocite{chen_stochastic_2014} they argue for an alternative parameterization.
 With $v = \epsilon M^{-1} r$, we then get the system:
 \begin{align}
-    \Delta \theta &=  v \\
+    \Delta \theta &=  v, \\
     \Delta v &=  -\epsilon^2 M^{-1} \nabla\tilde{U}(\theta) - \epsilon CM^{-1}v  + \epsilon M^{-1}\tau,
 \end{align}
 where $\epsilon M^{-1}\tau\sim \mathcal{N}(0, \epsilon^3M^{-2}2(C - \hat{B}))$.
@@ -583,7 +585,7 @@ We have thus factored the mass matrix $M$ out of the specification of the algori
 This parameterization can be seen in \cref{alg:sghmc}.
 
 Comparing the algorithm with stochastic gradient descent with momentum, we see that  $\eta$ corresponds to the learning rate while $\alpha$ corresponds to momentum decay. 
-When ts comes to choosing parameters for the methods, we can draw on previous experience and conventional wisdom to some extent.
+When it comes to choosing parameters for the methods, we can draw on previous experience and conventional wisdom to some extent.
 
 \begin{algorithm}[htpb]
     \caption{Stochastic Gradient Hamiltonian Monte Carlo} \label{alg:sghmc}
@@ -610,16 +612,14 @@ When ts comes to choosing parameters for the methods, we can draw on previous ex
 
 \section{Variational Inference}
 
-Suppose we want to sample from some posterior distribution $p(\theta | \D)$. 
-Variational methods aim to approximate this posterior distribution using a so-called variational distribution $q_\psi (\theta)$ parameterized by some parameters $\psi$.  
-We then seek to find a value of these variational parameters, such that the variational distribution is as close to the posterior as possible. 
+Another approach to sampling from the posterior distribution, $p(\theta | \D)$, is described by \autocite{blundell_weight_2015}. 
+They propose we approximate $p(\theta | \D)$, using a so-called variational distribution $q_\psi (\theta)$, parameterized by some parameters $\psi$.  
+We seek to find a value of these variational parameters, such that the variational distribution is as close to the posterior as possible. 
 As a quantifying measure of difference between the two distributions, we use the Kullback-Liebler divergence:
-
-
 \begin{align}
     \kld{q_\psi(\theta)}{p(\theta|\D)} 
     = \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\D)}} \dd{\theta} 
-    = E_{q_\psi}\left[\log{\frac{q_\psi(\theta)}{p(\theta|\D)}}\right]
+    = E_{q_\psi}\left[\log{\frac{q_\psi(\theta)}{p(\theta|\D)}}\right],
 \end{align}
 that is, the inference problem turns into an optimization problem 
 \begin{align}
@@ -631,17 +631,17 @@ Inserting the parameter posterior from \cref{eq:posterior} into the expression a
     &= \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\theta|\D)}} \dd{\theta} \\
     &= \int_{\Omega} q_\psi(\theta)\log{\frac{p(\bm{Y}|\bm{X})q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} \\
     &= \int_{\Omega} q_\psi(\theta)\log{p(\bm Y|\bm{X})} + q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} \\
-    &= \log{p(\bm{Y}|\bm{X})} + \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta} 
+    &= \log{p(\bm{Y}|\bm{X})} + \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta)}} \dd{\theta}.
 \end{align}
-While we don't know the value of marginal likelihood $\log{p(\bm{Y}|\bm{X})}$, since it is constant with respect to the variational parameters $\psi$, we can ignore the term for the purposes of the minimization problem.
+While we do not know the value of marginal likelihood $\log{p(\bm{Y}|\bm{X})}$, since it is constant with respect to the variational parameters $\psi$, we can ignore the term for the purpose of the minimization problem.
 We therefore seek to minimize:
 \begin{align} \label{eq:elbo}
     \int_{\Omega} q_\psi(\theta)\log{\frac{q_\psi(\theta)}{p(\bm{Y} |\theta, \bm{X}) p(\theta|\bm{X})}} \dd{\theta} 
     &= \int_{\Omega} q_\psi(\theta) \log{\frac{q_\psi(\theta)}{p(\theta)}} -q_\psi(\theta)\log{p(\bm{Y} |\theta, \bm{X})} \dd{\theta}\\
     &= \kld{q_\psi(\theta)}{p(\theta)}  - \E_{q_\psi}\left[ \log{p(\bm{Y} |\theta, \bm{X})}  \right]  \\
-    &= -\mathcal{L}
+    &= -\mathcal{L}.
 \end{align}
-The quantity $\mathcal{L}$ is known as the Evidence lower bound (ELBO), as it constitutes a lower bound on the model evidence $\log{p(\bm{Y}|\bm{X})}$. 
+The quantity $\mathcal{L}$ is known as the Evidence Lower Bound (ELBO), as it constitutes a lower bound on the model evidence $\log{p(\bm{Y}|\bm{X})}$. 
 This representation also gives insight into what kind of solution the variational optimization problem produces. 
 We seek to maximize the expected likelihood while keeping the variational distribution close to the prior with respect to the KL divergence.
 The form of this KL divergence may be found for some choices of prior and variational distributions, but not in general.
@@ -653,28 +653,26 @@ We thus seek derivatives of the following form:
 \begin{align}
     \pdv{\psi} \E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right].
 \end{align}
-Since we are differentiating with respect to the distribution parameters, we cannot just move derivate within the expectation.
+Since we are differentiating with respect to the distribution parameters, we cannot just move the differentiation in under the expectation.
 We get around this by using the reparameterization trick.
 That is, introducing a parameterless random variable $\epsilon$ following some distribution distribution $s(\epsilon)$, and use a deterministic function $t(\epsilon, \psi)$ such that $t(\epsilon, \psi) \sim q_\psi(\theta)$.
 Then we can reparameterize the expectation as
 $ \E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] = \E_{s(\epsilon)}\left[ f(\psi, t(\epsilon, \psi)) \right]$.
 We therefore get
-\begin{equation}
-    \begin{aligned}
+\begin{align}
         \pdv{\psi} \E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] &= \pdv{\psi}\E_{s(\epsilon)}\left[ f(\psi, t(\epsilon, \psi)) \right] \\
         &= \pdv{\psi} \int_\epsilon s(\epsilon) f(\psi, t(\epsilon, \psi))\dd{\epsilon}\\
         &= \int_\epsilon s(\epsilon) \pdv{\psi} f(\psi, t(\epsilon, \psi)) \dd{\epsilon}\\
-        &= \E_{s(\epsilon)} \left[ \pdv{\psi} f(\psi, t(\epsilon, \psi)) \right]
-    \end{aligned}
-\end{equation}
-We can then approximate the expected value by drawing $M$ samples from the $\epsilon_i\sim s(\epsilon)$, computing the gradient for each sample and averaging over the computed gradients:
+        &= \E_{s(\epsilon)} \left[ \pdv{\psi} f(\psi, t(\epsilon, \psi)) \right].
+\end{align}
+We can then approximate the expected value by drawing $K$ samples from  $\epsilon_k\sim s(\epsilon)$, computing the gradient for each sample and averaging over the computed gradients:
 \begin{equation} 
     \begin{aligned}
-        \pdv{\psi} \E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] &\approx \sum_{i=1}^{M} \frac{1}{M} \pdv{\psi} f(\psi, t(\epsilon_i, \psi)).  
+        \pdv{\psi} \E_{q_\psi(\theta)}\left[ f(\psi, \theta) \right] &\approx \sum_{k=1}^{K} \frac{1}{K} \pdv{\psi} f(\psi, t(\epsilon_k, \psi)).  
     \end{aligned}
 \end{equation}
 
-In \cite{blundell_weight_2015} and this project, we will only consider Gaussian distributions for the variational distribution.
+In \autocite{blundell_weight_2015} and this project, we will only consider Gaussian distributions for the variational distribution.
 Furthermore, we will assume a diagonal covariance matrix. 
 As we will see later, this is often not a correct assumption; however, it is not feasible to estimate covariance parameters for a model with millions of parameters. 
 An advantage of using the diagonal gaussian is that it is easily reparameterized by scaling and shifting noise sampled from a standard Gaussian distribution.
@@ -683,7 +681,7 @@ Finally, we are only looking at a small part of the total dataset for batched le
 The joint likelihood $\log p(\tilde{Y}|\theta,\tilde{X})$ of the batch will therefore be much lower than the actual likelihood. 
 Since the KL term does not depend on the batch, if we calculate the ELBO without considering this fact, the likelihood will be too small in comparison.
 In order to get the correct ratio between the likelihood and the KL term, we divide the KL term by the number of batches. 
-\cite{blundell_weight_2015} also proposes a scheme weighting the KL term of the $i$'th batch with a factor $2^{M-i}/(2^{M}-1)$, allowing the algorithm to optimize for the prior during the early batches and then largely ignore the KL term for later batches. 
+\autocite{blundell_weight_2015} also proposes a scheme weighting the KL term of the $i$'th batch with a factor $2^{M-i}/(2^{M}-1)$, allowing the algorithm to optimize for the prior during the early batches and then largely ignore the KL term for later batches. 
 We will be trying both of these schemes in the modeling section.
 
 \begin{algorithm}[htbp]
@@ -694,12 +692,12 @@ The specifics of the optimization algorithms are omitted.} \label{alg:vi}
         $p(\theta)$ (Parameter prior) \\ 
         $q_\psi(\theta)$ (Variational posterior) \\ 
         $\D=(\bm{X}, \bm{Y})$ (Data)  \\
-        $N$ (Number of optimization steps) \\
+        $N_\text{opt}$ (Number of optimization steps) \\
         $K$ (Number of estimation samples) \\
         $M$ (Number of batches)
         }
         \Outputs{Optimized variational parameters $\psi=(\mu, \rho)$}
-        \For{$i=1,\dots$}
+        \For{$i=1,\dots, N_\text{opt}$}
         \State Get data batch $\tilde{\D}_i =(\tilde{\bm{X}}_i, \tilde{\bm{Y}}_i)\subset \D$
         \For{$t=1,\dots,K$}
             \State sample $\epsilon \sim \mathcal{N}(0, \bm{I})$

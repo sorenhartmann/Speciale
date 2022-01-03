@@ -5,9 +5,9 @@ We first introduce a series of simulation experiments to verify and compare the 
 We then discuss some experiments relating to improving the SGHMC through better estimation of the variance $\hat{V}$.
 Finally, we apply the methods discussed to some deep learning problems using the MNIST and CIFAR10 datasets.
 
-\section{Simulated data}
+\section{Simulated Data}
 
-To verify the implementation of the MCMC methods, we carry out some simulation experiments.
+To verify the implementation of the inference methods, we carry out some simulation experiments.
 The first experiment is a recreation of an experiment from the original SGHMC paper, where they sample from a bimodal distribution with $\log p(x) \propto 2 x^2 - x^ 4$ with different configurations. 
 First, the distribution is sampled from as-is, using regular HMC.
 Then the batched dynamics in \cref{eq:sghmc-model} are simulated by adding simulated noise $\epsilon \sim \mathcal{N}(0, 4)$ to the gradient during the sampling process. 
@@ -24,22 +24,27 @@ These results are similar to those of the SGHMC paper and seem to verify that ou
 We also see that the sample distributions from both the standard HMC sampler and the SGHMC sampler closely resemble the accurate distribution. 
 The naive SGHMC sampler does seem to break down when we do not include an  MH step, and since we also compare with the regular HMC with no MH step, this demonstrates that it may not be purely down to omitting the MH step. 
 
-If we include an MH step, the naive approach also seems to work; however, we are not adding any noise to $E(\cdot)$ when performing the MH step, corresponding to calculating $E(\cdot)$ across the whole data set. 
+If we include an MH step, the naive approach also seems to work; however, we are not adding any noise to $H(\theta)$ when performing the MH step, corresponding to calculating $H(\theta)$ across the whole data set. 
 This approach is impractical in the context of deep learning.
-In the next experiment, we will implement a naive alternative approach, where each MH step is performed based on each batch of data. 
-This experiment also does not address whether noise the dynamics of \cref{eq:sghmc-model} are even reasonable as a model for the noise introduced through batching the gradient. 
+In the next experiment, we will implement a different naive approach, where each MH step is performed based on each batch of data. 
+This experiment also does not address whether noise the dynamics of \cref{eq:sghmc-model} are even reasonable as a model for the noise added to the gradient through batching. 
 
 In order to address these points, we perform an additional simulation experiment. 
 This is also to demonstrate the relevance of the different methods in the context of MCMC inference.
 We consider the polynomial model of $P(x) = -x + \frac{1}{2}x^2 + \frac{1}{3}x^3$, 
-and with $\epsilon \sim \mathcal{N}(0, 1)$, consider a set learning points $y_i = P(x_i) + \epsilon$ for $i=1,\dots,15$, where $x_i$ are linearly spaced over the interval $[-3, 3)$ with a small amount of noise added. 
-We then consider the problem of bayesian polynomial regression with known noise $\sigma=1$ and the regression model:
-\begin{align*}
-    P(x) = a_0 + a_1 x+a_2 x^2 + a_3 x^3
-\end{align*}
+and with $\epsilon \sim \mathcal{N}(0, 1)$, consider a set of learning points $y_i = P(x_i) + \epsilon$ for $i=1,\dots,15$, where $x_i$ are linearly spaced over the interval $[-3, 3]$ with a small amount of noise added. 
+A plot showing the model along with the training data can be seen in \cref{apx:simulated-joint}.
+We then consider the problem of Bayesian polynomial regression with known noise $\sigma=1$ and the regression model
+\begin{align}
+    P(x) = a_0 + a_1 x+a_2 x^2 + a_3 x^3,
+\end{align}
 where each parameter are given a $\mathcal{N}(0, 1)$ prior.
 The exact parameter posterior $p(a|x,y)$ for this regression problem is known, and can therefore be compared to the sampled distribution of the samplers. 
 More specifically, three sampling strategies are considered, regular HMC conditioned on all data points, HMC where each sample is based on a batch of 5 observations, and SGHMC also with batches of 5 observations.
+The HMC algorithms are configured using 10 steps with a step size of 0.02 and a burn-in period of 1000 samples.
+For SGHMC we use a learning rate of $\eta=10^{-4}$, momentum decay $\alpha=0.01$ and noise estimate $\hat\beta=0$.
+We resample the momentum and take a sample every 10th step, also with a burn-in period of 1000 samples. 
+
 For demonstration, plots the joint distribution of $a_1$ and $a_3$ as sampled by the different setups can be seen in \cref{fig:simulated_joint_comp}.
 \begin{figure}[htbp]
     \centering
@@ -61,14 +66,15 @@ For demonstration, plots the joint distribution of $a_1$ and $a_3$ as sampled by
     \caption{Joint distribution of samples for $a_1$ and $a_3$ for the polynomial regression example for HMC and SGHMC for different batch sizes, with the actual posterior density also shown.}
     \label{fig:simulated_joint_comp}
 \end{figure}
-Figures showing the sampled joint distribution for every pair of parameters, for each algorithm can be found in \cref{apx:simulated-joint}.
-We find that the also this naive approach SGHMC does not correcly sample from the posterior dsitribution.
+Figures showing the sampled joint distribution for every pair of parameters for each algorithm can be found in \cref{apx:simulated-joint}.
+We find that also this naive approach to SGHMC does not correctly sample from the posterior distribution.
 The actual SGHMC algorithm also does not seem to sample exactly from the posterior, with some overdispersion present in samples compared to the unbatched HMC. 
-This overdispersion is however minimal compared to the naive implementation.
-Later, we will discuss a possible improvement upon this algorithm, based on actually proving an estimate of the gradient variance.
+This overdispersion is, however, minimal compared to the naive implementation.
+This can be seen by, e.g., comparing the marginal distributions.
+Later, we will discuss a possible improvement upon this algorithm based on actually proving an estimate of the gradient variance.
 
 \subsection{Variational Inference} 
-We can also repeat the experiment above using the variational inference framework.
+We can also repeat the polynomial regression example using the variational inference framework.
 A comparison of the pairwise marginal distributions for the true posterior and the variational posterior is shown in \cref{fig:vi-simulated}. 
 
 Since we assume independent variables for the variational posterior, the fit is not particularly good compared to the MCMC methods. 
@@ -81,7 +87,7 @@ However, this still serves to verify that the implementation is behaving as expe
 \end{figure}
 
 
-\section{Estimating the variance}
+\section{Estimating the Variance}
 
 In the SGHMC paper, they propose estimating the variance introduced through batching as $\hat{V}=0$ and then relying on the known simulated noise to make the inaccuracy of this estimate irrelevant. 
 However, it seems worth investigating whether we could improve performance by providing an actual estimate of the variance instead. 
@@ -110,17 +116,17 @@ The sampler then rescales the system mass matrix based on the variance estimates
 When updating from $W$ to $W^\prime$, we also rescale the $\nu=\epsilon M^{-1}r$ parameter accordingly with $W/W^\prime$.
 If the variance estimates $\hat \beta$ happen to be greater than $\alpha$ in between the mass rescaling, we clamp the estimate at the upper bound $\alpha$ and add no additional noise. 
 
-This method of rescaling the mass matrix is in a sense similar to the approach outlined in \cite{wenzel_how_2020}, where they also include a step calculating a preconditioning matrix, ie.
+This method of rescaling the mass matrix is in a sense similar to the approach outlined in \autocite{wenzel_how_2020}, where they also include a step calculating a preconditioning matrix, ie.
 They found that using the preconditioning step generally improved sampling performance.
 
 
 There are multiple ways to go about obtaining the actual variance estimate.
 We could try to calculate a running variance statistic using the within batch sample variance of the gradients:
 \begin{equation}
-    \frac{1}{|\tilde{\D}|-1}\sum_{(x_i,y_i)=\tilde{\D}} (\nabla U(\theta; x_i, y_i) - \nabla \bar{U}(\theta))^2
+    \frac{1}{|\tilde{\D}|-1}\sum_{(x_i,y_i)=\tilde{\D}} (\nabla U(\theta; x_i, y_i) - \nabla \bar{U}(\theta))^2,
 \end{equation}
 and then scale the variance up to the fit the batch size. 
-The main issue we found with this approach is that calculating the gradient for each observation individually within a batch is not that efficient.
+The main issue we found with this approach is that calculating the gradient for each observation individually within a batch is not particularly efficient.
 While it may be possible to calculate the statistic above using a backpropagation framework such as autograd without doing a backward pass for each observation, it is not trivial since autograd only allows for calculating gradients of scalars. 
 
 Instead, we look at three other approaches. 
@@ -128,10 +134,10 @@ The first approach is to run through some number of training batches before each
 A variance estimate is then calculated based on these gradients and used for the following epoch.
 
 The two other approaches instead keep track of running statistics. 
-The first is inspired by  ADAM algorithm \cite{kingma_adam_2017} and uses exponentially decaying running estimates of the mean, $m_t$ and variance, $v_t$.  
+The first is inspired by the ADAM algorithm \autocite{kingma_adam_2017} and uses exponentially decaying running estimates of the mean, $m_t$ and variance, $v_t$.  
 Since the ADAM algorithm does not center the second-moment estimate, we subtract the squared mean, such that the variance estimate becomes as $v_t - m_t^2$, clamping the estimates from below at zero.
 
-Finally, we also try a variation on the running statistics of the ADAM ,algorithm.
+Finally, we also try a variation on the running statistics of the ADAM algorithm.
 This approach uses the first moment to center the second-moment estimates, updating the estimates $v_t,m_t$ using the observed gradient $g$  for some $\alpha\in(0,1)$ as follows:
 \begin{align}
     d &\gets g - m_t \\
@@ -139,16 +145,15 @@ This approach uses the first moment to center the second-moment estimates, updat
     m_{t+1} &\gets m_t + d \\
     v_{t+1} &\gets (1 - \alpha)\cdot  (v_t +  d\cdot i).
 \end{align}
-This approach is described in \cite{finch_incremental_nodate}.
+This approach is described in \autocite{finch_incremental_nodate}.
 
 In order to test these three different approaches, we apply them to the simulated example from the previous section.
 For every ten samples, the gradient variance is estimated using 100 random batches from the training data set.
-This estimate is then compared to the estimates provided by the different estimators. 
-compared to the observed variance can be seen in \cref{fig:est_variances_simulated}.
+This estimate is then compared to the estimates provided by the different estimators, as can be seen in \cref{fig:est_variances_simulated}.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\linewidth]{Figures/simulated_sghmc_gradient_variance_estimations.pdf}
-    \caption{Estimated variance compared to observed variances across 100 batches.}
+    \caption{Estimated variances compared to observed variances across 100 batches.}
     \label{fig:est_variances_simulated}
 \end{figure}
 \begin{table}[htbp]
@@ -157,7 +162,8 @@ compared to the observed variance can be seen in \cref{fig:est_variances_simulat
     \caption{Relative errors for estimation of gradient variance compared to observed variance across 100 batches, for the different estimation schemes,}
 \end{table}
 Note that we plot these values using a logarithmic scale, so the estimates may seem better than they are, especially concerning overestimations. 
-It may still be that they are better than simply setting $\hat\beta=0$ in terms of estimating the posterior correctly.
+These estimates may still be better than simply setting $\hat\beta=0$ in terms of estimating the posterior correctly.
+Based on these plots and the relative errors, we use the third estimator using the exponentially weighted gradient variance estimate for further experimentation.
 In \cref{fig:simualted_var_est_joint_comp}, the sampled marginal distribution of $a_1$ and $a_3$ are shown again, now compared SGHMC with and without a variance estimator.
 \begin{figure}[htbp]
     \centering
@@ -177,14 +183,14 @@ In \cref{fig:simualted_var_est_joint_comp}, the sampled marginal distribution of
 In this case, it does seem like estimating the variance can improve the accuracy of the sampler.
 This improvement may come down to the fact that the sampler with gradient estimation can reduce the step size, lowering discretization and batch error compared to SGHMC without an estimate. 
 
-\subsection{Marginal distribution of momentum}
+\subsection{Marginal Distribution of Momentum}
 
-In \cite{wenzel_how_2020}, they propose using the marginal distribution of the momentum as a test of the sampling assumptions. 
+In \autocite{wenzel_how_2020}, they propose using the marginal distribution of the momentum as a test of the sampling assumptions. 
 Per the dynamical system, if we simulate the system precisely, the marginal distribution of $r$ should be $\mathcal{N}(0, M^{-1})$. 
 We should therefore see $r M^{-1/2} \sim \mathcal{N}(0, I)$. 
 Applying the inner product, we arrive at so-called \emph{kinetic temperature} $T_K(r) = \frac{r^T M r}{d}$.
 The kinetic temperature then follows a chi-square distribution, $T_K(r)d\sim \chi^2(d)$, where $d$ is the length of $r$ ie. the number of parameters. 
-We then consider for some $c\in (0, 1)$, the following confidence interval of  $\chi^2(d)$ distribution:
+We then consider for some $c\in (0, 1)$, the following confidence interval of  the $\chi^2(d)$ distribution:
 \begin{align}
     J_{T_k}(d, c) = \left(\frac{1}{d} F_{\chi^2(d)}^{-1}\left( \frac{1-c}{2} \right),~\frac{1}{d} F_{\chi^2(d)}^{-1}\left(\frac{1+c}{2}\right)\right),
 \end{align}
@@ -214,47 +220,47 @@ The observed distributions extend below 0 only because of the KDE approximation 
     \label{tbl:temp_99}
 \end{table}
 The resulting distribution of $\hat{T}_K$ can be seen in \cref{fig:temperature_sum_chi2_comp}, compared to the expected $\chi^2$ distribution. 
-We see that the distribution of $\hat{T}_K$ fits the expected distribution quite poorly for the sampler with $\beta=0$.
+We see that the distribution of $\hat{T}_K$ fits the expected distribution quite poorly for the sampler with $\hat\beta=0$.
 Introducing the various gradient estimators seems to result in the marginal distribution of $\hat{T}_K$ to match the correct distribution more closely.
 However, there still seems to be some discrepancy compared to the expected $\chi^2$ distribution.
 We see that the samplers with estimated variance are slightly underdispersing compared to the actual posterior. 
 This underdispersion may indicate that we overestimate the variance and therefore do not inject sufficient noise compared to the momentum decay.
-The $\hat p_{0.99}$ statistic is calculated in \cref{tbl:temp_99}, alongside a confidence interval based on the binomial distribution.
 Looking at \cref{fig:est_variances_simulated} the estimation margin estimates also seem relatively uniformly distributed on the log scale, which would mean that we are generally overestimating more than we are underestimating in absolute terms.
+The $\hat p_{0.99}$ statistic is calculated in \cref{tbl:temp_99}, alongside a confidence interval based on the binomial distribution.
 
 \section{MNIST}
 This section will explore the performance of the different methods on the MNIST dataset for classification. 
 This dataset is often used to benchmark and compare different methods and implementations. 
 
-In the SGHMC paper \cite{chen_stochastic_2014} they also compare against MNIST, using a small neural network with a single hidden layer of 100 units.
+In the SGHMC paper \autocite{chen_stochastic_2014} they also compare against MNIST, using a small neural network with a single hidden layer of 100 units.
 Using this model, they demonstrate comparable and even superior performance compared to SGD methods using weight regularization.
-The authors of \cite{blundell_weight_2015} also compare with MNIST, only they use much larger networks with two hidden layers of sizes 400, 800, and 1200. 
+The authors of \autocite{blundell_weight_2015} also compare with MNIST; only they use much larger networks with two hidden layers of sizes 400, 800, and 1200. 
 They compare against regular SGD using dropout during training, showing slightly better test performance of VI.
 
 This project compares these methods using a regular feed-forward neural network with two hidden layers of size 800, using ReLU as an activation function. 
 We will be using a batch size of 128 for the optimization-based algorithms and 500 for the MCMC algorithms.
-For the optimization based algorithm, we will be using the ADAM optimizer \cite{kingma_adam_2017}, with $\beta=(0.9, 0.999)$.
+For the optimization based algorithm, we will be using the ADAM optimizer \autocite{kingma_adam_2017}, with $\beta=(0.9, 0.999)$.
 For the MCMC algorithms, we keep a sample for every epoch after a burn-in period of 50 epochs.
 The different algorithms all have some hyperparameters that affect performance, some algorithms more than others.
-To keep the comparison fair between the algorithms, the hyperparameter optimization framework Optuna \cite{akiba_optuna_2019} is used. 
+To keep the comparison fair between the algorithms, the hyperparameter optimization framework Optuna \autocite{akiba_optuna_2019} is used. 
 This framework treats the choice of hyperparameters as a black-box optimization problem, trying to figure out what choices of parameters lead to the best validation error.
 
 Another modeling choice is the question of parameter priors for the probabilistic methods. 
-For the MCMC methods, we choose a hierarchal prior as in \cite{chen_stochastic_2014}. 
-For each parameter group $\Theta_i=\{\theta_{i,1},\dots,\theta_{i,D_i}\}$, such as the bias or weight of some linear layer , we then use a Gaussian prior for the parameters $\theta_{i,j} \sim  \mathcal{N}(0, \sigma_i^2)$.
+For the MCMC methods, we choose a hierarchal prior as in \autocite{chen_stochastic_2014}. 
+For each parameter group $\Theta_i=\{\theta_{i,D_1},\dots,\theta_{i,D_i}\}$, such as the bias or weight of some linear layer, we then use a Gaussian prior for the parameters $\theta_{i,j} \sim  \mathcal{N}(0, \sigma_i^2)$.
 We then choose an uninformative prior for the variance parameters $1/\sigma_i^2 = \lambda_i \sim \Gamma(1,1)$.
 This choice of prior enables different parameter groups to have parameter values on different scales.
 In the MCMC framework, we can sample the precision parameters through a Gibbs step, using the conjugate distribution $p(\lambda_i | \Theta_i)$.
 The sampling procedure then consists of sampling from parameter posterior conditioned on the precision using SGHMC and occasionally update the precision $p(\lambda_i | \Theta_i)$ using a Gibbs step.
-As in \cite{chen_stochastic_2014}, we perform a Gibbs step after each epoch.
+As in \autocite{chen_stochastic_2014}, we perform this Gibbs step after each epoch.
 
-Since we are not able to a Gibbs step during the non-MCMC methods, we instead use a mixture of two Gaussian distributions,
+Since we are not able to perform a Gibbs step for the non-MCMC methods, we instead use a mixture of two Gaussian distributions,
 \begin{align}
     \theta \sim t\cdot \mathcal{N}(0, \sigma_1^2) + (1-t)\cdot \mathcal{N}(0, \sigma_2^2),
 \end{align}
-as prior as proposed in the \cite{blundell_weight_2015}.
+as prior as proposed in the \autocite{blundell_weight_2015}.
 This allows for greater flexibility than a simple Gaussian, while not requiring us to optimize the prior of variance parameters as well.
-We consider the parameters of the mixture prior as hyperparameters.
+We consider the parameters of the mixture priors as hyperparameters.
 We, therefore, determine the particular values through hyperparameter search alongside the rest of the hyperparameters.
 
 We run a hyperparameter search for 24 hours for each algorithm for the various hyperparameters. 
@@ -268,7 +274,7 @@ The validation curves corresponding to the final training run for each algorithm
     \caption{Validation curves for final training runs of FFNN model on the MNIST dataset for each algorithm.}
     \label{fig:mnist-best-val-curves}
 \end{figure}
-Tables documenting the choice of parameters can be in \cref{apx:mnist-sweep}.
+The results of the hyperparameter sweeps and chosen parameters can be seen in \cref{apx:mnist-sweep}.
 We choose to use the scheduled re-weighting of the KL-term for the VI algorithm, as we see it performing better than using the constant weight.
 
 Some of the algorithms tended to overfit, so the best model during training according to validation error is chosen for the non-MCMC methods for calculating the test error.
@@ -288,14 +294,14 @@ In any case, both the validation and test error seem to indicate that the SGHMC 
 \subsection{Calibration}
 
 As mentioned in the introduction, poorly calibrated deep learning models are not uncommon. 
-A key motivator for experimenting with Bayesian methods has been to try and get a more robust and reliable estimator.
-As in \cite{guo_calibration_2017} we use the \emph{expected calibration error} (ECE) for benchmarking the uncertainty of the different methods.
+A key motivator for experimenting with Bayesian methods in this project has been to try and get a more robust and reliable estimator.
+As in \autocite{guo_calibration_2017} we use the \emph{expected calibration error} (ECE) for benchmarking the uncertainty of the different methods.
 For some set of predictions, $\hat{y}$ the \emph{confidence} is defined as the estimated probability $\hat{p}$ of belonging to the estimated class.
 The ECE statistic compares the confidence of the model to the observed accuracies.
 According to the output confidence, we group the test observations into $M$ bins of size $1/M$. 
 Then, the accuracy of each bin $B_m$, can be calculated as:
 \begin{align}
-    \acc(B_m) = \frac{1}{|B_m|}\sum_{i\in B_m}\bm{1}(\hat{y}_i = y_i)
+    \acc(B_m) = \frac{1}{|B_m|}\sum_{i\in B_m}\bm{1}(\hat{y}_i = y_i).
 \end{align}
 Likewise, we calculate the average model confidence across the bin
 \begin{align}
@@ -308,7 +314,7 @@ We then calculate the ECE as the expected absolute difference between the accura
     \text{ECE} = \sum_{m=1}^{M} \frac{|B_m|}{n}|\acc(B_m)-\conf(B_m)|.
 \end{align}
 This gives us a single statistic to compare the inference methods across.
-In \cref{tab:mnist-ece}, the ECE for the test set can be seen for each of the inference methods.
+In \cref{tab:mnist-ece}, the ECE, using $M=15$, for the test set can be seen for each of the inference methods.
 The accuracy and mean confidence of each bin can be seen in \cref{fig:mnist-calibration}. 
 \begin{table}[htbp]
     \centering
@@ -357,7 +363,7 @@ This model consists of three convolutional layers, each with 4o channels and a k
 Each convolution is followed by a batch normalization layer, a ReLU activation function, and a max-pooling layer.
 These three composite layers are followed by a single linear layer of size 256, leading to the output.
 
-The batch normalization layers are shown to improve training performance by reducing internal covariate shift and are commonly used for convolutional models \cite{ioffe_batch_2015}. 
+The batch normalization layers are shown to improve training performance by reducing internal covariate shift and are commonly used for convolutional models \autocite{ioffe_batch_2015}. 
 However, due to the running moment estimates of the batch normalization layers, the probabilistic interpretation of the parameter estimates becomes less clear, and we therefore only include them for the models trained with dropout. 
 
 We again use a burn-in period of 50 epochs for the sampling methods.
@@ -366,7 +372,7 @@ We do this roughly uniformly, dynamically increasing the number of epochs betwee
 We are using the same batch sizes as in the previous experiment.
 
 We run hyperparameter search as with the previous experiment; however, we are now searching only for 12 hours combined with the use of an early-stopping criterion.
-This criterion means that we finish the experiment and try another value during training if no improvement has been seen for the validation error for 15 epochs.
+This criterion means that we finish the experiment early and try another value during training if no improvement has been seen for the validation error for 15 epochs.
 Based on the hyperparameters with the best performance, we choose the parameters seen in \cref{tab:cifar10-small-hparams} and train the models again. 
 The hyperparameter search for the two SGHMC methods doesn't really show clear cut choices for either algorithm, and we therefore prioritize setting the same parameters across both methods for comparison. 
 \begin{table}[htbp]
@@ -471,14 +477,14 @@ The $\hat p_{0.99}$ is a bit closer for the algorithm with variance estimation, 
 \FloatBarrier
 \section{DenseNet}
 Finally, we will be looking into how well the different methods handle even larger models.
-As an example of a model of the larger variety, we look at training the DenseNet model \cite{huang_densely_2017}, specifically, the DenseNet-121 architecture. 
+As an example of a model of the larger variety, we look at training the DenseNet model \autocite{huang_densely_2017}, specifically, the DenseNet-121 architecture. 
 This model consists of 121 convolutional layers and is, as such, considerably larger than the previous convolutional model. 
-We use a pre-trained model trained on ImageNet to start training using every method.
+We use a pre-trained model trained on ImageNet\footnote{\url{https://pytorch.org/hub/pytorch_vision_densenet/}} to start from when training using every method.
 
-Due to the larger model and longer training time, we are not doing a hyperparameter search like the previous two models.
+Due to the larger model and longer training time, we are not doing a hyperparameter search as we did with the previous two models.
 Instead, we try three different learning rates with every other hyperparameter fixed.
 For the SGD and VI methods, we try learning rates of $2\times 10^{-4},5\times 10^{-4},1\times 10^{-3}$, and for SGHMC we try the learning rates $2\times 10^{-8},5\times 10^{-8},1 \times 10^{-7}$. 
-We also try three different values for the dropout parameter for the SGD algorithm, 0, 0.3, and 0.6.
+We also try three different values for the dropout parameter for the SGD algorithm, $0$, $0.3$, and $0.6$.
 
 Each model gets to train for up to 1000 epochs, with a limit of 7 hours training time.
 For this experiment, every algorithm uses a batch size of 128.
@@ -498,7 +504,7 @@ The validation error of each method during training can be seen in \cref{fig:cif
     \label{tab:cifar-densenet-test-err}
 \end{table}
 We see that the models trained using regular SGD outperform the other methods, even when using a dropout rate of 0. 
-This difference in performance may partly come down to the fact that we strip the model of its batch normalization layers to get a clear probabilistic interpretation of the parameter estimates.
+This difference in performance may likely come down to the fact that we strip the model of its batch normalization layers to get a clear probabilistic interpretation of the parameter estimates.
 
 Calibration statistics for the DenseNet model can be seen in \cref{tab:cifar-densense-ece} and \cref{fig:cifar-densenet-calibration}. 
 \begin{table}[htbp]

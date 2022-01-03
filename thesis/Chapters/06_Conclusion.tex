@@ -10,7 +10,7 @@ For comparison with the MCMC, we also implemented the variational inference algo
 We demonstrate the efficacy of the SGHMC algorithms through two simulated experiments. 
 First, a small-scale experiment, precisely replicating the noise model, shows that the algorithm can correct for the noise applied the gradient in an ideal scenario. 
 Next, a simulated example of Bayesian linear regression demonstrates the algorithm's validity beyond an idealized setting.  
-We find that SGHMC, as implemented in \cite{chen_stochastic_2014}, does yield better samples than a naive HMC implementation. 
+We find that SGHMC, as implemented in \autocite{chen_stochastic_2014}, does yield better samples than a naive HMC implementation. 
 Further, we see that introducing a variance estimator to the SGHMC algorithm improves the quality of the samples and specific statistics. 
 
 Now that we have seen that extending the sampling methods to account for a batched learning setting is possible through SGHMC and improves performance in a simulated, small-scale setting, we next look unto into how these methods scale in a deep learning context.
@@ -32,7 +32,7 @@ As for SGHMC with gradient variance estimation, it is unclear whether this appro
 We see better performance with gradient estimation for the feed-forward network; however, the performance is worse for the convolutional models.
 Using the gradient variance estimates seems to calibrate the model slightly better.
 
-The above considerations are, however, mostly dependent on the fact that the samples from the posterior are representative of the actual posterior of the model parameters. 
+The above considerations are, however, mostly dependent on the fact that the samples from the sampling algorithms are representative of the actual posterior of the model parameters. 
 
 We see throughout training of every deep learning model, that the kinetic temperature diagnostic $\hat{p}_{0.99}$ is not satisfied for either sampler. 
 This indicates that that both sampling algorithms seemingly break down to some extent for every deep learning model. 
@@ -41,7 +41,7 @@ This breakdown may be caused by optimizing the modeling parameters for the valid
 Therefore, it is also unclear whether we can attribute the superior performance of the medium-sized convolutional model on CIFAR10 to the Bayesian approach or whether it is due to the larger ensemble of models, or something else.
 
 There are some ways we may go about trying to achieve a more robust sampling algorithm. 
-In \cite{wenzel_how_2020}, they demonstrate how they, using a combination of a preconditioning step and cyclical time-stepping, achieve robust samples from a similar SGHMC scheme.  
+In \autocite{wenzel_how_2020}, they demonstrate how they, using a combination of a preconditioning step and cyclical time-stepping, achieve robust samples from a similar SGHMC scheme.  
 
 The variational inference algorithm also does not outperform the regular SGD for model accuracy. 
 On the other hand, the VI algorithms lead to the most well-calibrated models across every method. 
@@ -50,7 +50,7 @@ Combined with the poorer predictive performance, the VI algorithm as implemented
 
 In order to keep the modeling approach as purely Bayesian as possible, we are also giving up some demonstrably effective techniques, especially for fitting deeper models, such as batch normalization.
 Incorporating these techniques into a Bayesian framework or possibly relaxing the requirement of a proper Bayesian posterior may also be necessary to achieve excellent performance.
-For instance, \cite{wenzel_how_2020} discusses how using a "cold" posterior, effectively sharpening the posterior distribution, seems to result in better performance than the proper Bayesian posterior.
+For instance, \autocite{wenzel_how_2020} discusses how using a "cold" posterior, effectively sharpening the posterior distribution, seems to result in better performance than the proper Bayesian posterior.
 
 
 \chapter{Conclusion}
@@ -67,7 +67,7 @@ Using variational inference resulted in the best calibrated models, however the 
 
 % abstract?
 
-% We implement two different approaches, the first being a Markov chain Monte Carlo algorithm, SGHMC introduced in \cite*{chen_stochastic_2014}.
+% We implement two different approaches, the first being a Markov chain Monte Carlo algorithm, SGHMC introduced in \autocite*{chen_stochastic_2014}.
 % This algorithm is a variation of the Hamiltonian Monte Carlo algorithm, allowing for sampling in a batched learning environment.
 % SGHMC accomplishes this by modifying the stochastic dynamic to correct for the additional variance by introducing a friction term. 
 % This approach works well in small-scale simulated experiments. 
@@ -79,7 +79,7 @@ Using variational inference resulted in the best calibrated models, however the 
 
 
 
-% and variational inference \cite*{blundell_weight_2015}, we  
+% and variational inference \autocite*{blundell_weight_2015}, we  
 
 
 % We see that naively implementing the HMC sampling algorithm leads to incorrect samples in a batching data setting. 
@@ -89,7 +89,7 @@ Using variational inference resulted in the best calibrated models, however the 
 % The efficacy of this algorithm is shown through two simulated experiments. 
 % First, a small-scale experiment, precisely replicating the noise model, shows that the algorithm can correct for the noise applied the gradient in an ideal scenario. 
 % Next, a simulated example of Bayesian linear regression demonstrates the algorithm's validity beyond an idealized setting.  
-% We find that SGHMC, as implemented in \cite{chen_stochastic_2014}, does yield better samples than a naive HMC implementation. 
+% We find that SGHMC, as implemented in \autocite{chen_stochastic_2014}, does yield better samples than a naive HMC implementation. 
 % Further, we see that introducing a variance estimator to the SGHMC algorithm improves the quality of the samples and specific statistics. 
 % We also implement a variational inference algorithm for comparison with the sampling methods.
 

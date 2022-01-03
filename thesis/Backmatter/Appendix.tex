@@ -1,4 +1,11 @@
-\chapter{Simulated Polynomial Regression - Sampel Joint distributions} \label{apx:simulated-joint}
+\chapter{Simulated Polynomial Regression } \label{apx:simulated-joint}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics{Figures/pol_model.pdf}
+    \caption{Polynomial model and simulated training data.}
+    \label{fig:pol-model}
+\end{figure}
 
 \begin{figure}[htbp]
     \centering
@@ -27,7 +34,7 @@
 \end{figure}
 
 \FloatBarrier
-\chapter{Hyperparameter sweeps} 
+\chapter{Hyperparameter Sweeps} 
 
 \section{MNIST} \label{apx:mnist-sweep}
 
@@ -159,7 +166,7 @@
 
 \FloatBarrier
 
-\section{CIFAR10 - Small model}
+\section{CIFAR10 - Convolutional Model}
 
 \begin{table}[H]
     \centering
@@ -172,7 +179,7 @@
     }{!}{\small
     \input{Tables/cifar-small-sgd-map-hparams}
     }
-    \caption{Top hyperparameters for small convolutional model trained using SGD (MAP) on the CIFAR10 dataset according to optuna sweep.}
+    \caption{Top hyperparameters for convolutional model trained using SGD (MAP) on the CIFAR10 dataset according to optuna sweep.}
     \label{tab:cifar-small-sgd-map-hparams}
 \end{table}
 
@@ -187,7 +194,7 @@
     }{!}{\small
     \input{Tables/cifar-small-sgd-dropout-hparams}
     }
-    \caption{Top hyperparameters for small convolutional model trained using SGD (with dropout) on the CIFAR10 dataset according to optuna sweep.}
+    \caption{Top hyperparameters for convolutional model trained using SGD (with dropout) on the CIFAR10 dataset according to optuna sweep.}
     \label{tab:cifar-small-sgd-dropout-hparams}
 \end{table}
 
@@ -202,7 +209,7 @@
     }{!}{\small
     \input{Tables/cifar-small-sghmc-hparams}
     }
-    \caption{Top hyperparameters for small convolutional model trained using SGHMC on the CIFAR10 dataset according to optuna sweep.}
+    \caption{Top hyperparameters for convolutional model trained using SGHMC on the CIFAR10 dataset according to optuna sweep.}
     \label{tab:cifar-small-sghmc-hparams}
 \end{table}
 
@@ -217,7 +224,7 @@
     }{!}{\small
     \input{Tables/cifar-small-sghmc-var-est-hparams}
     }
-    \caption{Top hyperparameters for small convolutional model trained using SGHMC (with variance estimation) on the CIFAR10 dataset according to optuna sweep.}
+    \caption{Top hyperparameters for convolutional model trained using SGHMC (with variance estimation) on the CIFAR10 dataset according to optuna sweep.}
     \label{tab:cifar-small-sghmc-var-est-hparams}
 \end{table}
 
@@ -232,7 +239,7 @@
     }{!}{\small
     \input{Tables/cifar-small-vi-hparams}
     }
-    \caption{Top hyperparameters for small convolutional model trained using VI the on CIFAR10 dataset according to optuna sweep.}
+    \caption{Top hyperparameters for convolutional model trained using VI the on CIFAR10 dataset according to optuna sweep.}
     \label{tab:cifar-small-vi-hparams}
 \end{table}
 
@@ -247,7 +254,7 @@
     }{!}{\small
     \input{Tables/cifar-small-vi-exp-weighted-hparams}
     }
-    \caption{Top hyperparameters for small convolutional model trained using VI (with exponentially scaled KL weight) on the CIFAR10 dataset according to optuna sweep.}
+    \caption{Top hyperparameters for convolutional model trained using VI (with exponentially scaled KL weight) on the CIFAR10 dataset according to optuna sweep.}
     \label{tab:cifar-small-vi-exp-weighted-hparams}
 \end{table}
 
@@ -281,5 +288,5 @@
         \bottomrule
     \end{tabular}
     \caption{Chosen hyperparameters the different methods for DenseNet model trained on CIFAR10.}
-    \label{tab:mnist-hparams}
+    \label{tab:densenet-hparams}
 \end{table}

@@ -4,30 +4,30 @@ Following our increase in computational resources, we can construct and train ev
 Combined with the use of massive datasets, these models are changing the world around us for better or for worse. 
 At the same time, we are also finding it increasingly difficult to reason about how the models interpret and reason about the world.
 
-For instance, we see that as models are achieving better performance, they also become increasingly poorly calibrated\cite{guo_calibration_2017}, making us question how much trust we should put in the. 
-We also see examples of specific adversarial attacks, for which even powerful models completely break down \cite{fezza_perceptual_2019}.
-These issues warrant consideration, especially in areas where the robustness of models is paramount, be that medical applications or self-driving cars.
+For instance, we see that as models are achieving better performance, they also become increasingly poorly calibrated\autocite{guo_calibration_2017}, making us question how much trust we should put in predictions made by the models. 
+We also see examples of specific adversarial attacks, for which even powerful models completely break down \autocite{fezza_perceptual_2019}.
+Issues such as these warrant consideration, especially in areas where the robustness of models is paramount, be these medical applications or self-driving cars.
 
 Therefore, we are motivated to seek techniques and interpretations to achieve more robust and preferably better-performing models.
 
-We can generally frame the most common machine learning problems as a question of predicting an output value given an input value. 
+We can generally frame the most common machine learning problems as the task of predicting an output value given an input value. 
 We can often formulate these predictions as a conditional probability of some output targets given some input data.
 Typically, we parameterize this model using some parameters that are often unknown.
 These models are made very flexible by defining them using many parameters, enabling them to account for complex structures in the data. 
 
-Training these models is usually viewed as an optimization problem, figuring out the values of the parameters that minimize some objective function.
+Training these models is usually viewed as an optimization problem, figuring out values of the model parameters that minimize some objective function.
+We thus typically end up relying on the parameter estimates being robust. 
 
-In Bayesian statistics, instead of relying on a single point estimate of the unknown parameters, we usually seek to integrate out our uncertainty about the parameters.
+In opposition to this frequentist approach, a Bayesian approach usually seeks to integrate our uncertainty about the parameters instead of relying on point estimates of the unknown parameters.
 
 Using this method, we can generally achieve more robust results than just using point estimates, at least for simple models.
 However, if we are to apply this method to deep learning models, we are faced with some difficulties due to the large amounts of data and the high number of parameters.
 
 Bayesian Neural Networks have been the subject of some interest and several papers over the recent years. 
-In \cite{chen_stochastic_2014} the Hamiltonian Monte Carlo algorithm for Bayesian inference is adapted to use in a batched learning setting. 
-In \cite{blundell_weight_2015} they use a variational distribution is used for approximating the posterior, allowing for an optimization-based approach of achieving approximate Bayesian inference.
+In \autocite{chen_stochastic_2014} the Hamiltonian Monte Carlo algorithm for Bayesian inference is adapted to use in a batched learning setting. 
+In \autocite{blundell_weight_2015} they use a variational distribution is used for approximating the posterior, allowing for an optimization-based approach of achieving approximate Bayesian inference.
 
 This project explores implementing and applying the ideas from these two papers.
 First, we will walk through and describe the two approaches, including the mathematical results underpinning them.
-We then compare the probabilistic methods with each other and an SGD baseline.
-
-% We will discuss different practical considerations, and also explore to what degree Bayesian methods can be implemented as a drop in replacement for regular SGD based algorithms.
+We then compare the probabilistic methods with each other and a frequentist baseline.
+Along the way, we will explore whether we can implement Bayesian methods as a drop-in replacement for frequentist methods.
